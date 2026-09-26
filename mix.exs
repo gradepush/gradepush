@@ -1,0 +1,101 @@
+defmodule GradePush.MixProject do
+  use Mix.Project
+
+  def project do
+    [
+      app: :gradepush,
+      version: "0.1.0",
+      elixir: "~> 1.20.4",
+      elixirc_paths: elixirc_paths(Mix.env()),
+      start_permanent: Mix.env() == :prod,
+      aliases: aliases(),
+      releases: [gradepush: [steps: [:assemble, &copy_notices/1]]],
+      deps: deps(),
+      compilers: [:phoenix_live_view] ++ Mix.compilers(),
+      listeners: [Phoenix.CodeReloader]
+    ]
+  end
+
+  def application do
+    [
+      mod: {GradePush.Application, []},
+      extra_applications: [:logger, :runtime_tools]
+    ]
+  end
+
+  def cli do
+    [
+      preferred_envs: [precommit: :test]
+    ]
+  end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
+
+  defp copy_notices(release) do
+    for file <- ~w(LICENSE THIRD_PARTY_NOTICES.md) do
+      File.cp!(file, Path.join(release.path, file))
+    end
+
+    release
+  end
+
+  defp deps do
+    [
+      {:phoenix, "~> 1.8.15"},
+      {:phoenix_ecto, "~> 4.7"},
+      {:ecto_sql, "~> 3.14"},
+      {:postgrex, "~> 0.22"},
+      {:phoenix_html, "~> 4.3"},
+      {:phoenix_live_reload, "~> 1.7", only: :dev},
+      {:phoenix_live_view, "~> 1.2.12"},
+      {:lazy_html, "~> 0.1.13", only: :test},
+      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.5", runtime: Mix.env() == :dev},
+      {:heroicons,
+       github: "tailwindlabs/heroicons",
+       tag: "v2.2.0",
+       sparse: "optimized",
+       app: false,
+       compile: false,
+       depth: 1},
+      {:daisyui,
+       github: "saadeghi/daisyui",
+       tag: "v5.7.46",
+       sparse: "packages/bundle",
+       app: false,
+       compile: false,
+       depth: 1},
+      {:telemetry_metrics, "~> 1.0"},
+      {:telemetry_poller, "~> 1.0"},
+      {:gettext, "~> 1.0"},
+      {:jason, "~> 1.2"},
+      {:oban, "~> 2.24"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:bandit, "~> 1.12"}
+    ]
+  end
+
+  defp aliases do
+    [
+      setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
+      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
+      "ecto.reset": ["ecto.drop", "ecto.setup"],
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
+      "assets.build": ["compile", "tailwind gradepush", "esbuild gradepush"],
+      "assets.deploy": [
+        "compile",
+        "tailwind gradepush --minify",
+        "esbuild gradepush --minify",
+        "phx.digest"
+      ],
+      precommit: [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "credo --strict",
+        "test"
+      ]
+    ]
+  end
+end

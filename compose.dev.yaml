@@ -1,0 +1,6 @@
+services:
+  db:
+    environment:
+      POSTGRES_DB: gradepush_dev
+    ports:
+      - "127.0.0.1:54329:5432"

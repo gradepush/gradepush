@@ -1,0 +1,45 @@
+services:
+  app:
+    build: .
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-gradepush}
+      DB_PASSWORD: ${DB_PASSWORD:-gradepush}
+      DB_NAME: ${DB_NAME:-gradepush}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-}
+      PHX_HOST: ${PHX_HOST:-localhost}
+      PHX_SCHEME: ${PHX_SCHEME:-http}
+      PHX_URL_PORT: ${PHX_URL_PORT:-${HOST_PORT:-4000}}
+      PORT: 4000
+      POOL_SIZE: ${POOL_SIZE:-10}
+    ports:
+      - "127.0.0.1:${HOST_PORT:-4000}:4000"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    volumes:
+      - gradepush_data:/var/lib/gradepush
+
+  db:
+    image: postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650
+    environment:
+      POSTGRES_DB: ${DB_NAME:-gradepush}
+      POSTGRES_USER: ${DB_USER:-gradepush}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-gradepush}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+volumes:
+  gradepush_data:
+  postgres_data:

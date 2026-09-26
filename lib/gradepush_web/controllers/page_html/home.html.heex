@@ -1,0 +1,15 @@
+<main class="mx-auto max-w-2xl px-6 py-16">
+  <img src={~p"/images/logo.svg"} alt="GradePush" width="240" class="mb-8" />
+  <h1 class="text-2xl font-semibold">{gettext("GradePush is taking shape")}</h1>
+  <p class="mt-4">
+    {gettext("Classrooms and assignments will be available in a future update.")}
+  </p>
+  <nav class="mt-8 flex gap-4" aria-label={gettext("Language")}>
+    <a href={~p"/?locale=en"} lang="en" class="underline" aria-current={@locale == "en" && "page"}>
+      English
+    </a>
+    <a href={~p"/?locale=fr"} lang="fr" class="underline" aria-current={@locale == "fr" && "page"}>
+      Français
+    </a>
+  </nav>
+</main>
