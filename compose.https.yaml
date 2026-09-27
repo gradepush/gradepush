@@ -1,0 +1,29 @@
+services:
+  app:
+    environment:
+      PHX_HOST: ${PHX_HOST:?Set PHX_HOST to the public domain}
+      PHX_SCHEME: https
+      PHX_URL_PORT: 443
+      DB_PASSWORD: ${DB_PASSWORD:?Set a unique database password}
+    ports: !reset []
+
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      PHX_HOST: ${PHX_HOST:?Set PHX_HOST to the public domain}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
