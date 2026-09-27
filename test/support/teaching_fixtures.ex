@@ -39,7 +39,7 @@ defmodule GradePush.TeachingFixtures do
           %{}
 
         true ->
-          %{semester: "fall", academic_year: 2026}
+          %{semester: "fall", academic_year: "2026"}
       end
 
     {:ok, classroom} =

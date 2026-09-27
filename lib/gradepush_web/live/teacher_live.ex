@@ -1290,7 +1290,7 @@ defmodule GradePushWeb.TeacherLive do
       description: %{en: params["description"], fr: params["description"]},
       code: params["code"],
       semester: params["semester"],
-      academic_year: parse_id(params["academic_year"])
+      academic_year: params["academic_year"]
     }
 
     if elem(socket.assigns.modal, 0) == "edit" do
@@ -1513,7 +1513,7 @@ defmodule GradePushWeb.TeacherLive do
     field = if key == :title, do: "name", else: Atom.to_string(key)
 
     if Map.has_key?(params, field) do
-      if key == :academic_year, do: parse_id(params[field]), else: params[field]
+      params[field]
     else
       original_editing_value(assigns, key)
     end
@@ -1528,11 +1528,17 @@ defmodule GradePushWeb.TeacherLive do
     end
   end
 
-  defp classroom_years(assigns) do
-    year = Date.utc_today().year
-    selected = editing_value(assigns, :academic_year)
-    years = Enum.to_list((year + 5)..(year - 10)//-1)
-    if is_integer(selected), do: Enum.sort(Enum.uniq([selected | years]), :desc), else: years
+  defp selected_organization(assigns) do
+    value = editing_value(assigns, :github_connection_id)
+
+    if modal?(assigns.modal, "create") and value in [nil, ""] do
+      case List.first(classroom_organizations(assigns.organizations)) do
+        %{id: id} -> id
+        organization -> organization
+      end
+    else
+      value
+    end
   end
 
   defp legacy_term?(assigns) do

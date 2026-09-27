@@ -7,6 +7,23 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
 
   alias GradePush.{Assignments, Classrooms}
 
+  test "creating a classroom selects the first connected organization", %{conn: conn} do
+    %{user: teacher} = bootstrap_fixture()
+    existing = classroom_fixture(teacher)
+    {:ok, view, _} = conn |> log_in_user(teacher) |> live("/classrooms")
+    view |> element("button", "Create a classroom") |> render_click()
+
+    assert has_element?(
+             view,
+             "select[name='class[github_connection_id]'] option[value='#{existing.github_connection_id}'][selected]"
+           )
+
+    view |> form("#class-form", class: %{name: "Default organization"}) |> render_submit()
+    {:ok, classrooms} = Classrooms.list_classrooms(teacher)
+    classroom = Enum.find(classrooms, &(&1.title == "Default organization"))
+    assert classroom.github_connection_id == existing.github_connection_id
+  end
+
   test "editing a legacy classroom preserves its term until explicitly replaced", %{conn: conn} do
     %{user: teacher} = bootstrap_fixture()
     classroom = classroom_fixture(teacher, %{session: "Cohorte soir 2027–2028"})
@@ -34,14 +51,15 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     assert html =~ classroom.title
 
     view |> element(".cp-class-heading button") |> render_click()
+    assert has_element?(view, "input[type='text'][name='class[academic_year]']")
 
     view
     |> form("#class-form",
-      class: %{name: "Algorithms", semester: "winter", academic_year: "2027"}
+      class: %{name: "Algorithms", semester: "winter", academic_year: "26"}
     )
     |> render_submit()
 
-    assert {:ok, %{title: "Algorithms", semester: "winter", academic_year: 2027}} =
+    assert {:ok, %{title: "Algorithms", semester: "winter", academic_year: "26"}} =
              Classrooms.get_classroom(teacher, classroom.slug)
 
     view |> element("a", "New assignment") |> render_click()

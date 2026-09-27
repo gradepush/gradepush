@@ -359,7 +359,7 @@ defmodule GradePush.Demo do
         code: "420-110",
         description: "Développer une base solide en Python et en résolution de problèmes.",
         semester: "fall",
-        academic_year: 2026
+        academic_year: "2026"
       })
 
     web_development =
@@ -369,7 +369,7 @@ defmodule GradePush.Demo do
         code: "420-210",
         description: "Créer des expériences Web accessibles et adaptées à tous les écrans.",
         semester: "fall",
-        academic_year: 2026
+        academic_year: "2026"
       })
 
     insert_classroom_teacher!(programming.id, teacher.id)

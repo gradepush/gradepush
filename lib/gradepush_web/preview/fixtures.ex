@@ -22,7 +22,7 @@ defmodule GradePushWeb.Preview.Fixtures do
           fr: "Développer une base solide en Python et en résolution de problèmes."
         },
         semester: "fall",
-        academic_year: 2026,
+        academic_year: "2026",
         students: 28,
         assignments: 3,
         organization: "cegep-sorel-tracy",
@@ -40,7 +40,7 @@ defmodule GradePushWeb.Preview.Fixtures do
           fr: "Créer des expériences Web accessibles et adaptées à tous les écrans."
         },
         semester: "fall",
-        academic_year: 2026,
+        academic_year: "2026",
         students: 24,
         assignments: 1,
         organization: "cegep-sorel-tracy",
@@ -58,7 +58,7 @@ defmodule GradePushWeb.Preview.Fixtures do
           fr: "Comprendre le rôle des structures de données dans les programmes efficaces."
         },
         semester: "winter",
-        academic_year: 2027,
+        academic_year: "2027",
         students: 18,
         assignments: 1,
         organization: "cegep-sorel-tracy",

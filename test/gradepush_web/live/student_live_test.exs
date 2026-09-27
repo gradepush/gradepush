@@ -23,7 +23,7 @@ defmodule GradePushWeb.StudentLiveTest do
       classroom_fixture(teacher, %{
         title: "Winter course",
         semester: "winter",
-        academic_year: 2027
+        academic_year: "2027"
       })
 
     for class <- [classroom, winter] do
@@ -65,7 +65,7 @@ defmodule GradePushWeb.StudentLiveTest do
       Classrooms.update_classroom(teacher, winter.id, %{
         title: winter.title,
         semester: "summer",
-        academic_year: 2025
+        academic_year: "2025"
       })
 
     assert has_element?(view, ".cp-term-group:first-of-type h2", "Automne 2026")

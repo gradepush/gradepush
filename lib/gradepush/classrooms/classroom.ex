@@ -12,7 +12,7 @@ defmodule GradePush.Classrooms.Classroom do
     field :description, :string, default: ""
     field :session, :string, default: ""
     field :semester, :string
-    field :academic_year, :integer
+    field :academic_year, :string
     field :archived_at, :utc_datetime_usec
     field :students_count, :integer, virtual: true, default: 0
     field :assignments_count, :integer, virtual: true, default: 0
@@ -45,10 +45,10 @@ defmodule GradePush.Classrooms.Classroom do
     |> validate_length(:description, max: 4_000)
     |> validate_length(:session, max: 120)
     |> validate_inclusion(:semester, ~w(winter summer fall))
-    |> validate_number(:academic_year,
-      greater_than_or_equal_to: 1900,
-      less_than_or_equal_to: 9999
-    )
+    |> validate_length(:academic_year, max: 20)
+    |> validate_change(:academic_year, fn :academic_year, value ->
+      if String.trim(value) == "", do: [academic_year: "can't be blank"], else: []
+    end)
     |> validate_term_pair()
     |> check_constraint(:academic_year, name: :classroom_term_check)
     |> unique_constraint(:slug)

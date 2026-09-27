@@ -8,10 +8,10 @@ defmodule GradePush.ClassroomTermTest do
 
   test "classrooms persist a structured semester and year" do
     %{user: teacher} = bootstrap_fixture()
-    classroom = classroom_fixture(teacher, %{semester: "summer", academic_year: 2027})
+    classroom = classroom_fixture(teacher, %{semester: "summer", academic_year: "2027"})
 
     assert classroom.semester == "summer"
-    assert classroom.academic_year == 2027
+    assert classroom.academic_year == "2027"
     assert classroom.session == ""
 
     assert {:ok, updated} =
@@ -22,7 +22,7 @@ defmodule GradePush.ClassroomTermTest do
              })
 
     assert updated.semester == "winter"
-    assert updated.academic_year == 2028
+    assert updated.academic_year == "2028"
   end
 
   test "unassigned terms are valid and partial terms are rejected" do
@@ -50,7 +50,39 @@ defmodule GradePush.ClassroomTermTest do
     assert Keyword.has_key?(changeset.errors, :academic_year)
   end
 
-  test "unknown semesters and out-of-range years are rejected" do
+  test "academic year labels are preserved and limited to twenty characters" do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher)
+
+    assert {:ok, updated} =
+             Classrooms.update_classroom(teacher, classroom.id, %{
+               title: classroom.title,
+               semester: "fall",
+               academic_year: "26"
+             })
+
+    assert updated.academic_year == "26"
+
+    assert {:ok, labeled} =
+             Classrooms.update_classroom(teacher, classroom.id, %{
+               title: classroom.title,
+               semester: "fall",
+               academic_year: "2026-2027"
+             })
+
+    assert labeled.academic_year == "2026-2027"
+
+    assert {:error, year_changeset} =
+             Classrooms.update_classroom(teacher, classroom.id, %{
+               title: classroom.title,
+               semester: "fall",
+               academic_year: String.duplicate("2", 21)
+             })
+
+    assert Keyword.has_key?(year_changeset.errors, :academic_year)
+  end
+
+  test "unknown semesters are rejected" do
     %{user: teacher} = bootstrap_fixture()
     classroom = classroom_fixture(teacher)
 
@@ -58,19 +90,10 @@ defmodule GradePush.ClassroomTermTest do
              Classrooms.update_classroom(teacher, classroom.id, %{
                title: classroom.title,
                semester: "spring",
-               academic_year: 2027
+               academic_year: "2027"
              })
 
     assert Keyword.has_key?(semester_changeset.errors, :semester)
-
-    assert {:error, year_changeset} =
-             Classrooms.update_classroom(teacher, classroom.id, %{
-               title: classroom.title,
-               semester: "fall",
-               academic_year: 1800
-             })
-
-    assert Keyword.has_key?(year_changeset.errors, :academic_year)
   end
 
   test "legacy session text survives updates that omit structured term fields" do

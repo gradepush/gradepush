@@ -345,16 +345,12 @@
                 </option>
               </select></label>
               <label>{gettext("Year (optional)")}
-              <select name="class[academic_year]">
-                <option value="">{gettext("Select a year")}</option>
-                <option
-                  :for={year <- classroom_years(assigns)}
-                  value={year}
-                  selected={editing_value(assigns, :academic_year) == year}
-                >
-                  {year}
-                </option>
-              </select></label>
+              <input
+                type="text"
+                name="class[academic_year]"
+                value={editing_value(assigns, :academic_year)}
+                maxlength="20"
+              /></label>
             </div>
             <label>{gettext("Description (optional)")}<textarea
               name="class[description]"
@@ -370,14 +366,14 @@
               }
             ><option
               value=""
-              selected={editing_value(assigns, :github_connection_id) in [nil, ""]}
+              selected={selected_organization(assigns) in [nil, ""]}
             >
               {gettext("Select an organization")}
             </option><option
               :for={organization <- classroom_organizations(@organizations)}
               value={if(is_map(organization), do: organization.id, else: organization)}
               selected={
-                to_string(editing_value(assigns, :github_connection_id) || "") ==
+                to_string(selected_organization(assigns) || "") ==
                   to_string(if(is_map(organization), do: organization.id, else: organization))
               }
             >

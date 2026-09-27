@@ -98,10 +98,7 @@ defmodule GradePushWeb.TeacherLiveTest do
     view |> element(".cp-class-heading button") |> render_click()
     assert has_element?(view, "select[name='class[semester]'] option[value='winter'][selected]")
 
-    assert has_element?(
-             view,
-             "select[name='class[academic_year]'] option[value='2027'][selected]"
-           )
+    assert has_element?(view, "input[type='text'][name='class[academic_year]'][value='2027']")
 
     view |> form("#class-form", class: %{semester: "", academic_year: ""}) |> render_submit()
     refute has_element?(view, ".cp-class-session")
