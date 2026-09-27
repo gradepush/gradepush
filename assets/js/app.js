@@ -44,10 +44,37 @@ const HeaderDisclosure = {
     this.el.removeEventListener("click", this.closeOnNavigation)
   },
 }
+let setupTokenFromLink = null
+if (window.location.pathname === "/setup" && window.location.hash) {
+  setupTokenFromLink = new URLSearchParams(window.location.hash.slice(1)).get("setup_token")
+  window.history.replaceState(
+    window.history.state,
+    "",
+    window.location.pathname + window.location.search,
+  )
+}
+
+const SetupToken = {
+  mounted() {
+    const token = setupTokenFromLink
+    setupTokenFromLink = null
+    if (!token) return
+    if (new TextEncoder().encode(token).length > 128) {
+      this.pushEvent("invalid_setup_token_link", {})
+      return
+    }
+
+    const input = this.el.querySelector('input[name="setup[setup_token]"]')
+    if (!input) return
+
+    input.value = token
+    input.dispatchEvent(new Event("input", {bubbles: true}))
+  },
+}
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, CopyInvitation, HeaderDisclosure},
+  hooks: {...colocatedHooks, CopyInvitation, HeaderDisclosure, SetupToken},
 })
 
 topbar.config({barColors: {0: "#2052F2"}, shadowColor: "transparent"})

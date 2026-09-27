@@ -111,7 +111,7 @@ defmodule GradePush.AccountsTest do
     nonce = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
     other_nonce = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
 
-    assert {:ok, %{state: state, action: %{manifest: manifest}}} =
+    assert {:ok, %{state: state, action: %{url: action_url, manifest: manifest}}} =
              Installation.begin_setup(
                token,
                "Test Institution",
@@ -119,9 +119,15 @@ defmodule GradePush.AccountsTest do
                nonce
              )
 
+    action = URI.parse(action_url)
+    assert action.scheme == "https"
+    assert action.host == "github.com"
+    assert action.path == "/settings/apps/new"
+    assert URI.decode_query(action.query) == %{"state" => state}
+
     assert {:ok, manifest_payload} = Jason.decode(manifest)
     assert manifest_payload["public"]
-    assert "push" in manifest_payload["default_events"]
+    assert manifest_payload["default_events"] == ["push", "workflow_run"]
     assert "https://gradepush.example/auth/github/callback" in manifest_payload["callback_urls"]
 
     assert manifest_payload["default_permissions"] == %{
@@ -156,6 +162,27 @@ defmodule GradePush.AccountsTest do
              )
 
     refute replacement_state == state
+  end
+
+  test "operator setup links reuse the token in a fragment without changing setup state" do
+    assert {:error, :setup_not_available} = Installation.setup_link("https://gradepush.example")
+
+    capture_log(fn -> assert {:ok, :created} = Installation.initialize_bootstrap() end)
+    credential = Repo.get!(BootstrapCredential, 1)
+    assert {:ok, token} = Crypto.decrypt(credential.token_encrypted, "bootstrap.token")
+    assert {:ok, link} = Installation.setup_link("https://gradepush.example/")
+    uri = URI.parse(link)
+    assert uri.path == "/setup"
+    assert is_nil(uri.query)
+    assert URI.decode_query(uri.fragment) == %{"setup_token" => token}
+    assert Repo.get!(BootstrapCredential, 1) == credential
+
+    assert {:error, :setup_not_available} = Installation.setup_link("javascript:alert(1)")
+  end
+
+  test "operator setup links are unavailable after setup" do
+    configured_gradepush_fixture()
+    assert {:error, :setup_not_available} = Installation.setup_link("https://gradepush.example")
   end
 
   test "only an active organization owner can connect its GitHub installation" do

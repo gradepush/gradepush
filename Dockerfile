@@ -44,6 +44,7 @@ WORKDIR /app
 
 COPY --from=build --chown=10001:10001 /app/_build/prod/rel/gradepush ./
 COPY --chown=root:root --chmod=755 rel/entrypoint.sh /usr/local/bin/gradepush-entrypoint
+COPY --chown=root:root --chmod=755 rel/setup.sh /usr/local/bin/gradepush-setup
 
 USER 10001:10001
 

@@ -22,6 +22,19 @@ defmodule GradePush.Installation do
 
   def configured?, do: not is_nil(Accounts.institution())
 
+  @doc "Returns a private setup link for use by the server operator."
+  def setup_link(base_url) when is_binary(base_url) do
+    with false <- configured?(),
+         true <- valid_base_url?(base_url),
+         %BootstrapCredential{} = credential <- Repo.get(BootstrapCredential, @bootstrap_id),
+         {:ok, token} <- Crypto.decrypt(credential.token_encrypted, "bootstrap.token") do
+      {:ok,
+       String.trim_trailing(base_url, "/") <> "/setup#setup_token=" <> URI.encode_www_form(token)}
+    else
+      _ -> {:error, :setup_not_available}
+    end
+  end
+
   def initialize_bootstrap do
     case Repo.transaction(fn -> bootstrap_token_record() end) do
       {:ok, {:configured, _}} ->
@@ -688,7 +701,7 @@ defmodule GradePush.Installation do
     URI.to_string(%URI{
       URI.parse(web_url())
       | path: "/settings/apps/new",
-        query: URI.encode_query(%{state: state, manifest: "true"})
+        query: URI.encode_query(%{state: state})
     })
     |> then(fn url -> %{url: url, manifest: Jason.encode!(manifest_payload(base_url))} end)
   end
@@ -713,8 +726,7 @@ defmodule GradePush.Installation do
         metadata: "read",
         workflows: "write"
       },
-      default_events:
-        ~w(push workflow_run installation installation_repositories github_app_authorization),
+      default_events: ~w(push workflow_run),
       request_oauth_on_install: false
     }
   end

@@ -479,6 +479,10 @@ select:not([multiple]):not([size]) {
 .cp-admin-panel-heading > .hero-server-stack, .cp-admin-panel-heading > .hero-key, .cp-admin-panel-heading > .hero-building-library { margin-top: 3px; color: var(--cp-muted); flex-shrink: 0; }
 .cp-admin-panel-heading > .cp-admin-tag { margin-left: auto; }
 .cp-admin-settings-form { padding: 24px; max-width: 660px; }
+.cp-setup-fields { display: grid; gap: 18px; }
+.cp-setup-token-help { color: var(--cp-muted); font-size: 12px; font-weight: 400; line-height: 1.6; }
+.cp-setup-token-help code { display: block; margin-top: 4px; color: #202838; overflow-wrap: anywhere; white-space: normal; }
+.cp-setup-progress { align-items: center; background: #f6f8fc; border: 1px solid var(--line); border-radius: 8px; color: var(--cp-muted); display: flex; gap: 10px; min-height: 48px; padding: 12px 14px; }
 .cp-admin-properties { padding: 4px 22px; }
 .cp-admin-properties > div { display: grid; grid-template-columns: 210px minmax(0,1fr); gap: 24px; padding: 16px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .cp-admin-properties > div:last-child { border-bottom: 0; }

@@ -19,6 +19,7 @@ defmodule GradePushWeb.SetupLive do
        configured?: configured?,
        https_ready?: URI.parse(GradePushWeb.Endpoint.url()).scheme == "https",
        form: to_form(%{"institution_name" => "", "setup_token" => ""}, as: :setup),
+       trigger_action?: false,
        manifest_action: nil,
        manifest_json: nil,
        error: nil
@@ -45,13 +46,24 @@ defmodule GradePushWeb.SetupLive do
              to_form(%{"institution_name" => params["institution_name"], "setup_token" => ""},
                as: :setup
              ),
+           trigger_action?: true,
            error: nil
          )}
 
       {:error, reason} ->
-        {:noreply, assign(socket, error: setup_error(reason))}
+        {:noreply,
+         assign(socket,
+           form:
+             to_form(%{"institution_name" => params["institution_name"], "setup_token" => ""},
+               as: :setup
+             ),
+           error: setup_error(reason)
+         )}
     end
   end
+
+  def handle_event("invalid_setup_token_link", _params, socket),
+    do: {:noreply, assign(socket, error: gettext("The setup link is invalid or expired."))}
 
   @impl true
   def render(assigns) do
@@ -84,13 +96,18 @@ defmodule GradePushWeb.SetupLive do
               </a>
             </div>
 
-            <div :if={not @configured?}>
-              <.form
-                :if={is_nil(@manifest_action)}
-                for={@form}
-                phx-submit="begin_setup"
-                class="cp-admin-settings-form cp-form"
-              >
+            <form
+              :if={not @configured?}
+              id="setup-form"
+              phx-hook="SetupToken"
+              phx-submit="begin_setup"
+              phx-trigger-action={if(@trigger_action?, do: "true")}
+              action={@manifest_action}
+              method="post"
+              target="_top"
+              class="cp-admin-settings-form cp-form cp-setup-form"
+            >
+              <div :if={is_nil(@manifest_action)} class="cp-setup-fields">
                 <label for={@form[:institution_name].id}>
                   {gettext("Institution name")}
                   <input
@@ -113,27 +130,22 @@ defmodule GradePushWeb.SetupLive do
                     maxlength="128"
                     required
                   />
+                  <span class="cp-setup-token-help">
+                    {gettext("Generate a private setup link with this command:")}
+                    <code>docker compose exec app gradepush-setup</code>
+                  </span>
                 </label>
                 <button type="submit" class="cp-button cp-primary">
-                  {gettext("Continue to GitHub App setup")}
+                  {gettext("Create GitHub App")}
                 </button>
-              </.form>
-
-              <div :if={@manifest_action} class="cp-admin-settings-form">
-                <h2>{gettext("Create the GradePush GitHub App")}</h2>
-                <p class="cp-field-help">
-                  {gettext(
-                    "GitHub will register the app and return here to finish setting up your administrator account."
-                  )}
-                </p>
-                <form action={@manifest_action} method="post" target="_top" class="mt-4">
-                  <input type="hidden" name="manifest" value={@manifest_json} />
-                  <button class="cp-button cp-primary" type="submit">
-                    {gettext("Create GitHub App")}
-                  </button>
-                </form>
               </div>
-            </div>
+
+              <input :if={@manifest_action} type="hidden" name="manifest" value={@manifest_json} />
+              <div :if={@manifest_action} class="cp-setup-progress" role="status" aria-live="polite">
+                <.icon name="hero-arrow-path" class="size-4 animate-spin" />
+                <span>{gettext("Opening GitHub...")}</span>
+              </div>
+            </form>
 
             <p :if={@error} class="cp-error" role="alert">
               {@error}
