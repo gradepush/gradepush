@@ -112,7 +112,11 @@ defmodule GradePush.GitHub.Actions do
 
   defp job(test) do
     id = field(test, :id)
-    name = "GradePush test [gp-test-#{id}] #{field(test, :name)}" |> yaml_string()
+
+    name =
+      "GradePush test [gp-test-#{id}] #{field(test, :name)}" |> safe_display() |> yaml_string()
+
+    step_name = step_name(test) |> safe_display() |> yaml_string()
     steps = step_script(test)
     timeout = div(field(test, :timeout_seconds) + 59, 60) + 5
 
@@ -125,7 +129,7 @@ defmodule GradePush.GitHub.Actions do
       "      - uses: #{@checkout}\n",
       "        with:\n",
       "          persist-credentials: false\n",
-      "      - name: Run test\n",
+      "      - name: #{step_name}\n",
       "        shell: bash\n",
       "        run: |\n",
       indent(steps, 10),
@@ -143,11 +147,33 @@ defmodule GradePush.GitHub.Actions do
   defp step_script(%{type: "io"} = test), do: io_script(test)
   defp step_script(%{"type" => "io"} = test), do: io_script(test)
 
+  defp step_name(%{type: "command"} = test), do: "Run command test: #{field(test, :name)}"
+  defp step_name(%{"type" => "command"} = test), do: "Run command test: #{field(test, :name)}"
+  defp step_name(%{type: "file"} = test), do: "Check required file: #{field(test, :path)}"
+  defp step_name(%{"type" => "file"} = test), do: "Check required file: #{field(test, :path)}"
+
+  defp step_name(%{type: "io"} = test),
+    do: "Check program input and output: #{field(test, :name)}"
+
+  defp step_name(%{"type" => "io"} = test),
+    do: "Check program input and output: #{field(test, :name)}"
+
   defp command_script(command, test) do
     """
     set -euo pipefail
-    printf '%s' '#{encode(command)}' | base64 --decode > "$RUNNER_TEMP/gradepush-test.sh"
-    timeout --signal=TERM --kill-after=5s #{field(test, :timeout_seconds)}s bash "$RUNNER_TEMP/gradepush-test.sh"
+    script_file="$RUNNER_TEMP/gradepush-test.sh"
+    timeout_seconds=#{field(test, :timeout_seconds)}
+    printf '%s' '#{encode(command)}' | base64 --decode > "$script_file"
+    #{suspend_workflow_commands()}
+    printf 'Command source:\\n'
+    cat "$script_file"
+    printf '\\nCommand output:\\n'
+    set +e
+    timeout --signal=TERM --kill-after=5s "${timeout_seconds}s" bash "$script_file"
+    result=$?
+    set -e
+    #{resume_workflow_commands()}
+    #{report_result()}
     """
   end
 
@@ -155,22 +181,101 @@ defmodule GradePush.GitHub.Actions do
     """
     set -euo pipefail
     path="$(printf '%s' '#{encode(path)}' | base64 --decode)"
-    test -e "$path"
+    #{suspend_workflow_commands()}
+    printf 'Required file: %s\\n' "$path"
+    if [ -e "$path" ]; then result=0; else result=1; fi
+    #{resume_workflow_commands()}
+    if [ "$result" -eq 0 ]; then
+      printf 'PASS: required file exists.\\n'
+    else
+      printf 'FAIL: required file is missing.\\n'
+      exit 1
+    fi
     """
   end
 
   defp io_script(test) do
     """
     set -euo pipefail
-    printf '%s' '#{encode(field(test, :command))}' | base64 --decode > "$RUNNER_TEMP/gradepush-test.sh"
-    printf '%s' '#{encode(field(test, :input) || "")}' | base64 --decode > "$RUNNER_TEMP/gradepush-input"
-    printf '%s' '#{encode(field(test, :expected))}' | base64 --decode > "$RUNNER_TEMP/gradepush-expected"
+    script_file="$RUNNER_TEMP/gradepush-test.sh"
+    input_file="$RUNNER_TEMP/gradepush-input"
+    expected_file="$RUNNER_TEMP/gradepush-expected"
+    actual_file="$RUNNER_TEMP/gradepush-actual"
+    stderr_file="$RUNNER_TEMP/gradepush-stderr"
+    diff_file="$RUNNER_TEMP/gradepush-diff"
+    timeout_seconds=#{field(test, :timeout_seconds)}
+    printf '%s' '#{encode(field(test, :command))}' | base64 --decode > "$script_file"
+    printf '%s' '#{encode(field(test, :input) || "")}' | base64 --decode > "$input_file"
+    printf '%s' '#{encode(field(test, :expected))}' | base64 --decode > "$expected_file"
+    show_preview() {
+      file="$1"
+      size="$(wc -c < "$file" | tr -d '[:space:]')"
+      head -c 32768 "$file"
+      printf '\\n'
+      if [ "$size" -gt 32768 ]; then
+        printf '[Preview truncated after 32768 bytes; %s bytes total.]\\n' "$size"
+      fi
+    }
+    #{suspend_workflow_commands()}
+    printf 'Command source:\\n'
+    show_preview "$script_file"
+    printf '\\nProgram input:\\n'
+    show_preview "$input_file"
+    printf '\\nExpected output:\\n'
+    show_preview "$expected_file"
+    printf '\\nActual output:\\n'
     set +e
-    timeout --signal=TERM --kill-after=5s #{field(test, :timeout_seconds)}s bash "$RUNNER_TEMP/gradepush-test.sh" < "$RUNNER_TEMP/gradepush-input" > "$RUNNER_TEMP/gradepush-actual"
+    timeout --signal=TERM --kill-after=5s "${timeout_seconds}s" bash "$script_file" < "$input_file" > "$actual_file" 2> "$stderr_file"
     result=$?
     set -e
-    test "$result" -eq 0
-    cmp -s "$RUNNER_TEMP/gradepush-expected" "$RUNNER_TEMP/gradepush-actual"
+    show_preview "$actual_file"
+    if [ -s "$stderr_file" ]; then
+      printf '\\nProgram error output:\\n'
+      show_preview "$stderr_file"
+    fi
+    if cmp -s "$expected_file" "$actual_file"; then matches=true; else matches=false; fi
+    if [ "$matches" = false ]; then
+      diff -u --label 'Expected output' --label 'Actual output' "$expected_file" "$actual_file" > "$diff_file" || true
+      printf '\\nOutput difference:\\n'
+      show_preview "$diff_file"
+    fi
+    #{resume_workflow_commands()}
+    if [ "$result" -eq 124 ]; then
+      printf 'FAIL: test timed out after %s seconds.\\n' "$timeout_seconds"
+      exit 1
+    elif [ "$result" -ne 0 ]; then
+      printf 'FAIL: test command exited with code %s.\\n' "$result"
+      exit 1
+    elif [ "$matches" = false ]; then
+      printf 'FAIL: actual output did not match expected output.\\n'
+      exit 1
+    else
+      printf 'PASS: actual output matched expected output.\\n'
+    fi
+    """
+  end
+
+  defp suspend_workflow_commands do
+    """
+    workflow_command_token="$(od -An -N32 -tx1 /dev/urandom | tr -d '[:space:]')"
+    printf '::stop-commands::%s\\n' "$workflow_command_token"
+    """
+  end
+
+  defp resume_workflow_commands,
+    do: "printf '\\n::%s::\\n' \"$workflow_command_token\""
+
+  defp report_result do
+    """
+    if [ "$result" -eq 0 ]; then
+      printf 'PASS: command completed with exit code 0.\\n'
+    elif [ "$result" -eq 124 ]; then
+      printf 'FAIL: command timed out after %s seconds.\\n' "$timeout_seconds"
+      exit 1
+    else
+      printf 'FAIL: command exited with code %s.\\n' "$result"
+      exit 1
+    fi
     """
   end
 
@@ -198,6 +303,7 @@ defmodule GradePush.GitHub.Actions do
   end
 
   defp yaml_string(value), do: Jason.encode!(value)
+  defp safe_display(value), do: String.replace(value, "${{", "$ { {")
   defp encode(value), do: value |> to_string() |> Base.encode64()
   defp valid_text?(value, max), do: is_binary(value) and byte_size(value) <= max
 
