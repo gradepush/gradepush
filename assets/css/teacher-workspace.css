@@ -1,6 +1,5 @@
 .class-preview.cp-teacher-workspace {
   --line: #e0e6f0;
-  --cp-list-heading: #edf0f5;
   background: #f5f7fb;
 }
 .cp-teacher-workspace .cp-main { max-width: 1280px; padding-top: 36px; }
@@ -52,7 +51,8 @@
 .cp-teacher-workspace .cp-submissions-heading { margin-top: 24px; margin-bottom: 18px; }
 .cp-teacher-workspace .cp-submissions-heading > span { display: none; }
 .cp-teacher-workspace .cp-submission-table-wrap { border-radius: 12px; box-shadow: 0 8px 28px -24px #203f6f40; }
-.cp-teacher-workspace .cp-submission-table thead th { padding-top: 16px; padding-bottom: 16px; font-size: 11px; letter-spacing: .1px; }
+.cp-teacher-workspace .cp-submission-table thead { background: white; border-bottom: 1px solid #d4deed; }
+.cp-teacher-workspace .cp-submission-table thead th { padding-top: 16px; padding-bottom: 16px; font-size: 12px; letter-spacing: .1px; }
 .cp-teacher-workspace .cp-submission-table tbody tr:hover { background: #f8faff; }
 .cp-teacher-workspace .cp-submission-table td, .cp-teacher-workspace .cp-submission-table tbody th { padding-top: 22px; padding-bottom: 22px; }
 .cp-teacher-workspace .cp-submission-person strong { font-size: 14px; letter-spacing: -.15px; }

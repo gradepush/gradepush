@@ -115,6 +115,11 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
       |> log_in_user(teacher)
       |> live(assignment_path(classroom, assignment))
 
+    assert has_element?(
+             view,
+             "#submission-#{student.login} .cp-extension-button[title='Extend deadline'][aria-label='Revise deadline for Test Student']"
+           )
+
     view |> element("#submission-#{student.login} .cp-extension-button") |> render_click()
 
     view
@@ -125,11 +130,21 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
     assert DateTime.compare(persisted.extension_until, ~U[2026-10-16 20:30:00Z]) == :eq
     assert has_element?(view, "#submission-#{student.login}", "Deadline extended to")
 
+    assert has_element?(
+             view,
+             "#submission-#{student.login} .cp-extension-button[title='Change deadline']"
+           )
+
     view |> element("#submission-#{student.login} .cp-extension-button") |> render_click()
     view |> element("button.cp-clear-extension") |> render_click()
 
     assert Repo.get!(Subject, subject.id).extension_until == nil
     refute has_element?(view, "#submission-#{student.login}", "Deadline extended to")
+
+    assert has_element?(
+             view,
+             "#submission-#{student.login} .cp-extension-button[title='Extend deadline']"
+           )
   end
 
   test "activity charts scale observed pushes across the visible submissions", %{conn: conn} do

@@ -201,12 +201,8 @@ defmodule GradePushWeb.AssignmentComponents do
                 {gettext("Last push")}
               </th><th scope="col">{gettext("Activity")}</th><th :if={@assignment.tests?} scope="col">
                 {gettext("Test score")}
-              </th><th
-                :if={has_deadline?(@assignment, @preview)}
-                scope="col"
-                class="cp-deadline-heading"
-              >
-                {gettext("Deadline")}
+              </th><th scope="col" class="cp-submission-actions-heading">
+                {gettext("Actions")}
               </th>
             </tr>
           </thead>
@@ -235,44 +231,6 @@ defmodule GradePushWeb.AssignmentComponents do
                   label={gettext("No pushes")}
                 />
                 <span :if={row.status == :late} class="cp-late-note">{gettext("Late")}</span>
-                <div
-                  :if={row.repository || Map.get(row, :repository_state) in ["pending", "failed"]}
-                  class="cp-push-repository"
-                >
-                  <a
-                    :if={!@preview and row.repository_url}
-                    class="cp-repo-link"
-                    href={row.repository_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={gettext("Open repository %{repository}", repository: row.repository)}
-                  ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
-                    "Repository"
-                  )}</a><button
-                    :if={@preview and row.repository}
-                    class="cp-repo-link"
-                    disabled
-                    title={gettext("Repository links are unavailable in this preview.")}
-                    aria-label={gettext("Open repository %{repository}", repository: row.repository)}
-                  ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
-                    "Repository"
-                  )}</button>
-                  <p :if={Map.get(row, :repository_state) == "pending"} class="cp-field-help">
-                    {gettext("Repository is being created.")}
-                  </p>
-                  <div
-                    :if={!@preview and Map.get(row, :repository_state) == "failed"}
-                    class="cp-repository-error"
-                  >
-                    <p>{Map.get(row, :repository_error)}</p>
-                    <button
-                      class="cp-button"
-                      phx-click="retry_repository"
-                      phx-value-subject_id={row.subject_id}
-                      aria-label={gettext("Retry repository setup for %{name}", name: row.name)}
-                    ><.icon name="hero-arrow-path" class="size-4" />{gettext("Retry setup")}</button>
-                  </div>
-                </div>
               </td>
               <td class="cp-activity-cell" data-label={gettext("Activity")}>
                 <.activity
@@ -303,28 +261,66 @@ defmodule GradePushWeb.AssignmentComponents do
                   aria-label={gettext("View test results for %{name}", name: row.name)}
                 >{gettext("View results")}</button>
               </td>
-              <td :if={has_deadline?(@assignment, @preview)} class="cp-deadline-cell">
+              <td class="cp-submission-actions-cell">
+                <div class="cp-submission-actions">
+                  <a
+                    :if={!@preview and row.repository_url}
+                    class="cp-button cp-repository-button"
+                    href={row.repository_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={gettext("Open repository %{repository}", repository: row.repository)}
+                  ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
+                    "Repository"
+                  )}</a><button
+                    :if={@preview and row.repository}
+                    class="cp-button cp-repository-button"
+                    disabled
+                    title={gettext("Repository links are unavailable in this preview.")}
+                    aria-label={gettext("Open repository %{repository}", repository: row.repository)}
+                  ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
+                    "Repository"
+                  )}</button>
+                  <button
+                    :if={
+                      not @preview and not is_nil(Map.get(row, :subject_id)) and
+                        not is_nil(@assignment.deadline_at)
+                    }
+                    class="cp-extension-button"
+                    phx-click={
+                      JS.push_focus()
+                      |> JS.push("open",
+                        value: %{kind: "deadline_extension", subject_id: Map.get(row, :subject_id)}
+                      )
+                    }
+                    title={
+                      if Map.get(row, :extension_until) not in [nil, ""],
+                        do: gettext("Change deadline"),
+                        else: gettext("Extend deadline")
+                    }
+                    aria-label={gettext("Revise deadline for %{name}", name: row.name)}
+                  ><.icon name="hero-calendar-days" class="size-4" /></button>
+                </div>
+                <p :if={Map.get(row, :repository_state) == "pending"} class="cp-field-help">
+                  {gettext("Repository is being created.")}
+                </p>
+                <div
+                  :if={!@preview and Map.get(row, :repository_state) == "failed"}
+                  class="cp-repository-error"
+                >
+                  <p>{Map.get(row, :repository_error)}</p>
+                  <button
+                    class="cp-button"
+                    phx-click="retry_repository"
+                    phx-value-subject_id={row.subject_id}
+                    aria-label={gettext("Retry repository setup for %{name}", name: row.name)}
+                  ><.icon name="hero-arrow-path" class="size-4" />{gettext("Retry setup")}</button>
+                </div>
                 <p :if={Map.get(row, :extension_label)} class="cp-late-note">
                   {gettext("Deadline extended to %{date}",
                     date: local(Map.get(row, :extension_label), @locale)
                   )}
                 </p>
-                <button
-                  :if={
-                    not @preview and not is_nil(Map.get(row, :subject_id)) and
-                      not is_nil(@assignment.deadline_at)
-                  }
-                  class="cp-repo-link cp-extension-button"
-                  phx-click={
-                    JS.push_focus()
-                    |> JS.push("open",
-                      value: %{kind: "deadline_extension", subject_id: Map.get(row, :subject_id)}
-                    )
-                  }
-                  aria-label={gettext("Revise deadline for %{name}", name: row.name)}
-                ><.icon name="hero-calendar-days" class="size-4" />{if Map.get(row, :extension_until),
-                  do: gettext("Change deadline"),
-                  else: gettext("Extend deadline")}</button>
               </td>
             </tr>
           </tbody>
