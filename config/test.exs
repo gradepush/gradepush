@@ -1,5 +1,8 @@
 import Config
 
+config :gradepush, ui_preview: true, setup_token_server: false, initialize_instance: false
+config :gradepush, GradePush.GitHub, adapter: GradePush.GitHub.Fake
+
 config :gradepush, GradePush.Repo,
   username: System.get_env("DB_USER", "gradepush"),
   password: System.get_env("DB_PASSWORD", "gradepush"),

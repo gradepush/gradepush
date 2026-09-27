@@ -42,8 +42,12 @@ defmodule GradePush.GitHub do
               {:ok, map()} | {:error, term()}
 
   def adapter do
-    Application.get_env(:gradepush, __MODULE__, [])
-    |> Keyword.get(:adapter, GradePush.GitHub.Real)
+    if Application.get_env(:gradepush, :demo_mode, false) do
+      GradePush.GitHub.Fake
+    else
+      Application.get_env(:gradepush, __MODULE__, [])
+      |> Keyword.get(:adapter, GradePush.GitHub.Real)
+    end
   end
 
   def convert_manifest(code), do: call(:convert_manifest, [code])

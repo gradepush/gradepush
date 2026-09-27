@@ -173,7 +173,8 @@ defmodule GradePush.GitHub.Fake do
   @impl true
   def add_collaborator(_access_token, owner, repository, username, permission)
       when permission in ["pull", "push"] do
-    with {:ok, _repository} <- get_repository("test-installation-token", owner, repository),
+    with nil <- take_fault(:add_collaborator),
+         {:ok, _repository} <- get_repository("test-installation-token", owner, repository),
          true <- is_binary(username) and byte_size(username) in 1..39 do
       key = {:collaborators, owner, repository}
 
@@ -183,8 +184,8 @@ defmodule GradePush.GitHub.Fake do
 
       {:ok, nil}
     else
+      {:error, reason} -> {:error, reason}
       false -> {:error, :invalid_github_login}
-      error -> error
     end
   end
 

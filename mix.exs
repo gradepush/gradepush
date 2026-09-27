@@ -72,6 +72,7 @@ defmodule GradePush.MixProject do
       {:jason, "~> 1.2"},
       {:mdex, "~> 0.13.5"},
       {:oban, "~> 2.24"},
+      {:tz, "~> 0.28.4"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:bandit, "~> 1.12"}
     ]

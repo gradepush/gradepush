@@ -3,6 +3,7 @@ import Config
 config :gradepush,
   namespace: GradePush,
   start_endpoint: true,
+  ui_preview: false,
   ecto_repos: [GradePush.Repo],
   generators: [timestamp_type: :utc_datetime]
 
@@ -45,11 +46,37 @@ config :logger, :default_formatter,
 
 config :phoenix, :json_library, Jason
 
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+config :gradepush, :timezone, "America/Toronto"
+
+config :phoenix, :filter_parameters, [
+  "password",
+  "secret",
+  "token",
+  "code",
+  "state",
+  "pem",
+  "private_key",
+  "manifest",
+  "return_to",
+  "nonce",
+  "profile"
+]
+
+config :gradepush, GradePush.GitHub,
+  adapter: GradePush.GitHub.Real,
+  api_url: "https://api.github.com",
+  web_url: "https://github.com",
+  api_version: "2026-03-10"
+
 config :gradepush, GradePushWeb.Gettext, default_locale: "en", locales: ~w(en fr)
 
 config :gradepush, Oban,
   repo: GradePush.Repo,
-  queues: [default: 10],
-  plugins: [Oban.Plugins.Pruner]
+  queues: [default: 10, github: 5, maintenance: 1],
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 7 * 24 * 60 * 60},
+    {Oban.Plugins.Cron, crontab: [{"0 * * * *", GradePush.Workers.PruneGitHubDeliveries}]}
+  ]
 
 import_config "#{config_env()}.exs"

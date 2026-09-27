@@ -2,6 +2,45 @@ import Config
 
 config :gradepush, :start_endpoint, System.get_env("START_ENDPOINT", "true") == "true"
 
+demo_mode = System.get_env("DEMO_MODE", "false") == "true"
+config :gradepush, :demo_mode, demo_mode
+
+if demo_mode do
+  config :gradepush, GradePush.GitHub, adapter: GradePush.GitHub.Fake
+
+  config :gradepush, Oban,
+    plugins: [
+      {Oban.Plugins.Pruner, max_age: 7 * 24 * 60 * 60},
+      {Oban.Plugins.Cron,
+       crontab: [
+         {"0 * * * *", GradePush.Workers.PruneGitHubDeliveries},
+         {"0 4 * * *", GradePush.Workers.ResetDemo}
+       ]}
+    ]
+end
+
+config :gradepush,
+       :ui_preview,
+       System.get_env("UI_PREVIEW", "false") == "true" or config_env() == :test
+
+credential_key =
+  case System.get_env("CREDENTIAL_ENCRYPTION_KEY") do
+    nil ->
+      if config_env() == :prod do
+        raise "CREDENTIAL_ENCRYPTION_KEY must be configured"
+      else
+        :crypto.hash(:sha256, "gradepush-local-development-credentials")
+      end
+
+    encoded ->
+      case Base.decode64(encoded) do
+        {:ok, key} when byte_size(key) == 32 -> key
+        _ -> raise "CREDENTIAL_ENCRYPTION_KEY must be a base64-encoded 32-byte key"
+      end
+  end
+
+config :gradepush, GradePush.Crypto, credential_encryption_key: credential_key
+
 if server = System.get_env("PHX_SERVER") do
   config :gradepush, GradePushWeb.Endpoint, server: server == "true"
 end
