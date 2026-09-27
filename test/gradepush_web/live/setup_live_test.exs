@@ -9,6 +9,26 @@ defmodule GradePushWeb.SetupLiveTest do
   alias GradePush.Installation.BootstrapCredential
   alias GradePush.Repo
 
+  test "installed apps return to organization settings without connecting an unverified installation",
+       %{
+         conn: conn
+       } do
+    %{user: user} = GradePush.AccountsFixtures.bootstrap_fixture()
+
+    assert {:error, {:redirect, %{to: "/teacher/settings?section=organizations"}}} =
+             live(conn, "/setup?installation_id=123&setup_action=install")
+
+    assert GradePush.Classrooms.list_github_connections(user) == {:ok, []}
+  end
+
+  test "installation parameters cannot bypass initial setup", %{conn: conn} do
+    setup_token()
+    {:ok, view, _html} = live(conn, "/setup?installation_id=123&setup_action=install")
+
+    assert has_element?(view, "#setup-form")
+    refute Installation.configured?()
+  end
+
   test "valid setup submits only the manifest to GitHub without a second confirmation", %{
     conn: conn
   } do

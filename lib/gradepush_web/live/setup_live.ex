@@ -27,6 +27,18 @@ defmodule GradePushWeb.SetupLive do
   end
 
   @impl true
+  def handle_params(
+        %{"installation_id" => _, "setup_action" => action},
+        _uri,
+        %{assigns: %{configured?: true}} = socket
+      )
+      when action in ~w(install update) do
+    {:noreply, redirect(socket, to: "/teacher/settings?section=organizations")}
+  end
+
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
+
+  @impl true
   def handle_event("begin_setup", %{"setup" => params}, socket) do
     result =
       Installation.begin_setup(
