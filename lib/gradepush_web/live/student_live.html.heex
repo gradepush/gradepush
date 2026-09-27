@@ -76,7 +76,10 @@
           <div :if={@assignments == []} class="cp-empty">
             <p>{gettext("No assignments yet")}</p>
           </div>
-          <div :if={@assignments != []} class="cp-assignment-list cp-student-assignment-list">
+          <div
+            :if={@assignments != []}
+            class="cp-data-list cp-assignment-list cp-student-assignment-list"
+          >
             <div class="cp-assignment-labels">
               <span>{gettext("Assignment")}</span><span>{gettext("Deadline")}</span><span>{gettext(
                 "Latest push"

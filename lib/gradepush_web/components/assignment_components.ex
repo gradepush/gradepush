@@ -189,7 +189,7 @@ defmodule GradePushWeb.AssignmentComponents do
           {status_label(status)}
         </option></select></label>
       </form>
-      <div :if={@rows != []} class="cp-submission-table-wrap">
+      <div :if={@rows != []} class="cp-data-list cp-submission-table-wrap">
         <table class="cp-submission-table">
           <caption class="sr-only">
             {gettext("Repositories and progress for this assignment")}

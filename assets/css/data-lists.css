@@ -1,0 +1,43 @@
+.cp-data-list {
+  --cp-list-border: #e0e6f0;
+  background: white;
+  border: 1px solid var(--cp-list-border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 28px -24px #203f6f40;
+}
+
+.cp-data-list :is(thead, .cp-assignment-labels, .cp-student-labels) {
+  background: white;
+  color: #303c50;
+  border-bottom: 1px solid #d4deed;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .1px;
+}
+
+.cp-data-list :is(thead th, .cp-assignment-labels, .cp-student-labels) {
+  padding: 16px 20px;
+  font-weight: 600;
+}
+
+.cp-data-list :is(tbody th, tbody td, .cp-assignment, .cp-student) {
+  padding: 22px 20px;
+}
+
+.cp-data-list :is(tbody tr + tr, .cp-assignment + .cp-assignment, .cp-student + .cp-student) {
+  border-top: 1px solid var(--cp-list-border);
+}
+
+.cp-data-list :is(tbody tr, .cp-assignment, .cp-student):hover {
+  background: #f8faff;
+}
+
+@media (max-width: 1000px) and (min-width: 761px) {
+  .cp-data-list .cp-submission-table :is(th, td) { padding-left: 10px; padding-right: 10px; }
+}
+
+@media (max-width: 760px) {
+  .cp-data-list :is(.cp-submission-table, .cp-admin-table) :is(th, td) { padding: 0; }
+  .cp-data-list :is(tbody tr, .cp-assignment, .cp-student) { padding: 20px 18px; }
+}

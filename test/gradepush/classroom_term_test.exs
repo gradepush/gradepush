@@ -23,6 +23,7 @@ defmodule GradePush.ClassroomTermTest do
 
     assert updated.semester == "winter"
     assert updated.academic_year == "2028"
+    assert updated.code == classroom.code
   end
 
   test "unassigned terms are valid and partial terms are rejected" do

@@ -106,7 +106,7 @@
           ]} />
           <div class="cp-heading cp-class-heading">
             <div>
-              <p :if={@classroom.code != ""} class="cp-context">
+              <p :if={@classroom.code not in [nil, ""]} class="cp-context">
                 {@classroom.code}
               </p><h1>{local(@classroom.title, @locale)}</h1><p class="cp-lead">
                 {local(@classroom.description, @locale)}
@@ -154,7 +154,7 @@
                 patch={"/classrooms/#{@classroom.slug}/assignments/new"}
               ><.icon name="hero-plus" class="size-4" />{gettext("New assignment")}</.link>
             </div>
-            <div :if={@classroom.assignments > 0} class="cp-assignment-list">
+            <div :if={@classroom.assignments > 0} class="cp-data-list cp-assignment-list">
               <div class="cp-assignment-labels">
                 <span>{gettext("Assignment")}</span><span>{gettext("Deadline")}</span><span>{gettext(
                   "Acceptances"
@@ -220,7 +220,10 @@
                 class="size-4"
               />{gettext("Invite students")}</button>
             </div>
-            <div :if={visible_students(@classroom, @query) != []} class="cp-student-list">
+            <div
+              :if={visible_students(@classroom, @query) != []}
+              class="cp-data-list cp-student-list"
+            >
               <div class="cp-student-labels">
                 <span>{gettext("Student")}</span><span>{gettext("Student ID")}</span><span>GitHub</span><span></span>
               </div>
@@ -321,9 +324,12 @@
               value={editing_value(assigns, :title)}
               placeholder={gettext("e.g. Programming I")}
             /></label>
-            <label>{gettext("Course code (optional)")}<input
+            <label>{gettext("Course code")}<input
               name="class[code]"
-              maxlength="30"
+              aria-invalid={if :code in @class_form_errors, do: "true"}
+              aria-describedby={if :code in @class_form_errors, do: "class-modal-error"}
+              required
+              maxlength="80"
               value={editing_value(assigns, :code)}
               placeholder="420-110"
             /></label>

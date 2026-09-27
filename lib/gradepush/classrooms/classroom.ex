@@ -39,7 +39,8 @@ defmodule GradePush.Classrooms.Classroom do
       :academic_year,
       :github_connection_id
     ])
-    |> validate_required([:title, :github_connection_id])
+    |> update_change(:code, &String.trim(&1 || ""))
+    |> validate_required([:title, :code, :github_connection_id])
     |> validate_length(:title, min: 1, max: 160)
     |> validate_length(:code, max: 80)
     |> validate_length(:description, max: 4_000)

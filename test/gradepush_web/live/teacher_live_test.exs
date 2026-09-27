@@ -8,7 +8,9 @@ defmodule GradePushWeb.TeacherLiveTest do
     view |> element("button", "Create a classroom") |> render_click()
 
     view
-    |> form("#class-form", class: %{name: "Test", semester: "fall", academic_year: ""})
+    |> form("#class-form",
+      class: %{name: "Test", code: "CS-101", semester: "fall", academic_year: ""}
+    )
     |> render_submit()
 
     for field <- ~w(semester academic_year) do
@@ -82,6 +84,12 @@ defmodule GradePushWeb.TeacherLiveTest do
     view |> form("#class-form", class: %{name: "   "}) |> render_submit()
     assert has_element?(view, "[role='alert']", "Enter a classroom name")
 
+    assert has_element?(view, "input[name='class[code]'][required]")
+    view |> form("#class-form", class: %{name: "Algorithms", code: "   "}) |> render_submit()
+    assert has_element?(view, "#class-modal-error", "Enter a course code.")
+    assert has_element?(view, "input[name='class[code]'][aria-invalid='true']")
+    assert_push_event(view, "focus-invalid", %{id: "class-form"})
+
     view
     |> form("#class-form", class: %{name: "Algorithms", code: "420-500", description: "Graphs"})
     |> render_submit()
@@ -103,7 +111,7 @@ defmodule GradePushWeb.TeacherLiveTest do
     refute has_element?(view, "input[name='class[session]']")
 
     view
-    |> form("#class-form", class: %{name: "Algorithmique", semester: "winter"})
+    |> form("#class-form", class: %{name: "Algorithmique", code: "420-500", semester: "winter"})
     |> render_submit()
 
     assert has_element?(view, "[role='alert']")

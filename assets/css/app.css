@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @import "./teacher-workspace.css";
+@import "./data-lists.css";
 @import "phoenix-colocated/gradepush/colocated.css";
 @source "../css";
 @source "../js";
@@ -86,7 +87,7 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 .cp-main:focus { outline: none; }
 .cp-heading { display: flex; align-items: center; justify-content: space-between; gap: 28px; margin-bottom: 48px; }
 .cp-heading h1 { font-size: 30px; line-height: 1.25; font-weight: 650; letter-spacing: -.9px; margin: 8px 0 12px; overflow-wrap: anywhere; }
-.cp-context { color: var(--cp-muted); font-size: 13px; margin: 0; }
+.cp-context { color: var(--blue); font-size: 13px; font-weight: 600; margin: 0; }
 .cp-lead { margin: 0; color: var(--cp-muted); font-size: 14px; line-height: 1.65; max-width: 620px; overflow-wrap: anywhere; }
 .cp-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #dce1e9; border-radius: 7px; padding: 10px 15px; background: white; font-weight: 550; font-size: 13px; min-height: 42px; flex-shrink: 0; }
 .cp-button:hover { background: #f6f8fb; border-color: #c5ccd8; }
@@ -206,10 +207,7 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
   .cp-editor-actions > * { flex: 1; }
 }
 .cp-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 28px 0 21px; }
-.cp-assignment-labels, .cp-assignment { display: grid; grid-template-columns: minmax(0, 1fr) 190px 85px; gap: 24px; align-items: center; padding: 13px 20px; }
-.cp-assignment-labels, .cp-student-labels { color: #303c50; font-size: 12px; font-weight: 600; background: var(--cp-list-heading); }
-.cp-assignment-list, .cp-student-list { background: white; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
-.cp-assignment { border-top: 1px solid var(--line); padding-top: 23px; padding-bottom: 23px; }
+.cp-assignment-labels, .cp-assignment { display: grid; grid-template-columns: minmax(0, 1fr) 190px 85px; gap: 24px; align-items: center; }
 .cp-student-assignment-list :is(.cp-assignment, .cp-assignment-labels) { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); }
 .cp-student-assignment-list .cp-due { overflow-wrap: anywhere; }
 .cp-assignment-name { display: flex; gap: 14px; align-items: center; min-width: 0; }
@@ -224,8 +222,8 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 .cp-search:focus-within { border-color: var(--blue); }
 .cp-search input { border: 0; background: transparent; padding: 10px 0; outline: none; width: 240px; min-width: 0; color: var(--ink); }
 .cp-search:has(input:focus-visible) { outline: 2px solid var(--blue); outline-offset: 2px; }
-.cp-student-labels, .cp-student { display: grid; grid-template-columns: minmax(0, 1fr) 145px minmax(160px, .8fr) 32px; align-items: center; gap: 16px; padding: 12px 20px; }
-.cp-student { border-top: 1px solid var(--line); font-size: 13px; }
+.cp-student-labels, .cp-student { display: grid; grid-template-columns: minmax(0, 1fr) 145px minmax(160px, .8fr) 32px; align-items: center; gap: 16px; }
+.cp-student { font-size: 13px; }
 .cp-student-name { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .cp-student-name strong { font-weight: 550; }
 .cp-student-id { font-variant-numeric: tabular-nums; color: var(--cp-muted); }
@@ -291,6 +289,7 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
   .cp-class-heading { gap: 16px; margin-bottom: 16px; }
   .cp-class-heading .cp-button { padding: 8px 12px; min-height: 38px; }
   .cp-class-meta { gap: 8px; align-items: flex-start; flex-direction: column; margin-bottom: 22px; }
+  .cp-tabs a { padding: 15px 12px; gap: 6px; font-size: 13px; }
   .cp-assignment-labels { display: none; }
   .cp-assignment { grid-template-columns: 1fr auto; gap: 16px 8px; padding: 20px 16px; }
   .cp-student-assignment-list .cp-assignment { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -315,7 +314,6 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 @media (prefers-reduced-motion: reduce) { .cp-class-card { transition: none; } }
 
 .cp-section-label:has(> span:only-child) { justify-content: flex-end; }
-a.cp-assignment:hover { background: #f8faff; }
 a.cp-assignment:hover h3 { color: var(--blue); }
 a.cp-assignment:focus-visible { outline-offset: -3px; }
 .cp-assignment-heading { margin-bottom: 18px; }
@@ -338,14 +336,8 @@ a.cp-assignment:focus-visible { outline-offset: -3px; }
 .cp-submission-filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
 .cp-submission-filters .cp-search input { width: 280px; }
 .cp-status-filter select { border: 1px solid var(--control-border); border-radius: 7px; padding: 10px 12px; height: 43px; background: white; color: #536178; font-size: 13px; }
-.cp-submission-table-wrap { background: white; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .cp-submission-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
-.cp-submission-table thead { background: var(--cp-list-heading); color: #303c50; }
 .cp-submission-table th { font-weight: 500; }
-.cp-submission-table th, .cp-submission-table td { padding: 16px 18px; }
-.cp-submission-table thead th { padding-top: 13px; padding-bottom: 13px; font-weight: 600; }
-.cp-submission-table tbody tr { border-top: 1px solid var(--line); }
-.cp-submission-table tbody tr:hover { background: #fcfdff; }
 .cp-submission-person { width: 32%; }
 .cp-submission-person strong { display: block; font-size: 13px; font-weight: 550; margin-bottom: 4px; }
 .cp-submission-person > span { display: block; font-weight: 400; font-size: 11px; color: var(--cp-muted); overflow-wrap: anywhere; }
@@ -505,12 +497,7 @@ select:not([multiple]):not([size]) {
 .cp-admin-section-heading h2, .cp-admin-panel h2 { font-size: 16px; font-weight: 600; }
 .cp-admin-section-heading p, .cp-admin-panel-heading p { font-size: 13px; color: var(--cp-muted); margin-top: 6px; line-height: 1.6; }
 .cp-admin-tag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; color: #4c5970; background: #eef1f5; border-radius: 5px; padding: 4px 8px; white-space: nowrap; }
-.cp-admin-table-wrap { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: white; }
 .cp-admin-table { width: 100%; text-align: left; font-size: 13px; border-collapse: collapse; }
-.cp-admin-table thead { background: var(--cp-list-heading); color: #303c50; font-size: 12px; }
-.cp-admin-table th, .cp-admin-table td { padding: 17px 20px; }
-.cp-admin-table thead th { padding-top: 13px; padding-bottom: 13px; font-weight: 600; }
-.cp-admin-table tbody tr { border-top: 1px solid var(--line); }
 .cp-admin-table tbody th { font-weight: 500; }
 .cp-admin-table td { color: var(--cp-muted); }
 .cp-admin-table strong { font-weight: 550; }

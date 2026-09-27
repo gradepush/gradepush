@@ -76,7 +76,10 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
              "select[name='class[github_connection_id]'] option[value='#{existing.github_connection_id}'][selected]"
            )
 
-    view |> form("#class-form", class: %{name: "Default organization"}) |> render_submit()
+    view
+    |> form("#class-form", class: %{name: "Default organization", code: "CS-101"})
+    |> render_submit()
+
     {:ok, classrooms} = Classrooms.list_classrooms(teacher)
     classroom = Enum.find(classrooms, &(&1.title == "Default organization"))
     assert classroom.github_connection_id == existing.github_connection_id

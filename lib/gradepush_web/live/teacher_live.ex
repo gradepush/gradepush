@@ -656,19 +656,27 @@ defmodule GradePushWeb.TeacherLive do
 
   def handle_event("save_class", %{"class" => params}, socket) do
     name = String.trim(params["name"] || "")
+    code = String.trim(params["code"] || "")
+    params = Map.put(params, "code", code)
     socket = assign(socket, class_form_params: params, class_form_errors: [])
 
-    case {class_editor_open?(socket), name} do
-      {false, _} ->
+    case {class_editor_open?(socket), name, code} do
+      {false, _, _} ->
         {:noreply, socket}
 
-      {true, ""} ->
+      {true, "", _} ->
         {:noreply,
          socket
          |> assign(error: gettext("Enter a classroom name."), class_form_errors: [:name])
          |> push_event("focus-invalid", %{id: "class-form"})}
 
-      {true, name} ->
+      {true, _, ""} ->
+        {:noreply,
+         socket
+         |> assign(error: gettext("Enter a course code."), class_form_errors: [:code])
+         |> push_event("focus-invalid", %{id: "class-form"})}
+
+      {true, name, _} ->
         if preserve_legacy_term?(socket.assigns, params) or
              params["semester"] in [nil, ""] == params["academic_year"] in [nil, ""],
            do: persist_class(socket, params, name),

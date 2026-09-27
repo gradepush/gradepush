@@ -40,7 +40,10 @@ defmodule GradePushWeb.ClassroomComponents do
     ~H"""
     <.link patch={@path} class="cp-class-card">
       <div class="cp-card-top">
-        <span class="cp-course-code">{@code}</span><.icon name="hero-arrow-up-right" class="size-4" />
+        <span class="cp-course-code">{if @code in [nil, ""], do: gettext("Classroom"), else: @code}</span><.icon
+          name="hero-arrow-up-right"
+          class="size-4"
+        />
       </div>
       <h3>{@title}</h3>
       <p :if={@description not in [nil, ""]} class="cp-card-description">{@description}</p>

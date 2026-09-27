@@ -1075,7 +1075,6 @@ defmodule GradePush.Classrooms do
       attrs
       |> Map.update(:title, nil, &localized_value(&1, actor.locale))
       |> Map.update(:description, "", &localized_value(&1, actor.locale))
-      |> Map.update(:code, "", &empty_to_string/1)
 
     attrs =
       if Map.has_key?(attrs, :session) do

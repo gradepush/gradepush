@@ -6,7 +6,7 @@
 .cp-teacher-workspace .cp-header-inner, .cp-teacher-workspace .cp-footer-inner { max-width: 1280px; }
 .cp-teacher-workspace .cp-header { box-shadow: 0 1px 0 #fff; }
 .cp-teacher-workspace .cp-heading h1 { font-size: 34px; font-weight: 650; letter-spacing: -1.05px; line-height: 1.18; }
-.cp-teacher-workspace .cp-heading .cp-context { color: #2052f2; font-weight: 600; margin-bottom: 10px; }
+.cp-teacher-workspace .cp-heading .cp-context { margin-bottom: 10px; }
 .cp-teacher-workspace .cp-heading .cp-lead { margin-top: 14px; font-size: 15px; }
 .cp-teacher-workspace .cp-heading { margin-bottom: 38px; }
 .cp-teacher-workspace .cp-button { border-radius: 9px; font-weight: 550; }
@@ -50,11 +50,6 @@
 .cp-teacher-workspace .cp-tabs a { border-radius: 8px 8px 0 0; }
 .cp-teacher-workspace .cp-submissions-heading { margin-top: 24px; margin-bottom: 18px; }
 .cp-teacher-workspace .cp-submissions-heading > span { display: none; }
-.cp-teacher-workspace .cp-submission-table-wrap { border-radius: 12px; box-shadow: 0 8px 28px -24px #203f6f40; }
-.cp-teacher-workspace .cp-submission-table thead { background: white; border-bottom: 1px solid #d4deed; }
-.cp-teacher-workspace .cp-submission-table thead th { padding-top: 16px; padding-bottom: 16px; font-size: 12px; letter-spacing: .1px; }
-.cp-teacher-workspace .cp-submission-table tbody tr:hover { background: #f8faff; }
-.cp-teacher-workspace .cp-submission-table td, .cp-teacher-workspace .cp-submission-table tbody th { padding-top: 22px; padding-bottom: 22px; }
 .cp-teacher-workspace .cp-submission-person strong { font-size: 14px; letter-spacing: -.15px; }
 .cp-teacher-workspace .cp-test-score { font-variant-numeric: tabular-nums; font-weight: 600; }
 @media (max-width: 1000px) {
@@ -80,7 +75,5 @@
   .cp-teacher-workspace .cp-assignment-actions { order: 3; display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 10px; padding-top: 18px; margin-top: 20px; }
   .cp-teacher-workspace .cp-assignment-actions .cp-button { font-size: 12px; padding: 9px 8px; justify-content: center; }
   .cp-teacher-workspace .cp-assignment-actions .cp-primary { margin-left: 0; grid-column: 1 / -1; }
-  .cp-teacher-workspace .cp-submission-table td, .cp-teacher-workspace .cp-submission-table tbody th { padding: 0; }
-  .cp-teacher-workspace .cp-submission-table tbody tr { padding: 20px 18px; gap: 16px 12px; }
   .cp-teacher-workspace .cp-push-cell { white-space: normal; }
 }

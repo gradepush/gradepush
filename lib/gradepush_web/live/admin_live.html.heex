@@ -98,7 +98,10 @@
                 class="size-4"
               />{gettext("Invite a teacher")}</button>
             </div>
-            <div :if={visible(@state.teachers, @query) != []} class="cp-admin-table-wrap">
+            <div
+              :if={visible(@state.teachers, @query) != []}
+              class="cp-data-list cp-admin-table-wrap"
+            >
               <table class="cp-admin-table">
                 <caption class="sr-only">{gettext("Institution teachers")}</caption><thead>
                   <tr>
@@ -156,7 +159,7 @@
                 </p>
               </div>
             </div>
-            <div class="cp-admin-table-wrap">
+            <div class="cp-data-list cp-admin-table-wrap">
               <table class="cp-admin-table cp-admin-classes">
                 <caption class="sr-only">{gettext("Institution classrooms")}</caption><thead>
                   <tr>
