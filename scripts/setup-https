@@ -3,18 +3,53 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-if ! command -v mkcert >/dev/null 2>&1; then
-  echo "Install mkcert, then run scripts/setup-https again." >&2
-  exit 1
-fi
-
 mkdir -p priv/cert
 chmod 700 priv/cert
-mkcert -install
-cp "$(mkcert -CAROOT)/rootCA.pem" priv/cert/ca.pem
 
-if [ ! -s priv/cert/localhost.pem ] || [ ! -s priv/cert/localhost-key.pem ]; then
-  mkcert -cert-file priv/cert/localhost.pem -key-file priv/cert/localhost-key.pem localhost 127.0.0.1 ::1
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64) platform=darwin-arm64 ;;
+  Darwin-x86_64) platform=darwin-amd64 ;;
+  Linux-aarch64|Linux-arm64) platform=linux-arm64 ;;
+  Linux-x86_64) platform=linux-amd64 ;;
+  Linux-armv7l|Linux-armv6l) platform=linux-arm ;;
+  *) echo "Automatic local HTTPS supports macOS and Linux." >&2; exit 1 ;;
+esac
+
+asset="mkcert-v1.4.4-$platform"
+mkcert="priv/cert/$asset"
+checksum=$(awk -v asset="$asset" '$2 == asset { print $1 }' scripts/mkcert.sha256)
+
+if [ ! -f "$mkcert" ]; then
+  temporary_file=$(mktemp priv/cert/.mkcert.XXXXXX)
+  trap 'rm -f "$temporary_file"' EXIT HUP INT TERM
+  echo "Downloading mkcert for local HTTPS..."
+  curl --fail --location --silent --show-error --retry 2 --proto '=https' --proto-redir '=https' \
+    "https://github.com/FiloSottile/mkcert/releases/download/v1.4.4/$asset" --output "$temporary_file"
+  if [ "$(openssl dgst -sha256 "$temporary_file" | awk '{ print $NF }')" != "$checksum" ]; then
+    echo "mkcert checksum verification failed." >&2
+    exit 1
+  fi
+  mv "$temporary_file" "$mkcert"
+fi
+
+if [ "$(openssl dgst -sha256 "$mkcert" | awk '{ print $NF }')" != "$checksum" ]; then
+  echo "Cached mkcert checksum verification failed. Remove $mkcert and retry." >&2
+  exit 1
+fi
+chmod 700 "$mkcert"
+"$mkcert" -install
+cp "$("$mkcert" -CAROOT)/rootCA.pem" priv/cert/ca.pem
+
+valid_certificate() {
+  openssl x509 -in priv/cert/localhost.pem -checkend 2592000 -noout >/dev/null 2>&1 || return 1
+  openssl verify -CAfile priv/cert/ca.pem priv/cert/localhost.pem >/dev/null 2>&1 || return 1
+  certificate_public_key=$(openssl x509 -in priv/cert/localhost.pem -pubkey -noout) || return 1
+  derived_public_key=$(openssl pkey -in priv/cert/localhost-key.pem -pubout 2>/dev/null) || return 1
+  [ "$certificate_public_key" = "$derived_public_key" ]
+}
+
+if ! valid_certificate; then
+  "$mkcert" -cert-file priv/cert/localhost.pem -key-file priv/cert/localhost-key.pem localhost 127.0.0.1 ::1
 fi
 
 # Individual read-only container mounts need readable files; the host directory stays private.

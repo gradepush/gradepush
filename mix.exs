@@ -87,7 +87,8 @@ defmodule GradePush.MixProject do
 
   defp aliases do
     [
-      setup: ["deps.get", "cmd scripts/setup-https", "ecto.setup", "assets.setup", "assets.build"],
+      setup: ["deps.get", &setup_dev_https/1, "ecto.setup", "assets.setup", "assets.build"],
+      "phx.server": [&setup_dev_https/1, "phx.server"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
@@ -106,5 +107,9 @@ defmodule GradePush.MixProject do
         "test"
       ]
     ]
+  end
+
+  defp setup_dev_https(_args) do
+    if Mix.env() == :dev, do: Mix.Task.run("cmd", ["scripts/setup-https"])
   end
 end
