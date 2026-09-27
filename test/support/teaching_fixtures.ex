@@ -30,14 +30,32 @@ defmodule GradePush.TeachingFixtures do
     attrs = Map.new(attrs)
     connection = connection_for(teacher)
 
+    term_attrs =
+      cond do
+        Map.has_key?(attrs, :semester) or Map.has_key?(attrs, :academic_year) ->
+          Map.take(attrs, [:semester, :academic_year])
+
+        Map.has_key?(attrs, :session) ->
+          %{}
+
+        true ->
+          %{semester: "fall", academic_year: 2026}
+      end
+
     {:ok, classroom} =
-      Classrooms.create_classroom(teacher, %{
-        title: Map.get(attrs, :title, "Programming #{System.unique_integer([:positive])}"),
-        code: Map.get(attrs, :code, "CS-#{System.unique_integer([:positive])}"),
-        description: Map.get(attrs, :description, "Test classroom"),
-        session: Map.get(attrs, :session, "Fall 2026"),
-        github_connection_id: connection.id
-      })
+      Classrooms.create_classroom(
+        teacher,
+        Map.merge(
+          %{
+            title: Map.get(attrs, :title, "Programming #{System.unique_integer([:positive])}"),
+            code: Map.get(attrs, :code, "CS-#{System.unique_integer([:positive])}"),
+            description: Map.get(attrs, :description, "Test classroom"),
+            session: Map.get(attrs, :session, ""),
+            github_connection_id: connection.id
+          },
+          term_attrs
+        )
+      )
 
     classroom
   end

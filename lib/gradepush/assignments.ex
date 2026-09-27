@@ -309,7 +309,16 @@ defmodule GradePush.Assignments do
        %{
          invitation: invitation_summary(invitation),
          assignment: assignment,
-         classroom: Map.take(classroom, [:id, :slug, :title, :code, :session]),
+         classroom:
+           Map.take(classroom, [
+             :id,
+             :slug,
+             :title,
+             :code,
+             :session,
+             :semester,
+             :academic_year
+           ]),
          team_options: team_options(assignment)
        }}
     else

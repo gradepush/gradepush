@@ -310,7 +310,17 @@ defmodule GradePush.Classrooms do
          %Classroom{} = classroom <- Repo.get(Classroom, invitation.classroom_id) do
       {:ok,
        %{
-         classroom: Map.take(classroom, [:id, :slug, :title, :code, :description, :session]),
+         classroom:
+           Map.take(classroom, [
+             :id,
+             :slug,
+             :title,
+             :code,
+             :description,
+             :session,
+             :semester,
+             :academic_year
+           ]),
          invitation: invitation_summary(invitation)
        }}
     else
@@ -557,7 +567,7 @@ defmodule GradePush.Classrooms do
         )
         |> Repo.all()
 
-      {:ok, hydrate_classrooms(classrooms)}
+      {:ok, hydrate_classrooms(classrooms, :published)}
     else
       {:error, :unauthorized}
     end
@@ -853,6 +863,8 @@ defmodule GradePush.Classrooms do
           :title,
           :code,
           :session,
+          :semester,
+          :academic_year,
           :archived_at,
           :inserted_at
         ]),
@@ -862,10 +874,10 @@ defmodule GradePush.Classrooms do
     }
   end
 
-  defp hydrate_classrooms(classrooms) do
+  defp hydrate_classrooms(classrooms, assignment_filter \\ :active) do
     ids = Enum.map(classrooms, & &1.id)
     student_counts = counts_by_classroom(ClassroomStudent, ids, :active)
-    assignment_counts = counts_by_classroom(Assignment, ids, :active)
+    assignment_counts = counts_by_classroom(Assignment, ids, assignment_filter)
     teacher_counts = counts_by_classroom(ClassroomTeacher, ids, :all)
     classrooms = Repo.preload(classrooms, [:github_connection, teachers: :user])
 
@@ -892,9 +904,19 @@ defmodule GradePush.Classrooms do
 
     query =
       case {schema, filter} do
-        {ClassroomStudent, :active} -> from(record in query, where: is_nil(record.removed_at))
-        {Assignment, :active} -> from(record in query, where: is_nil(record.archived_at))
-        _ -> query
+        {ClassroomStudent, :active} ->
+          from(record in query, where: is_nil(record.removed_at))
+
+        {Assignment, :active} ->
+          from(record in query, where: is_nil(record.archived_at))
+
+        {Assignment, :published} ->
+          from(record in query,
+            where: is_nil(record.archived_at) and not is_nil(record.published_at)
+          )
+
+        _ ->
+          query
       end
 
     query
@@ -1047,11 +1069,26 @@ defmodule GradePush.Classrooms do
 
   defp normalize_classroom_attrs(attrs, actor) do
     attrs = Map.new(attrs, fn {key, value} -> {normalize_key(key), value} end)
+    structured_term? = Map.has_key?(attrs, :semester) or Map.has_key?(attrs, :academic_year)
 
-    Map.update(attrs, :title, nil, &localized_value(&1, actor.locale))
-    |> Map.update(:description, "", &localized_value(&1, actor.locale))
-    |> Map.update(:code, "", &empty_to_string/1)
-    |> Map.update(:session, "", &empty_to_string/1)
+    attrs =
+      attrs
+      |> Map.update(:title, nil, &localized_value(&1, actor.locale))
+      |> Map.update(:description, "", &localized_value(&1, actor.locale))
+      |> Map.update(:code, "", &empty_to_string/1)
+
+    attrs =
+      if Map.has_key?(attrs, :session) do
+        Map.update!(attrs, :session, &empty_to_string/1)
+      else
+        attrs
+      end
+
+    attrs = if structured_term?, do: Map.put(attrs, :session, ""), else: attrs
+
+    if Map.has_key?(attrs, :semester),
+      do: Map.update!(attrs, :semester, &normalize_semester/1),
+      else: attrs
   end
 
   defp localized_value(value, _locale) when is_binary(value), do: String.trim(value)
@@ -1065,6 +1102,15 @@ defmodule GradePush.Classrooms do
   defp empty_to_string(value) when is_binary(value), do: String.trim(value)
   defp empty_to_string(_), do: ""
 
+  defp normalize_semester(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      semester -> String.downcase(semester)
+    end
+  end
+
+  defp normalize_semester(_), do: nil
+
   defp broadcast({topic, message}),
     do: Phoenix.PubSub.broadcast(GradePush.PubSub, topic, message)
 
@@ -1077,6 +1123,8 @@ defmodule GradePush.Classrooms do
       "code" -> :code
       "description" -> :description
       "session" -> :session
+      "semester" -> :semester
+      "academic_year" -> :academic_year
       _ -> key
     end
   end
