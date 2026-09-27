@@ -5,13 +5,52 @@ import {hooks as colocatedHooks} from "phoenix-colocated/gradepush"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+const CopyInvitation = {
+  mounted() {
+    this.copy = async () => {
+      try {
+        await navigator.clipboard.writeText(this.el.dataset.copy)
+        this.pushEvent("invitation_copied", {ok: true})
+      } catch {
+        this.el.parentElement.querySelector("input")?.select()
+        this.pushEvent("invitation_copied", {ok: false})
+      }
+    }
+    this.el.addEventListener("click", this.copy)
+  },
+  destroyed() { this.el.removeEventListener("click", this.copy) },
+}
+const HeaderDisclosure = {
+  mounted() {
+    this.closeOutside = event => {
+      if (!this.el.contains(event.target)) this.el.open = false
+    }
+    this.closeOnEscape = event => {
+      if (event.key === "Escape" && this.el.open) {
+        this.el.open = false
+        this.el.querySelector("summary").focus()
+      }
+    }
+    this.closeOnNavigation = event => {
+      if (event.target.closest("a")) this.el.open = false
+    }
+    document.addEventListener("pointerdown", this.closeOutside)
+    document.addEventListener("keydown", this.closeOnEscape)
+    this.el.addEventListener("click", this.closeOnNavigation)
+  },
+  destroyed() {
+    document.removeEventListener("pointerdown", this.closeOutside)
+    document.removeEventListener("keydown", this.closeOnEscape)
+    this.el.removeEventListener("click", this.closeOnNavigation)
+  },
+}
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, CopyInvitation, HeaderDisclosure},
 })
 
-topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
+topbar.config({barColors: {0: "#2052F2"}, shadowColor: "transparent"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 

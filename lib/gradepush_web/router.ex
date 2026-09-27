@@ -17,7 +17,14 @@ defmodule GradePushWeb.Router do
 
   scope "/", GradePushWeb do
     pipe_through :browser
-    get "/", PageController, :home
+    live "/", TeacherLive, :index
+    live "/classrooms", TeacherLive, :index
+    live "/teacher/settings", TeacherLive, :settings
+    live "/signed-out", TeacherLive, :signed_out
+    live "/classrooms/:slug", TeacherLive, :show
+    live "/classrooms/:slug/assignments/new", TeacherLive, :new_assignment
+    live "/classrooms/:slug/assignments/:assignment/edit", TeacherLive, :edit_assignment
+    live "/classrooms/:slug/assignments/:assignment", TeacherLive, :assignment
   end
 
   scope "/", GradePushWeb do
