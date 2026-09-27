@@ -45,11 +45,20 @@ if server = System.get_env("PHX_SERVER") do
   config :gradepush, GradePushWeb.Endpoint, server: server == "true"
 end
 
-config :gradepush, GradePushWeb.Endpoint,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+port = String.to_integer(System.get_env("PORT", "4000"))
+
+if config_env() == :test do
+  config :gradepush, GradePushWeb.Endpoint, http: [port: port]
+end
 
 if config_env() == :dev do
   config :gradepush, GradePushWeb.Endpoint,
+    url: [host: "localhost", scheme: "https", port: port],
+    https: [
+      port: port,
+      certfile: Path.expand("../priv/cert/localhost.pem", __DIR__),
+      keyfile: Path.expand("../priv/cert/localhost-key.pem", __DIR__)
+    ],
     live_reload: [
       web_console_logger: true,
       patterns: [
@@ -104,5 +113,18 @@ if config_env() == :prod do
       ],
       http: [ip: {0, 0, 0, 0}],
       secret_key_base: secret_key_base
+
+    case {System.get_env("TLS_CERTFILE"), System.get_env("TLS_KEYFILE")} do
+      {nil, nil} ->
+        config :gradepush, GradePushWeb.Endpoint, http: [port: port]
+
+      {certfile, keyfile} when is_binary(certfile) and is_binary(keyfile) ->
+        config :gradepush, GradePushWeb.Endpoint,
+          http: false,
+          https: [ip: {0, 0, 0, 0}, port: port, certfile: certfile, keyfile: keyfile]
+
+      _ ->
+        raise "TLS_CERTFILE and TLS_KEYFILE must be configured together"
+    end
   end
 end

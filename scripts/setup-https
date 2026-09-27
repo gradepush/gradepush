@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")/.."
+
+if ! command -v mkcert >/dev/null 2>&1; then
+  echo "Install mkcert, then run scripts/setup-https again." >&2
+  exit 1
+fi
+
+mkdir -p priv/cert
+chmod 700 priv/cert
+mkcert -install
+cp "$(mkcert -CAROOT)/rootCA.pem" priv/cert/ca.pem
+
+if [ ! -s priv/cert/localhost.pem ] || [ ! -s priv/cert/localhost-key.pem ]; then
+  mkcert -cert-file priv/cert/localhost.pem -key-file priv/cert/localhost-key.pem localhost 127.0.0.1 ::1
+fi
+
+# Individual read-only container mounts need readable files; the host directory stays private.
+chmod 644 priv/cert/ca.pem priv/cert/localhost.pem priv/cert/localhost-key.pem

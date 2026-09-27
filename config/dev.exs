@@ -11,7 +11,8 @@ config :gradepush, GradePush.Repo,
   pool_size: 10
 
 config :gradepush, GradePushWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}],
+  http: false,
+  https: [ip: {127, 0, 0, 1}],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
