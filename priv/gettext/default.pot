@@ -1017,3 +1017,108 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Organizations"
 msgstr ""
+
+#: lib/gradepush_web/preview/platform.ex:12
+#, elixir-autogen, elixir-format
+msgid "App credentials configured"
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:95
+#, elixir-autogen, elixir-format
+msgid "Choose a teacher currently assigned to this classroom."
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:152
+#, elixir-autogen, elixir-format
+msgid "Choose a valid role."
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:92
+#, elixir-autogen, elixir-format
+msgid "Choose another teacher from the institution."
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:114
+#, elixir-autogen, elixir-format
+msgid "Classroom teacher replaced"
+msgstr ""
+
+#: lib/gradepush_web/preview/platform.ex:11
+#, elixir-autogen, elixir-format
+msgid "Database connection available"
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:185
+#, elixir-autogen, elixir-format
+msgid "Enter an institution name of 1 to 100 characters."
+msgstr ""
+
+#: lib/gradepush_web/preview/platform.ex:18
+#, elixir-autogen, elixir-format
+msgid "GitHub App configured"
+msgstr ""
+
+#: lib/gradepush_web/preview/platform.ex:24
+#, elixir-autogen, elixir-format
+msgid "Instance initialized"
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:66
+#: lib/gradepush_web/preview/administration.ex:145
+#, elixir-autogen, elixir-format
+msgid "Institution administrator appointed"
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:146
+#, elixir-autogen, elixir-format
+msgid "Institution administrator role removed"
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:187
+#, elixir-autogen, elixir-format
+msgid "Institution renamed"
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:134
+#: lib/gradepush_web/preview/administration.ex:168
+#, elixir-autogen, elixir-format
+msgid "Keep at least one institution administrator."
+msgstr ""
+
+#: lib/gradepush_web/preview/platform.ex:14
+#, elixir-autogen, elixir-format
+msgid "Last event received 2 minutes ago"
+msgstr ""
+
+#: lib/gradepush_web/preview/platform.ex:13
+#, elixir-autogen, elixir-format
+msgid "No failed jobs in this example"
+msgstr ""
+
+#: lib/gradepush_web/live/admin_live.html.heex:309
+#: lib/gradepush_web/preview/administration.ex:165
+#, elixir-autogen, elixir-format
+msgid "Reassign this teacher’s classrooms before removing them."
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:60
+#: lib/gradepush_web/preview/administration.ex:113
+#, elixir-autogen, elixir-format
+msgid "Teacher added to classroom"
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:131
+#: lib/gradepush_web/preview/administration.ex:159
+#, elixir-autogen, elixir-format
+msgid "Teacher not found."
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:175
+#, elixir-autogen, elixir-format
+msgid "Teacher removed from institution"
+msgstr ""
+
+#: lib/gradepush_web/preview/administration.ex:162
+#, elixir-autogen, elixir-format
+msgid "You cannot remove your own account."
+msgstr ""

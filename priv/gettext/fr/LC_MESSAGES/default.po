@@ -1017,3 +1017,108 @@ msgstr "Votre compte GitHub et les organisations utilisées pour vos cours."
 #, elixir-autogen, elixir-format
 msgid "Organizations"
 msgstr "Organisations"
+
+#: lib/gradepush_web/preview/platform.ex:12
+#, elixir-autogen, elixir-format
+msgid "App credentials configured"
+msgstr "Identifiants de l’application configurés"
+
+#: lib/gradepush_web/preview/administration.ex:95
+#, elixir-autogen, elixir-format
+msgid "Choose a teacher currently assigned to this classroom."
+msgstr "Choisissez un enseignant actuellement affecté à cette classe."
+
+#: lib/gradepush_web/preview/administration.ex:152
+#, elixir-autogen, elixir-format
+msgid "Choose a valid role."
+msgstr "Choisissez un rôle valide."
+
+#: lib/gradepush_web/preview/administration.ex:92
+#, elixir-autogen, elixir-format
+msgid "Choose another teacher from the institution."
+msgstr "Choisissez un autre enseignant de l’institution."
+
+#: lib/gradepush_web/preview/administration.ex:114
+#, elixir-autogen, elixir-format
+msgid "Classroom teacher replaced"
+msgstr "Enseignant remplacé dans une classe"
+
+#: lib/gradepush_web/preview/platform.ex:11
+#, elixir-autogen, elixir-format
+msgid "Database connection available"
+msgstr "Connexion à la base de données disponible"
+
+#: lib/gradepush_web/preview/administration.ex:185
+#, elixir-autogen, elixir-format
+msgid "Enter an institution name of 1 to 100 characters."
+msgstr "Saisissez un nom d’institution de 1 à 100 caractères."
+
+#: lib/gradepush_web/preview/platform.ex:18
+#, elixir-autogen, elixir-format
+msgid "GitHub App configured"
+msgstr "GitHub App configurée"
+
+#: lib/gradepush_web/preview/platform.ex:24
+#, elixir-autogen, elixir-format
+msgid "Instance initialized"
+msgstr "Instance initialisée"
+
+#: lib/gradepush_web/preview/administration.ex:66
+#: lib/gradepush_web/preview/administration.ex:145
+#, elixir-autogen, elixir-format
+msgid "Institution administrator appointed"
+msgstr "Administrateur d’institution nommé"
+
+#: lib/gradepush_web/preview/administration.ex:146
+#, elixir-autogen, elixir-format
+msgid "Institution administrator role removed"
+msgstr "Rôle d’administrateur d’institution retiré"
+
+#: lib/gradepush_web/preview/administration.ex:187
+#, elixir-autogen, elixir-format
+msgid "Institution renamed"
+msgstr "Institution renommée"
+
+#: lib/gradepush_web/preview/administration.ex:134
+#: lib/gradepush_web/preview/administration.ex:168
+#, elixir-autogen, elixir-format
+msgid "Keep at least one institution administrator."
+msgstr "Conservez au moins un administrateur de l’institution."
+
+#: lib/gradepush_web/preview/platform.ex:14
+#, elixir-autogen, elixir-format
+msgid "Last event received 2 minutes ago"
+msgstr "Dernier événement reçu il y a 2 minutes"
+
+#: lib/gradepush_web/preview/platform.ex:13
+#, elixir-autogen, elixir-format
+msgid "No failed jobs in this example"
+msgstr "Aucune tâche en échec dans cet exemple"
+
+#: lib/gradepush_web/live/admin_live.html.heex:309
+#: lib/gradepush_web/preview/administration.ex:165
+#, elixir-autogen, elixir-format
+msgid "Reassign this teacher’s classrooms before removing them."
+msgstr "Réaffectez les classes de cet enseignant avant de le retirer."
+
+#: lib/gradepush_web/preview/administration.ex:60
+#: lib/gradepush_web/preview/administration.ex:113
+#, elixir-autogen, elixir-format
+msgid "Teacher added to classroom"
+msgstr "Enseignant ajouté à une classe"
+
+#: lib/gradepush_web/preview/administration.ex:131
+#: lib/gradepush_web/preview/administration.ex:159
+#, elixir-autogen, elixir-format
+msgid "Teacher not found."
+msgstr "Enseignant introuvable."
+
+#: lib/gradepush_web/preview/administration.ex:175
+#, elixir-autogen, elixir-format
+msgid "Teacher removed from institution"
+msgstr "Enseignant retiré de l’institution"
+
+#: lib/gradepush_web/preview/administration.ex:162
+#, elixir-autogen, elixir-format
+msgid "You cannot remove your own account."
+msgstr "Vous ne pouvez pas retirer votre propre compte."
