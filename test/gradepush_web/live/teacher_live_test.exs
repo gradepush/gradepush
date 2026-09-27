@@ -4,7 +4,7 @@ defmodule GradePushWeb.TeacherLiveTest do
   import Phoenix.LiveViewTest
 
   test "the new entry point limits navigation to classrooms and two class sections", %{conn: conn} do
-    {:ok, view, _} = live(conn, "/")
+    {:ok, view, _} = live(conn, "/classrooms")
     assert has_element?(view, "h1", "My classrooms")
     assert has_element?(view, ".cp-grid > a:nth-child(3)")
     refute has_element?(view, ".cp-grid > a:nth-child(4)")
@@ -55,7 +55,7 @@ defmodule GradePushWeb.TeacherLiveTest do
   end
 
   test "classroom forms validate and preserve changes through navigation", %{conn: conn} do
-    {:ok, view, _} = live(conn, "/?scenario=empty")
+    {:ok, view, _} = live(conn, "/classrooms?scenario=empty")
     view |> element(".cp-heading button") |> render_click()
     view |> form("#class-form", class: %{name: "   "}) |> render_submit()
     assert has_element?(view, "[role='alert']", "Enter a classroom name")
@@ -74,7 +74,7 @@ defmodule GradePushWeb.TeacherLiveTest do
   end
 
   test "a classroom session is optional, editable and displayed verbatim", %{conn: conn} do
-    {:ok, view, _} = live(conn, "/?locale=fr")
+    {:ok, view, _} = live(conn, "/classrooms?locale=fr")
     view |> element(".cp-heading button") |> render_click()
     assert has_element?(view, "input[name='class[session]'][value='']")
 
@@ -124,9 +124,11 @@ defmodule GradePushWeb.TeacherLiveTest do
     refute has_element?(view, ".cp-teacher-list button")
     render_click(view, "remove_teacher", %{"name" => "Jordan Rioux"})
     assert has_element?(view, ".cp-teacher-list", "Jordan Rioux")
+    render_click(view, "request_teacher_removal", %{"teacher" => "Jordan Rioux"})
+    refute has_element?(view, "#teacher-removal-confirmation")
     view |> form("form[phx-submit='add_teacher']", teacher: "Alex Nguyen") |> render_submit()
     assert has_element?(view, ".cp-teacher-list", "Alex Nguyen")
-    view |> element("button[phx-value-name='Alex Nguyen']") |> render_click()
+    view |> element("#teacher-remove-AN") |> render_click()
     assert has_element?(view, ".cp-teacher-list", "Alex Nguyen")
     view |> element("#teacher-removal-confirmation .cp-danger") |> render_click()
     refute has_element?(view, ".cp-teacher-list", "Alex Nguyen")
@@ -177,7 +179,7 @@ defmodule GradePushWeb.TeacherLiveTest do
   end
 
   test "every assignment opens in its classroom and the session is not invented", %{conn: conn} do
-    {:ok, view, html} = live(conn, "/")
+    {:ok, view, html} = live(conn, "/classrooms")
     refute html =~ "Fall 2026"
 
     for {classroom, keys} <- [

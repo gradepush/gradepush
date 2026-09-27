@@ -6,4 +6,10 @@ defmodule GradePushWeb.HealthControllerTest do
     assert json_response(conn, 200) == %{"status" => "ok"}
     assert conn.resp_cookies == %{}
   end
+
+  test "readiness checks the database without exposing diagnostics", %{conn: conn} do
+    conn = get(conn, ~p"/health/ready")
+    assert json_response(conn, 200) == %{"status" => "ok"}
+    assert conn.resp_cookies == %{}
+  end
 end

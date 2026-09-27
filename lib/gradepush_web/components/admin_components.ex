@@ -40,7 +40,9 @@ defmodule GradePushWeb.AdminComponents do
               <h2>{gettext("Instance configuration")}</h2><p>
                 {gettext("Connection details for this GradePush installation.")}
               </p>
-            </div><span class="cp-admin-tag">{gettext("Example")}</span>
+            </div><span :if={Map.get(@platform, :preview?, true)} class="cp-admin-tag">{gettext(
+              "Example"
+            )}</span>
           </div>
           <dl class="cp-admin-properties">
             <div>
@@ -80,28 +82,34 @@ defmodule GradePushWeb.AdminComponents do
             <h2>{gettext("Service status")}</h2><p>
               {gettext("Application connections and background work.")}
             </p>
-          </div><span class="cp-admin-tag">{gettext("Simulated status")}</span>
+          </div><span :if={Map.get(@platform, :preview?, true)} class="cp-admin-tag">{gettext(
+            "Simulated status"
+          )}</span>
         </div>
         <div class="cp-service-list">
           <.service
             icon="hero-circle-stack"
             name="PostgreSQL"
             detail={@platform.database_status}
+            preview={Map.get(@platform, :preview?, true)}
           />
           <.service
             icon="hero-code-bracket"
             name="GitHub App"
             detail={@platform.app_status}
+            preview={Map.get(@platform, :preview?, true)}
           />
           <.service
             icon="hero-arrow-path"
             name="Oban"
             detail={@platform.jobs_status}
+            preview={Map.get(@platform, :preview?, true)}
           />
           <.service
             icon="hero-bolt"
             name="Webhooks"
             detail={@platform.webhook_status}
+            preview={Map.get(@platform, :preview?, true)}
           />
         </div>
       <% "history" -> %>
@@ -113,15 +121,17 @@ defmodule GradePushWeb.AdminComponents do
   attr :icon, :string, required: true
   attr :name, :string, required: true
   attr :detail, :string, required: true
+  attr :preview, :boolean, default: true
 
   defp service(assigns) do
     ~H"""
     <div class="cp-service-row">
       <span class="cp-organization-icon"><.icon name={@icon} class="size-5" /></span><div>
         <h3>{@name}</h3><p>{@detail}</p>
-      </div><span class="cp-connection-state"><.icon name="hero-check-circle" class="size-4" />{gettext(
-        "Available"
-      )}</span>
+      </div><span :if={@preview} class="cp-connection-state"><.icon
+        name="hero-check-circle"
+        class="size-4"
+      />{gettext("Available")}</span>
     </div>
     """
   end

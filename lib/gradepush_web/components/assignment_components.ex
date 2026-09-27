@@ -11,11 +11,20 @@ defmodule GradePushWeb.AssignmentComponents do
   attr :query, :string, default: ""
   attr :filter, :string, default: "all"
   attr :tab, :string, default: "submissions"
+  attr :preview, :boolean, default: true
+  attr :teams, :list, default: []
+  attr :members, :list, default: []
 
   attr :details, :map, required: true
 
   def page(assigns) do
     assigns = assign(assigns, assigns.details)
+
+    assigns =
+      assigns
+      |> assign_new(:accepted, fn -> assigns.assignment.submitted end)
+      |> assign_new(:total, fn -> assigns.classroom.students end)
+      |> assign(:activity_max, max_activity_count(assigns.details.rows))
 
     ~H"""
     <ClassroomComponents.breadcrumbs items={[
@@ -28,6 +37,12 @@ defmodule GradePushWeb.AssignmentComponents do
         <p class="cp-context">{gettext("Assignment")}</p><h1>{local(@assignment.title, @locale)}</h1>
       </div>
       <div class="cp-assignment-actions">
+        <a
+          :if={!@preview}
+          class="cp-button"
+          href={"/classrooms/#{@classroom.slug}/assignments/#{@assignment.key}/export.csv"}
+          download
+        ><.icon name="hero-arrow-down-tray" class="size-4" />{gettext("Export CSV")}</a>
         <.link
           class="cp-button"
           patch={"/classrooms/#{@classroom.slug}/assignments/#{@assignment.key}/edit"}
@@ -35,6 +50,8 @@ defmodule GradePushWeb.AssignmentComponents do
         <button
           class="cp-button cp-primary"
           phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "assignment_invite"})}
+          disabled={GradePush.Demo.enabled?()}
+          title={if GradePush.Demo.enabled?(), do: gettext("Invitations are disabled in demo mode.")}
         ><.icon name="hero-link" class="size-4" />{gettext("Share assignment")}</button>
       </div>
     </div>
@@ -43,9 +60,19 @@ defmodule GradePushWeb.AssignmentComponents do
         name={if @assignment.group?, do: "hero-user-group", else: "hero-user"}
         class="size-4"
       />{local(@assignment.kind, @locale)}</span>
-      <span><.icon name="hero-calendar-days" class="size-4" />{if @assignment.status == :draft,
-        do: gettext("No deadline"),
-        else: gettext("Due %{date}", date: local(@assignment.due, @locale))}</span>
+      <span><.icon name="hero-calendar-days" class="size-4" />{if not has_deadline?(
+                                                                    @assignment,
+                                                                    @preview
+                                                                  ),
+                                                                  do: gettext("No deadline"),
+                                                                  else:
+                                                                    gettext("Due %{date}",
+                                                                      date:
+                                                                        local(
+                                                                          @assignment.due,
+                                                                          @locale
+                                                                        )
+                                                                    )}</span>
       <span :if={@assignment.tests?}><.icon name="hero-check-circle" class="size-4" />{gettext(
         "%{count} automatic tests",
         count: length(@tests)
@@ -96,9 +123,14 @@ defmodule GradePushWeb.AssignmentComponents do
         <h2 id="assignment-submissions-title">
           {if @assignment.group?, do: gettext("Teams"), else: gettext("Students")}
         </h2><span>{gettext("%{accepted} of %{total} students have accepted",
-          accepted: @assignment.submitted,
-          total: @classroom.students
+          accepted: @accepted,
+          total: @total
         )}</span>
+        <button
+          :if={teacher_managed_teams?(@assignment, @preview)}
+          class="cp-button"
+          phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "teams"})}
+        ><.icon name="hero-user-group" class="size-4" />{gettext("Manage teams")}</button>
       </div>
       <form
         id="submission-search"
@@ -176,23 +208,81 @@ defmodule GradePushWeb.AssignmentComponents do
                 <span :if={row.status == :late} class="cp-late-note">{gettext("Late")}</span>
               </td>
               <td class="cp-activity-cell" data-label={gettext("Activity")}>
-                <.activity counts={row.activity} dates={@dates} />
+                <.activity
+                  counts={row.activity}
+                  dates={@dates}
+                  max_count={@activity_max}
+                  preview={@preview}
+                />
               </td>
               <td :if={@assignment.tests?} class="cp-tests-cell" data-label={gettext("Test score")}>
                 <span :if={row.score != nil} class="cp-test-score">{row.score}<span> / {@total_points}</span></span>
-                <.dash :if={row.score == nil} label={gettext("Not run")} />
+                <span
+                  :if={Map.get(row, :grade_untrusted?, false)}
+                  class="cp-late-note"
+                  title={gettext("The grading workflow changed. This result cannot be verified.")}
+                >{gettext("Workflow changed")}</span>
+                <.dash
+                  :if={row.score == nil and not Map.get(row, :grade_untrusted?, false)}
+                  label={gettext("Not run")}
+                />
               </td>
               <td class="cp-repository-cell">
-                <button
-                  :if={row.repository}
+                <a
+                  :if={!@preview and row.repository_url}
+                  class="cp-repo-link"
+                  href={row.repository_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={gettext("Open repository %{repository}", repository: row.repository)}
+                ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext("Repository")}</a><button
+                  :if={@preview and row.repository}
                   class="cp-repo-link"
                   disabled
                   title={gettext("Repository links are unavailable in this preview.")}
                   aria-label={gettext("Open repository %{repository}", repository: row.repository)}
                 ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext("Repository")}</button><.dash
-                  :if={!row.repository}
+                  :if={
+                    !row.repository and Map.get(row, :repository_state) not in ["pending", "failed"]
+                  }
                   label={gettext("No repository")}
                 />
+                <p :if={Map.get(row, :repository_state) == "pending"} class="cp-field-help">
+                  {gettext("Repository is being created.")}
+                </p>
+                <div
+                  :if={!@preview and Map.get(row, :repository_state) == "failed"}
+                  class="cp-repository-error"
+                >
+                  <p>{Map.get(row, :repository_error)}</p>
+                  <button
+                    class="cp-button"
+                    phx-click="retry_repository"
+                    phx-value-subject_id={row.subject_id}
+                    aria-label={gettext("Retry repository setup for %{name}", name: row.name)}
+                  ><.icon name="hero-arrow-path" class="size-4" />{gettext("Retry setup")}</button>
+                </div>
+                <p :if={Map.get(row, :extension_label)} class="cp-late-note">
+                  {gettext("Deadline extended to %{date}",
+                    date: local(Map.get(row, :extension_label), @locale)
+                  )}
+                </p>
+                <button
+                  :if={
+                    not @preview and not is_nil(Map.get(row, :subject_id)) and
+                      not is_nil(@assignment.deadline_at)
+                  }
+                  class="cp-button cp-extension-button"
+                  phx-click={
+                    JS.push_focus()
+                    |> JS.push("open",
+                      value: %{kind: "deadline_extension", subject_id: Map.get(row, :subject_id)}
+                    )
+                  }
+                  aria-label={gettext("Revise deadline for %{name}", name: row.name)}
+                ><.icon name="hero-calendar-days" class="size-4" />{if Map.get(row, :extension_until),
+                  do: gettext("Change deadline"),
+                  else: gettext("Extend deadline")}</button>
               </td>
             </tr>
           </tbody>
@@ -204,13 +294,15 @@ defmodule GradePushWeb.AssignmentComponents do
             do: gettext("No teams yet"),
             else: gettext("No matching results")}
         </h3><p>
-          {empty_message(@assignment)}
+          {empty_message(@assignment, @teams)}
         </p>
       </div>
       <p :if={@assignment.group?} class="cp-group-note">
         {gettext("One shared repository per team.")}
       </p>
-      <p class="cp-preview-note">{gettext("Repository links are unavailable in this preview.")}</p>
+      <p :if={@preview} class="cp-preview-note">
+        {gettext("Repository links are unavailable in this preview.")}
+      </p>
     </section>
     <section :if={@tab == "tests"} class="cp-test-catalog" aria-labelledby="test-catalog-title">
       <div class="cp-submissions-heading">
@@ -260,20 +352,26 @@ defmodule GradePushWeb.AssignmentComponents do
 
   attr :counts, :list, required: true
   attr :dates, :list, required: true
+  attr :max_count, :integer, required: true
+  attr :preview, :boolean, required: true
 
   defp activity(assigns) do
     samples =
       Enum.with_index(assigns.counts, fn count, index ->
-        %{x: 3 + index * 8, y: 30 - count * 4, count: count, date: Enum.at(assigns.dates, index)}
+        y = if count == 0, do: 30, else: 30 - round(count / assigns.max_count * 28)
+        %{x: 3 + index * 8, y: y, count: count, date: Enum.at(assigns.dates, index)}
       end)
 
     summary = Enum.map_join(samples, "; ", &"#{Calendar.strftime(&1.date, "%d/%m")}: #{&1.count}")
+    label = if assigns.preview, do: daily_commits(summary), else: daily_pushes(summary)
+    empty_label = if assigns.preview, do: gettext("No commits"), else: gettext("No pushes")
 
     assigns =
       assign(assigns,
         samples: samples,
         points: Enum.map_join(samples, " ", &"#{&1.x},#{&1.y}"),
-        summary: gettext("Daily commits: %{counts}", counts: summary)
+        summary: label,
+        empty_label: empty_label
       )
 
     ~H"""
@@ -289,7 +387,7 @@ defmodule GradePushWeb.AssignmentComponents do
     } /><circle :for={sample <- @samples} :if={sample.count > 0} cx={sample.x} cy={sample.y} r="2">
       <title>{Calendar.strftime(sample.date, "%d/%m")}: {sample.count}</title>
     </circle></svg>
-    <.dash :if={@counts == []} label={gettext("No commits")} />
+    <.dash :if={@counts == []} label={@empty_label} />
     """
   end
 
@@ -298,13 +396,33 @@ defmodule GradePushWeb.AssignmentComponents do
   defp status_label(:no_push), do: gettext("No pushes")
   defp status_label(:not_accepted), do: gettext("Not accepted")
 
-  defp empty_message(%{group?: true, submitted: 0, team_mode: "teacher"}),
+  defp empty_message(%{group?: true, submitted: 0, team_mode: "teacher"}, teams)
+       when teams != [],
+       do: gettext("Students will see their assigned team when they accept the assignment.")
+
+  defp empty_message(%{group?: true, submitted: 0, team_mode: "teacher"}, _teams),
     do: gettext("No teams have been assigned yet.")
 
-  defp empty_message(%{group?: true, submitted: 0}),
+  defp empty_message(%{group?: true, submitted: 0}, _teams),
     do: gettext("Students will create or join a team when they accept the assignment.")
 
-  defp empty_message(_), do: gettext("Try another search or progress filter.")
+  defp empty_message(_, _teams), do: gettext("Try another search or progress filter.")
+
+  defp teacher_managed_teams?(%{group?: true, team_mode: "teacher"}, false), do: true
+  defp teacher_managed_teams?(_, _), do: false
+
+  defp max_activity_count(rows) do
+    rows
+    |> Enum.flat_map(&(Map.get(&1, :activity) || []))
+    |> Enum.max(fn -> 0 end)
+    |> max(1)
+  end
+
+  defp daily_commits(summary), do: gettext("Daily commits: %{counts}", counts: summary)
+  defp daily_pushes(summary), do: gettext("Daily pushes: %{counts}", counts: summary)
+
+  defp has_deadline?(assignment, true), do: Map.get(assignment, :status) != :draft
+  defp has_deadline?(assignment, false), do: not is_nil(Map.get(assignment, :deadline_at))
 
   defp local(text, locale), do: Map.fetch!(text, String.to_existing_atom(locale))
 end

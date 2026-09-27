@@ -4,6 +4,7 @@ defmodule GradePushWeb.Router do
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
+    plug GradePushWeb.Auth, :fetch_current_user
     plug GradePushWeb.Plugs.Locale
     plug :fetch_live_flash
     plug :put_root_layout, html: {GradePushWeb.Layouts, :root}
@@ -17,20 +18,48 @@ defmodule GradePushWeb.Router do
 
   scope "/", GradePushWeb do
     pipe_through :browser
-    live "/", TeacherLive, :index
-    live "/classrooms", TeacherLive, :index
-    live "/teacher/settings", TeacherLive, :settings
-    live "/signed-out", TeacherLive, :signed_out
-    live "/admin/institution", AdminLive, :institution
-    live "/admin/platform", AdminLive, :platform
-    live "/classrooms/:slug", TeacherLive, :show
-    live "/classrooms/:slug/assignments/new", TeacherLive, :new_assignment
-    live "/classrooms/:slug/assignments/:assignment/edit", TeacherLive, :edit_assignment
-    live "/classrooms/:slug/assignments/:assignment", TeacherLive, :assignment
+    get "/", LandingController, :index
+    get "/auth/github", AuthController, :new
+    get "/auth/github/callback", AuthController, :callback
+    delete "/auth/logout", AuthController, :delete
+    post "/demo/sign-in", DemoController, :create
+    get "/setup/github/manifest/callback", SetupController, :manifest_callback
+    get "/setup/github/auth/callback", SetupController, :auth_callback
+    get "/classrooms/:slug/assignments/:assignment/export.csv", ExportController, :submissions
+
+    live_session :public do
+      live "/demo", DemoLive, :index
+      live "/setup", SetupLive, :index
+      live "/auth/sign-in", SignInLive, :index
+    end
+
+    live_session :teaching, on_mount: [{GradePushWeb.Auth, :require_teacher}] do
+      live "/classrooms", TeacherLive, :index
+      live "/teacher/settings", TeacherLive, :settings
+      live "/signed-out", TeacherLive, :signed_out
+      live "/classrooms/:slug", TeacherLive, :show
+      live "/classrooms/:slug/assignments/new", TeacherLive, :new_assignment
+      live "/classrooms/:slug/assignments/:assignment/edit", TeacherLive, :edit_assignment
+      live "/classrooms/:slug/assignments/:assignment", TeacherLive, :assignment
+    end
+
+    live_session :administration, on_mount: [{GradePushWeb.Auth, :require_authenticated_user}] do
+      live "/admin/institution", AdminLive, :institution
+      live "/admin/platform", AdminLive, :platform
+    end
+
+    live_session :learning, on_mount: [{GradePushWeb.Auth, :require_authenticated_user}] do
+      live "/student/classrooms", StudentLive, :index
+      live "/student/classrooms/:slug", StudentLive, :show
+      live "/student/classrooms/:slug/assignments/:assignment", StudentLive, :assignment
+      live "/join/:kind/:token", InvitationLive, :show
+    end
   end
 
   scope "/", GradePushWeb do
     pipe_through :api
     get "/health", HealthController, :show
+    get "/health/ready", HealthController, :ready
+    post "/webhooks/github", GitHubWebhookController, :create
   end
 end

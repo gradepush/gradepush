@@ -2,6 +2,33 @@ defmodule GradePushWeb.WorkspaceLayout do
   @moduledoc false
   use GradePushWeb, :html
 
+  attr :locale, :string, required: true
+  attr :path, :string, required: true
+
+  def public_header(assigns) do
+    assigns = assign(assigns, :target_locale, if(assigns.locale == "fr", do: "en", else: "fr"))
+
+    ~H"""
+    <header class="cp-header">
+      <div class="cp-header-inner">
+        <a href="/" class="cp-logo"><img src="/images/logo.svg" width="140" alt="GradePush" /></a>
+        <div class="cp-account">
+          <.link
+            href={@path <> "?locale=" <> @target_locale}
+            lang={@target_locale}
+            class="cp-language"
+            aria-label={
+              if @target_locale == "en", do: "Switch to English", else: "Passer en français"
+            }
+          >
+            <.icon name="hero-globe-alt" class="size-4" />{String.upcase(@target_locale)}
+          </.link>
+        </div>
+      </div>
+    </header>
+    """
+  end
+
   attr :user, :map, required: true
   attr :institution, :string, required: true
   attr :action, :atom, required: true
@@ -9,6 +36,7 @@ defmodule GradePushWeb.WorkspaceLayout do
   attr :language_urls, :map, required: true
   attr :context, :atom, default: :teaching
   attr :contexts, :list, default: [:teaching]
+  attr :preview, :boolean, default: true
 
   def header(assigns) do
     assigns = assign(assigns, :target_locale, if(assigns.locale == "fr", do: "en", else: "fr"))
@@ -55,6 +83,11 @@ defmodule GradePushWeb.WorkspaceLayout do
             <.icon name="hero-cog-6-tooth" class="size-4" />{gettext("Settings")}
           </.link>
         </nav>
+        <nav :if={@context == :learning} class="cp-navigation" aria-label={gettext("Main navigation")}>
+          <.link navigate="/student/classrooms" aria-current="page">
+            <.icon name="hero-rectangle-stack" class="size-4" />{gettext("Classrooms")}
+          </.link>
+        </nav>
         <div class="cp-account">
           <.link
             href={Map.fetch!(@language_urls, @target_locale)}
@@ -78,24 +111,28 @@ defmodule GradePushWeb.WorkspaceLayout do
               aria-label={gettext("Account menu")}
               title={gettext("Account menu")}
             >
-              <span class="cp-avatar" aria-hidden="true">{@user.initials}</span>
+              <.avatar user={@user} />
               <.icon name="hero-chevron-down" class="size-3" />
             </summary>
             <div class="cp-dropdown cp-profile-menu">
               <div class="cp-profile-identity">
-                <span class="cp-avatar" aria-hidden="true">{@user.initials}</span>
+                <.avatar user={@user} />
                 <div><strong>{@user.name}</strong><span>@{@user.handle}</span></div>
               </div>
               <div class="cp-profile-institution">
                 <.icon name="hero-building-library" class="size-4" />
                 <span>{@institution}</span>
               </div>
-              <.link {workspace_link(@context, "/teacher/settings")}><.icon
+              <.link :if={@context != :learning} {workspace_link(@context, "/teacher/settings")}><.icon
                 name="hero-cog-6-tooth"
                 class="size-4"
               />{gettext("Settings")}</.link>
               <div class="cp-sign-out-group">
-                <.link {workspace_link(@context, "/signed-out")}><.icon
+                <.link :if={@preview} {workspace_link(@context, "/signed-out")}><.icon
+                  name="hero-arrow-right-start-on-rectangle"
+                  class="size-4"
+                />{gettext("Sign out")}</.link>
+                <.link :if={!@preview} href="/auth/logout" method="delete"><.icon
                   name="hero-arrow-right-start-on-rectangle"
                   class="size-4"
                 />{gettext("Sign out")}</.link>
@@ -108,13 +145,30 @@ defmodule GradePushWeb.WorkspaceLayout do
     """
   end
 
+  attr :user, :map, required: true
+
+  defp avatar(assigns) do
+    ~H"""
+    <img
+      :if={Map.get(@user, :avatar_url)}
+      class="cp-avatar object-cover"
+      src={@user.avatar_url}
+      alt=""
+    />
+    <span :if={!Map.get(@user, :avatar_url)} class="cp-avatar" aria-hidden="true">{@user.initials}</span>
+    """
+  end
+
   defp context_label(:teaching), do: gettext("Teaching")
+  defp context_label(:learning), do: gettext("Learning")
   defp context_label(:institution), do: gettext("Institution")
   defp context_label(:platform), do: gettext("Platform")
   defp context_icon(:teaching), do: "hero-academic-cap"
+  defp context_icon(:learning), do: "hero-academic-cap"
   defp context_icon(:institution), do: "hero-building-library"
   defp context_icon(:platform), do: "hero-server-stack"
   defp context_path(:teaching), do: "/classrooms"
+  defp context_path(:learning), do: "/student/classrooms"
   defp context_path(:institution), do: "/admin/institution"
   defp context_path(:platform), do: "/admin/platform"
 
@@ -137,10 +191,12 @@ defmodule GradePushWeb.WorkspaceLayout do
   end
 
   defp workspace_link(:teaching, path), do: [patch: path]
+  defp workspace_link(:learning, "/classrooms"), do: [navigate: "/student/classrooms"]
   defp workspace_link(_context, path), do: [navigate: path]
 
   defp context_link(current, target)
-       when current == target or (current != :teaching and target != :teaching),
+       when current == target or
+              (current in [:institution, :platform] and target in [:institution, :platform]),
        do: [patch: context_path(target)]
 
   defp context_link(_current, target), do: [navigate: context_path(target)]

@@ -5,6 +5,7 @@ defmodule GradePushWeb.Endpoint do
     store: :cookie,
     key: "_gradepush_key",
     signing_salt: "q/VpENti",
+    encryption_salt: "EN3v8K2p",
     same_site: "Lax"
   ]
 
@@ -27,15 +28,25 @@ defmodule GradePushWeb.Endpoint do
   end
 
   plug Plug.RequestId
-  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
+  plug GradePushWeb.Plugs.SecureTransport
+  plug GradePushWeb.Plugs.DemoBoundary
+
+  plug Plug.Telemetry,
+    event_prefix: [:phoenix, :endpoint],
+    log: {__MODULE__, :request_log_level, []}
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
+    length: 2_000_000,
+    body_reader: {GradePushWeb.Plugs.CacheBodyReader, :read_body, []},
     json_decoder: Phoenix.json_library()
 
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
   plug GradePushWeb.Router
+
+  def request_log_level(%{path_info: ["join" | _]}), do: false
+  def request_log_level(_conn), do: :info
 end

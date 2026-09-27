@@ -11,6 +11,14 @@
     </script>
   </head>
   <body>
+    <aside
+      :if={Application.get_env(:gradepush, :demo_mode, false)}
+      class="demo-banner"
+      aria-label={gettext("Demo mode")}
+    >
+      <span>{gettext("Demo mode · Data is reset regularly.")}</span>
+      <a href="/demo">{gettext("Switch view")}</a>
+    </aside>
     {@inner_content}
   </body>
 </html>

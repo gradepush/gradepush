@@ -1,0 +1,163 @@
+<div class="class-preview">
+  <div class="cp-shell">
+    <a class="skip-link" href="#student-content">{gettext("Skip to content")}</a>
+    <WorkspaceLayout.header
+      user={@user}
+      institution={@institution}
+      action={@live_action}
+      context={:learning}
+      contexts={@contexts}
+      preview={false}
+      locale={@locale}
+      language_urls={Map.new(~w(en fr), &{&1, @path <> "?locale=" <> &1})}
+    />
+    <main id="student-content" class="cp-main" tabindex="-1">
+      <%= cond do %>
+        <% @live_action == :index -> %>
+          <div class="cp-heading">
+            <div>
+              <p class="cp-context">{gettext("Learning")}</p><h1>{gettext("My classrooms")}</h1>
+            </div>
+          </div>
+          <div :if={@classes == []} class="cp-empty">
+            <.icon name="hero-academic-cap" class="size-8" />
+            <h2>{gettext("No classrooms yet")}</h2>
+            <p>
+              {gettext(
+                "Use an invitation link from your teacher to join a classroom or accept an assignment."
+              )}
+            </p>
+          </div>
+          <div class="cp-grid">
+            <.link
+              :for={classroom <- @classes}
+              patch={"/student/classrooms/#{classroom.slug}"}
+              class="cp-class-card"
+            >
+              <div class="cp-card-top">
+                <span class="cp-course-code">{classroom.code}</span><.icon
+                  name="hero-arrow-up-right"
+                  class="size-4"
+                />
+              </div>
+              <h2>{classroom.title}</h2>
+              <p :if={classroom.session not in [nil, ""]} class="cp-card-session">
+                <.icon name="hero-calendar-days" class="size-4" />{classroom.session}
+              </p>
+              <p class="cp-card-description">{classroom.description}</p>
+            </.link>
+          </div>
+        <% is_nil(@classroom) or (@live_action == :assignment and is_nil(@assignment)) -> %>
+          <div class="cp-empty">
+            <h1>{gettext("This page is not available.")}</h1><.link
+              navigate="/student/classrooms"
+              class="cp-button"
+            >{gettext("My classrooms")}</.link>
+          </div>
+        <% @live_action == :show -> %>
+          <ClassroomComponents.breadcrumbs items={[
+            {gettext("Classrooms"), "/student/classrooms"},
+            {@classroom.title, nil}
+          ]} />
+          <div class="cp-heading">
+            <div>
+              <p class="cp-context">{@classroom.code}</p><h1>{@classroom.title}</h1><p class="cp-lead">
+                {@classroom.description}
+              </p>
+            </div>
+          </div>
+          <h2>{gettext("Assignments")}</h2>
+          <div :if={@assignments == []} class="cp-empty">
+            <p>{gettext("No assignments yet")}</p>
+          </div>
+          <div :if={@assignments != []} class="cp-admin-table-wrap">
+            <table class="cp-admin-table">
+              <caption class="sr-only">{gettext("Assignments")}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{gettext("Assignment")}</th><th scope="col">
+                    {gettext("Deadline")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={entry <- @assignments}>
+                  <th scope="row">
+                    <.link patch={assignment_path(@classroom, entry.assignment)}>{entry.assignment.title}</.link>
+                  </th>
+                  <td data-label={gettext("Deadline")}>
+                    {due(deadline(entry.assignment, entry.subject))}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        <% true -> %>
+          <ClassroomComponents.breadcrumbs items={[
+            {gettext("Classrooms"), "/student/classrooms"},
+            {@classroom.title, "/student/classrooms/#{@classroom.slug}"},
+            {@assignment.title, nil}
+          ]} />
+          <div class="cp-heading">
+            <div>
+              <p class="cp-context">{@classroom.title}</p><h1>{@assignment.title}</h1><p class="cp-lead">
+                {due(deadline(@assignment, @subject))}
+              </p>
+            </div>
+            <a
+              :if={repository_url(@repository)}
+              href={repository_url(@repository)}
+              class="cp-button cp-primary"
+              target="_blank"
+              rel="noopener noreferrer"
+            ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
+              "Open repository"
+            )}</a>
+          </div>
+          <section :if={!@subject} class="cp-admin-panel">
+            <div class="cp-admin-panel-heading">
+              <p>
+                {gettext(
+                  "Use your teacher’s assignment invitation to accept this assignment and create your repository."
+                )}
+              </p>
+            </div>
+          </section>
+          <section :if={@subject && !repository_url(@repository)} class="cp-admin-panel">
+            <div class="cp-admin-panel-heading">
+              <p role="status">
+                {if repository_failed?(@repository),
+                  do:
+                    gettext(
+                      "Your repository could not be created. Ask your teacher to check the GitHub connection and retry."
+                    ),
+                  else:
+                    gettext("Your repository is being prepared. This page updates automatically.")}
+              </p>
+            </div>
+          </section>
+          <section class="cp-admin-panel">
+            <div class="cp-admin-panel-heading">
+              <h2>{gettext("Assignment instructions")}</h2>
+            </div><div class="cp-admin-settings-form cp-markdown">
+              {Markdown.render(@assignment.instructions)}
+            </div>
+          </section>
+          <section :if={@assignment.autograding_enabled} class="cp-admin-panel">
+            <div class="cp-admin-panel-heading">
+              <h2>{gettext("Automatic tests")}</h2>
+            </div>
+            <ul class="cp-test-list cp-test-list-embedded">
+              <li :for={test <- @assignment.tests}>
+                <div>
+                  <h3>{test.name}</h3><p>{test.description}</p>
+                </div>
+                <span>{test.points} {gettext("points")}</span>
+              </li>
+            </ul>
+          </section>
+      <% end %>
+    </main>
+    <WorkspaceLayout.footer context={:learning} />
+  </div>
+</div>

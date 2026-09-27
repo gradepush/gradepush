@@ -10,6 +10,7 @@ defmodule GradePushWeb.AssignmentEditor do
   attr :locale, :string, required: true
   attr :templates, :list, required: true
   attr :preview, :boolean, default: false
+  attr :demo, :boolean, default: true
 
   def page(assigns) do
     assigns =
@@ -88,11 +89,14 @@ defmodule GradePushWeb.AssignmentEditor do
                 field={@form[:cutoff]}
                 type="checkbox"
                 label={gettext("Block pushes after the deadline")}
-                disabled={@form[:deadline].value in [nil, ""]}
+                disabled={not @demo or @form[:deadline].value in [nil, ""]}
                 checked={
                   @form[:deadline].value not in [nil, ""] and @form[:cutoff].value in [true, "true"]
                 }
               />
+              <p :if={!@demo} class="cp-field-help">
+                {gettext("Hard cutoffs are unavailable for connected GitHub repositories.")}
+              </p>
             </div>
           </div>
           <div :if={@form[:kind].value == "team"} class="cp-form-grid">
@@ -138,96 +142,101 @@ defmodule GradePushWeb.AssignmentEditor do
         </section>
         <section class="cp-form-section" aria-labelledby="assignment-grading">
           <h2 id="assignment-grading">{gettext("Automatic tests")}</h2>
-          <.input
-            field={@form[:autograding]}
-            type="checkbox"
-            label={gettext("Enable automatic tests")}
-          />
-          <div :if={@form[:autograding].value in [true, "true"]}>
-            <p class="cp-field-help">
-              {gettext(
-                "GitHub Actions runs these tests on each push. Points are added for each successful test."
-              )}
-            </p>
-            <.inputs_for :let={test} field={@form[:tests]}>
-              <fieldset class="cp-test-editor">
-                <legend>{gettext("Test %{number}", number: test.index + 1)}</legend>
-                <div class="cp-form-grid cp-test-name-row">
-                  <.input field={test[:name]} label={gettext("Test name")} required maxlength="120" />
+          <p :if={@locked and not @demo} class="cp-field-help">
+            {gettext("Automatic tests are fixed once students have accepted.")}
+          </p>
+          <fieldset disabled={@locked and not @demo} aria-labelledby="assignment-grading">
+            <.input
+              field={@form[:autograding]}
+              type="checkbox"
+              label={gettext("Enable automatic tests")}
+            />
+            <div :if={@form[:autograding].value in [true, "true"]}>
+              <p class="cp-field-help">
+                {gettext(
+                  "GitHub Actions runs these tests on each push. Points are added for each successful test."
+                )}
+              </p>
+              <.inputs_for :let={test} field={@form[:tests]}>
+                <fieldset class="cp-test-editor">
+                  <legend>{gettext("Test %{number}", number: test.index + 1)}</legend>
+                  <div class="cp-form-grid cp-test-name-row">
+                    <.input field={test[:name]} label={gettext("Test name")} required maxlength="120" />
+                    <.input
+                      field={test[:points]}
+                      type="number"
+                      label={gettext("Points")}
+                      min="1"
+                      max="1000"
+                      required
+                    />
+                  </div>
                   <.input
-                    field={test[:points]}
-                    type="number"
-                    label={gettext("Points")}
-                    min="1"
-                    max="1000"
+                    field={test[:description]}
+                    type="textarea"
+                    label={gettext("Description")}
+                    rows="2"
+                    maxlength="2000"
+                  />
+                  <.input
+                    field={test[:type]}
+                    type="select"
+                    label={gettext("Test type")}
+                    options={[
+                      {gettext("Command succeeds"), "command"},
+                      {gettext("File exists"), "file"},
+                      {gettext("Input / output"), "io"}
+                    ]}
+                  />
+                  <.input
+                    :if={test[:type].value == "file"}
+                    field={test[:path]}
+                    label={gettext("File path")}
+                    placeholder="src/main.py"
                     required
                   />
-                </div>
-                <.input
-                  field={test[:description]}
-                  type="textarea"
-                  label={gettext("Description")}
-                  rows="2"
-                  maxlength="2000"
-                />
-                <.input
-                  field={test[:type]}
-                  type="select"
-                  label={gettext("Test type")}
-                  options={[
-                    {gettext("Command succeeds"), "command"},
-                    {gettext("File exists"), "file"},
-                    {gettext("Input / output"), "io"}
-                  ]}
-                />
-                <.input
-                  :if={test[:type].value == "file"}
-                  field={test[:path]}
-                  label={gettext("File path")}
-                  placeholder="src/main.py"
-                  required
-                />
-                <.input
-                  :if={test[:type].value != "file"}
-                  field={test[:command]}
-                  label={gettext("Command")}
-                  placeholder="python -m unittest"
-                  required
-                />
-                <div :if={test[:type].value == "io"} class="cp-form-grid">
                   <.input
-                    field={test[:input]}
-                    type="textarea"
-                    label={gettext("Standard input (optional)")}
-                    rows="3"
-                  />
-                  <.input
-                    field={test[:expected]}
-                    type="textarea"
-                    label={gettext("Expected output")}
-                    rows="3"
+                    :if={test[:type].value != "file"}
+                    field={test[:command]}
+                    label={gettext("Command")}
+                    placeholder="python -m unittest"
                     required
                   />
-                </div>
-                <p :if={test[:type].value == "io"} class="cp-field-help">
-                  {gettext("The output must match exactly, including whitespace.")}
-                </p>
-                <button
-                  type="button"
-                  class="cp-text-button cp-remove-test"
-                  phx-click="remove_assignment_test"
-                  phx-value-index={test.index}
-                ><.icon name="hero-trash" class="size-4" />{gettext("Remove test")}</button>
-              </fieldset>
-            </.inputs_for>
-            <div class="cp-test-editor-footer">
-              <button type="button" class="cp-button" phx-click="add_assignment_test"><.icon
-                name="hero-plus"
-                class="size-4"
-              />{gettext("Add test")}</button>
-              <span>{gettext("%{points} points total", points: total(@form))}</span>
+                  <div :if={test[:type].value == "io"} class="cp-form-grid">
+                    <.input
+                      field={test[:input]}
+                      type="textarea"
+                      label={gettext("Standard input (optional)")}
+                      rows="3"
+                    />
+                    <.input
+                      field={test[:expected]}
+                      type="textarea"
+                      label={gettext("Expected output")}
+                      rows="3"
+                      required
+                    />
+                  </div>
+                  <p :if={test[:type].value == "io"} class="cp-field-help">
+                    {gettext("The output must match exactly, including whitespace.")}
+                  </p>
+                  <button
+                    type="button"
+                    class="cp-text-button cp-remove-test"
+                    phx-click="remove_assignment_test"
+                    phx-value-index={test.index}
+                  ><.icon name="hero-trash" class="size-4" />{gettext("Remove test")}</button>
+                </fieldset>
+              </.inputs_for>
+              <div class="cp-test-editor-footer">
+                <button type="button" class="cp-button" phx-click="add_assignment_test"><.icon
+                  name="hero-plus"
+                  class="size-4"
+                />{gettext("Add test")}</button>
+                <span>{gettext("%{points} points total", points: total(@form))}</span>
+              </div>
             </div>
-          </div>
+          </fieldset>
         </section>
         <div class="cp-editor-actions">
           <.link patch={back_path(@classroom, @assignment)} class="cp-button">{gettext("Cancel")}</.link>

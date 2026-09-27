@@ -19,4 +19,9 @@ defmodule GradePushWeb.ConnCase do
     GradePush.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  def log_in_user(conn, user) do
+    {:ok, token} = GradePush.Accounts.create_session(user)
+    Phoenix.ConnTest.init_test_session(conn, %{"user_token" => token, "ui_preview" => false})
+  end
 end

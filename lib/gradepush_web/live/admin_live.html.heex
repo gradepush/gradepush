@@ -6,7 +6,8 @@
       institution={@state.name}
       action={@live_action}
       context={@live_action}
-      contexts={[:teaching, :institution, :platform]}
+      contexts={@contexts}
+      preview={@preview?}
       locale={@locale}
       language_urls={Map.new(~w(en fr), &{&1, language_url(@live_action, @section, &1)})}
     />
@@ -84,7 +85,15 @@
                   phx-debounce="150"
                 /></label>
               </form>
-              <button class="cp-button cp-primary" phx-click={open_modal("invite")}><.icon
+              <button
+                class="cp-button cp-primary"
+                phx-click={open_modal("invite")}
+                disabled={GradePush.Demo.enabled?()}
+                title={
+                  if GradePush.Demo.enabled?(),
+                    do: gettext("Invitations are disabled in demo mode.")
+                }
+              ><.icon
                 name="hero-plus"
                 class="size-4"
               />{gettext("Invite a teacher")}</button>
@@ -121,7 +130,7 @@
                         else: gettext("Teacher")}</span>
                     </td>
                     <td data-label={gettext("Classrooms")}>
-                      {Administration.class_count(@state, teacher.id)}
+                      {AdminWorkspace.class_count(@state, teacher.id)}
                     </td>
                     <td class="cp-admin-row-action">
                       <button
@@ -165,7 +174,7 @@
                     </th>
                     <td data-label={gettext("Teachers")}>
                       <div class="cp-admin-teacher-names">
-                        <span :for={id <- classroom.teachers}>{Administration.teacher(@state, id).name}</span>
+                        <span :for={id <- classroom.teachers}>{AdminWorkspace.teacher(@state, id).name}</span>
                       </div>
                     </td>
                     <td data-label={gettext("Students")}>{classroom.students}</td>
@@ -252,17 +261,17 @@
           <ClassroomComponents.invitation_link
             id="teacher-invitation"
             label={gettext("Teacher invitation link")}
-            url="https://gradepush.example/join/teacher/institution-demo"
+            url={@invitation_url}
             status={@copy_status}
           />
-          <p class="cp-preview-note">
+          <p :if={@preview?} class="cp-preview-note">
             {gettext("Example link only. Invitations are not active in this preview.")}
           </p>
           <div class="cp-modal-actions">
             <button class="cp-button" phx-click="close">{gettext("Close")}</button>
           </div>
         <% {"member", id} -> %>
-          <% member = Administration.teacher(@state, id) %>
+          <% member = AdminWorkspace.teacher(@state, id) %>
           <div class="cp-admin-modal-person">
             <span class="cp-avatar">{member.initials}</span><div>
               <strong>{member.name}</strong><p>@{member.handle}</p>
@@ -299,13 +308,13 @@
         <% {"remove", id} -> %>
           <p id="member-removal-question" phx-mounted={JS.focus(to: "#cancel-member-removal")}>
             {gettext("Remove %{name} from the institution?",
-              name: Administration.teacher(@state, id).name
+              name: AdminWorkspace.teacher(@state, id).name
             )}
           </p>
           <p class="cp-removal-detail">
             {gettext("Their GitHub repositories and access will be kept.")}
           </p>
-          <p :if={Administration.class_count(@state, id) > 0} class="cp-error">
+          <p :if={AdminWorkspace.class_count(@state, id) > 0} class="cp-error">
             {gettext("Reassign this teacher’s classrooms before removing them.")}
           </p>
           <div class="cp-modal-actions">
@@ -314,11 +323,11 @@
             )}</button><button
               class="cp-button cp-danger"
               phx-click="remove_member"
-              disabled={Administration.class_count(@state, id) > 0}
+              disabled={AdminWorkspace.class_count(@state, id) > 0}
             >{gettext("Remove")}</button>
           </div>
         <% {"staff", id} -> %>
-          <% classroom = Administration.classroom(@state, id) %>
+          <% classroom = AdminWorkspace.classroom(@state, id) %>
           <p class="cp-admin-modal-class">
             {local(classroom.title, @locale)}<span>{classroom.code}</span>
           </p>
@@ -326,7 +335,7 @@
             <label>{gettext("Teacher to assign")}<select name="staff[teacher]" required><option value="">
               {gettext("Choose a teacher")}
             </option><option
-              :for={teacher <- Administration.candidates(@state, classroom, @actor_id)}
+              :for={teacher <- AdminWorkspace.candidates(@state, classroom, @actor_id)}
               value={teacher.id}
             >
               {teacher.name}
@@ -334,7 +343,7 @@
             <label>{gettext("Staffing action")}<select name="staff[replace]"><option value="">
               {gettext("Add alongside current teachers")}
             </option><option :for={id <- classroom.teachers} value={id}>
-              {gettext("Replace %{name}", name: Administration.teacher(@state, id).name)}
+              {gettext("Replace %{name}", name: AdminWorkspace.teacher(@state, id).name)}
             </option></select></label>
             <p class="cp-field-help">
               {gettext("You cannot assign yourself. A classroom teacher can invite you.")}

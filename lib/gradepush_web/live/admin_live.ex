@@ -1,10 +1,10 @@
 defmodule GradePushWeb.AdminLive do
-  @moduledoc "Administration UI preview with local sample state, without authentication or external operations."
+  @moduledoc false
   use GradePushWeb, :live_view
 
-  alias GradePushWeb.AdminComponents
-  alias GradePushWeb.ClassroomComponents
-  alias GradePushWeb.Preview.Administration
+  alias GradePush.Accounts
+  alias GradePushWeb.{AdminComponents, AdminWorkspace, ClassroomComponents, Presentation}
+  alias GradePushWeb.Preview.Administration, as: PreviewAdministration
   alias GradePushWeb.Preview.Fixtures
   alias GradePushWeb.Preview.Platform
   alias GradePushWeb.WorkspaceLayout
@@ -13,15 +13,23 @@ defmodule GradePushWeb.AdminLive do
   def mount(_params, session, socket) do
     locale = if session["locale"] in ~w(en fr), do: session["locale"], else: "en"
     Gettext.put_locale(GradePushWeb.Gettext, locale)
-    user = hd(Fixtures.teachers())
+    preview? = socket.assigns.preview?
+    actor = socket.assigns.current_user
+    user = if preview?, do: hd(Fixtures.teachers()), else: Presentation.user(actor)
 
     {:ok,
      assign(socket,
        locale: locale,
        user: user,
-       platform: Platform.for_user(user),
-       actor_id: "jordan",
-       state: Administration.initial(),
+       platform: if(preview?, do: Platform.for_user(user), else: nil),
+       actor_id: if(preview?, do: "jordan", else: to_string(actor.id)),
+       state: initial_state(preview?, actor),
+       contexts:
+         if(preview?,
+           do: [:teaching, :institution, :platform],
+           else: Presentation.contexts(actor)
+         ),
+       invitation_url: nil,
        section: "teachers",
        modal: nil,
        error: nil,
@@ -33,6 +41,17 @@ defmodule GradePushWeb.AdminLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
+    if allowed?(socket) do
+      show_section(params, socket)
+    else
+      {:noreply,
+       socket
+       |> put_flash(:error, gettext("You do not have access to this workspace."))
+       |> redirect(to: "/")}
+    end
+  end
+
+  defp show_section(params, socket) do
     sections =
       if socket.assigns.live_action == :institution,
         do: ~w(teachers classrooms history settings),
@@ -48,6 +67,7 @@ defmodule GradePushWeb.AdminLive do
     {:noreply,
      assign(socket,
        section: section,
+       platform: load_platform(socket),
        page_title: title,
        modal: nil,
        notice: nil,
@@ -62,7 +82,7 @@ defmodule GradePushWeb.AdminLive do
 
   def handle_event("open_admin", %{"kind" => kind} = params, socket)
       when kind in ~w(invite member staff) do
-    {:noreply, assign(socket, modal: {kind, params["id"]}, error: nil, copy_status: nil)}
+    open_admin(socket, kind, params["id"])
   end
 
   def handle_event("close", _, socket), do: {:noreply, assign(socket, modal: nil, error: nil)}
@@ -76,53 +96,167 @@ defmodule GradePushWeb.AdminLive do
     {:noreply, assign(socket, copy_status: text)}
   end
 
-  def handle_event("save_staff", %{"staff" => params}, socket) do
-    {"staff", id} = socket.assigns.modal
-
+  def handle_event(
+        "save_staff",
+        %{"staff" => params},
+        %{assigns: %{modal: {"staff", id}}} = socket
+      ) do
     result =
-      Administration.change_staff(socket.assigns.state, socket.assigns.actor_id, id, params)
+      if socket.assigns.preview? do
+        PreviewAdministration.change_staff(
+          socket.assigns.state,
+          socket.assigns.actor_id,
+          id,
+          params
+        )
+      else
+        AdminWorkspace.reassign(socket.assigns.current_user, id, params)
+      end
 
     complete(socket, result)
   end
 
-  def handle_event("save_role", %{"member" => %{"role" => role}}, socket) do
-    {"member", id} = socket.assigns.modal
-
+  def handle_event(
+        "save_role",
+        %{"member" => %{"role" => role}},
+        %{assigns: %{modal: {"member", id}}} = socket
+      ) do
     complete(
       socket,
-      Administration.change_role(socket.assigns.state, socket.assigns.actor_id, id, role)
+      if(socket.assigns.preview?,
+        do:
+          PreviewAdministration.change_role(
+            socket.assigns.state,
+            socket.assigns.actor_id,
+            id,
+            role
+          ),
+        else: Accounts.change_role(socket.assigns.current_user, id, role)
+      )
     )
   end
 
-  def handle_event("confirm_remove", _, socket) do
-    {"member", id} = socket.assigns.modal
+  def handle_event("confirm_remove", _, %{assigns: %{modal: {"member", id}}} = socket) do
     {:noreply, assign(socket, modal: {"remove", id}, error: nil)}
   end
 
-  def handle_event("remove_member", _, socket) do
-    {"remove", id} = socket.assigns.modal
-
+  def handle_event("remove_member", _, %{assigns: %{modal: {"remove", id}}} = socket) do
     complete(
       socket,
-      Administration.remove_teacher(socket.assigns.state, socket.assigns.actor_id, id)
+      if(socket.assigns.preview?,
+        do:
+          PreviewAdministration.remove_teacher(socket.assigns.state, socket.assigns.actor_id, id),
+        else: Accounts.remove_teacher(socket.assigns.current_user, id)
+      )
     )
   end
 
   def handle_event("save_institution", %{"institution" => %{"name" => name}}, socket) do
-    complete(socket, Administration.rename(socket.assigns.state, socket.assigns.actor_id, name))
+    result =
+      if socket.assigns.preview?,
+        do: PreviewAdministration.rename(socket.assigns.state, socket.assigns.actor_id, name),
+        else: Accounts.rename_institution(socket.assigns.current_user, name)
+
+    complete(socket, result)
   end
 
-  defp complete(socket, {:ok, state}),
-    do:
-      {:noreply,
-       assign(socket,
-         state: state,
-         modal: nil,
-         error: nil,
-         notice: gettext("Changes saved in this preview.")
-       )}
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
 
-  defp complete(socket, {:error, message}), do: {:noreply, assign(socket, error: message)}
+  defp complete(socket, {:ok, result}) do
+    state =
+      if socket.assigns.preview?,
+        do: result,
+        else: initial_state(false, socket.assigns.current_user)
+
+    {:noreply,
+     assign(socket,
+       state: state,
+       modal: nil,
+       error: nil,
+       notice:
+         if(socket.assigns.preview?,
+           do: gettext("Changes saved in this preview."),
+           else: gettext("Changes saved.")
+         )
+     )}
+  end
+
+  defp complete(socket, :ok), do: complete(socket, {:ok, nil})
+
+  defp complete(socket, {:error, reason}) do
+    message =
+      if socket.assigns.preview? and is_binary(reason),
+        do: reason,
+        else: AdminWorkspace.error(reason)
+
+    {:noreply, assign(socket, error: message)}
+  end
+
+  defp initial_state(true, _actor), do: PreviewAdministration.initial()
+
+  defp initial_state(false, actor) do
+    case AdminWorkspace.load(actor) do
+      {:ok, state} ->
+        state
+
+      {:error, _} ->
+        %{
+          name: Accounts.institution().name,
+          teachers: [],
+          classrooms: [],
+          students: 0,
+          history: []
+        }
+    end
+  end
+
+  defp allowed?(%{assigns: %{preview?: true}}), do: true
+
+  defp allowed?(%{assigns: %{live_action: :platform, current_user: actor}}),
+    do: Accounts.operator?(actor)
+
+  defp allowed?(%{assigns: %{current_user: actor}}), do: Accounts.admin?(actor)
+
+  defp load_platform(%{assigns: %{preview?: true, platform: platform}}), do: platform
+
+  defp load_platform(%{assigns: %{live_action: :platform, current_user: actor}}),
+    do: GradePushWeb.PlatformWorkspace.load(actor)
+
+  defp load_platform(_), do: nil
+
+  defp open_admin(socket, "invite", _id) do
+    result =
+      if socket.assigns.preview?,
+        do: {:ok, %{token: "institution-demo"}},
+        else: Accounts.create_teacher_invitation(socket.assigns.current_user)
+
+    case result do
+      {:ok, %{token: token}} ->
+        origin =
+          if socket.assigns.preview?,
+            do: "https://gradepush.example",
+            else: GradePushWeb.Endpoint.url()
+
+        url = origin <> "/join/teacher/" <> token
+
+        {:noreply,
+         assign(socket, modal: {"invite", nil}, invitation_url: url, error: nil, copy_status: nil)}
+
+      {:error, _} = error ->
+        complete(socket, error)
+    end
+  end
+
+  defp open_admin(socket, kind, id) do
+    record =
+      if kind == "staff",
+        do: AdminWorkspace.classroom(socket.assigns.state, id),
+        else: AdminWorkspace.teacher(socket.assigns.state, id)
+
+    if record,
+      do: {:noreply, assign(socket, modal: {kind, id}, error: nil)},
+      else: complete(socket, {:error, :not_found})
+  end
 
   defp visible(records, query),
     do:
