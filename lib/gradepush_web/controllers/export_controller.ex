@@ -69,7 +69,7 @@ defmodule GradePushWeb.ExportController do
 
   defp row(user, subject) do
     push = subject.latest_push
-    grade = subject.latest_grade
+    grade = exportable_grade(subject.latest_grade)
 
     [
       user.student_name || user.name,
@@ -84,6 +84,9 @@ defmodule GradePushWeb.ExportController do
       grade && grade.max_score
     ]
   end
+
+  defp exportable_grade(%{status: "untrusted"}), do: nil
+  defp exportable_grade(grade), do: grade
 
   defp iso8601(nil), do: nil
   defp iso8601(datetime), do: DateTime.to_iso8601(datetime)

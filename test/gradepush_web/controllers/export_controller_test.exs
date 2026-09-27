@@ -4,7 +4,56 @@ defmodule GradePushWeb.ExportControllerTest do
   import GradePush.AccountsFixtures
   import GradePush.TeachingFixtures
 
-  alias GradePush.{Assignments, Classrooms}
+  alias GradePush.{Assignments, Classrooms, Repo, Submissions}
+  alias GradePush.Assignments.Repository
+
+  test "modified workflows export no numeric score", %{conn: conn} do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher)
+
+    assignment =
+      assignment_fixture(teacher, classroom,
+        autograding_enabled: true,
+        tests: [%{name: "Build", type: "command", command: "true", points: 10}]
+      )
+
+    {:ok, invitation} = Assignments.create_assignment_invitation(teacher, assignment.id)
+    student = user_fixture()
+
+    {:ok, %{subject: subject}} =
+      Assignments.accept_assignment_invitation(student, invitation.token, %{
+        name: "Test Student",
+        student_id: "2026001"
+      })
+
+    repository = Repo.get_by!(Repository, subject_id: subject.id)
+    sha = String.duplicate("a", 40)
+
+    {:ok, _} =
+      Submissions.record_push(
+        assignment.id,
+        repository.id,
+        sha,
+        DateTime.utc_now(),
+        "export-push"
+      )
+
+    {:ok, _} =
+      Submissions.record_untrusted_result(assignment.id, repository.id, %{
+        commit_sha: sha,
+        run_id: 1,
+        reason: "workflow_modified"
+      })
+
+    exported =
+      conn
+      |> log_in_user(teacher)
+      |> get("/classrooms/#{classroom.slug}/assignments/#{assignment.slug}/export.csv")
+      |> response(200)
+
+    assert exported =~ student.login
+    assert exported =~ "\"#{sha}\",\"\",\"\"\r\n"
+  end
 
   test "only a classroom teacher can export its roster and submissions", %{conn: conn} do
     %{user: teacher} = bootstrap_fixture()
