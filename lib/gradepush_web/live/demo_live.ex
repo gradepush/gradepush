@@ -13,6 +13,7 @@ defmodule GradePushWeb.DemoLive do
 
       {:ok,
        assign(socket,
+         footer_links: GradePush.Accounts.footer_links(),
          locale: locale,
          page_title: gettext("Try GradePush")
        )}
@@ -55,7 +56,7 @@ defmodule GradePushWeb.DemoLive do
             </p>
           </section>
         </main>
-        <WorkspaceLayout.footer />
+        <WorkspaceLayout.footer context={:public} links={@footer_links} />
       </div>
     </div>
     """

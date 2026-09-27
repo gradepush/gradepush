@@ -177,6 +177,44 @@ defmodule GradePush.Accounts do
 
   def institution, do: Repo.one(Institution)
 
+  def footer_links do
+    Repo.one(from(i in Institution, select: map(i, ^Institution.footer_fields()))) || %{}
+  end
+
+  def change_footer_links(links, attrs \\ %{}) do
+    Institution.footer_changeset(struct(Institution, links), attrs)
+  end
+
+  def update_footer_links(actor, attrs) when is_map(attrs) do
+    if admin?(actor),
+      do: Repo.transaction(fn -> update_footer_links_locked!(actor, attrs) end),
+      else: {:error, :unauthorized}
+  end
+
+  defp update_footer_links_locked!(actor, attrs) do
+    institution = Repo.one(from(i in Institution, lock: "FOR UPDATE"))
+    unless admin?(actor), do: Repo.rollback(:unauthorized)
+
+    case institution |> Institution.footer_changeset(attrs) |> Repo.update() do
+      {:ok, updated} ->
+        record_audit(
+          actor,
+          :institution,
+          "institution.footer_updated",
+          "institution",
+          updated.id,
+          updated.name,
+          %{}
+        )
+        |> audit_result!()
+
+        Map.take(updated, Institution.footer_fields())
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
+  end
+
   def institution_role(actor) do
     case membership_roles(actor) do
       [] ->

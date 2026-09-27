@@ -234,9 +234,12 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 .cp-empty h2 { font-size: 17px; font-weight: 600; color: var(--ink); margin: 0; }
 .cp-empty p { margin: 0; max-width: 390px; }
 .cp-preview-note { color: var(--cp-muted); font-size: 12px; margin: 16px 0 0; }
-.cp-footer { border-top: 1px solid var(--line); color: var(--cp-muted); font-size: 12px; }
+.cp-footer { background: white; border-top: 1px solid #dce3ef; color: var(--cp-muted); font-size: 12px; }
 .cp-footer-inner { max-width: 1160px; padding: 22px 32px; margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.cp-footer-brand { display: flex; align-items: center; gap: 12px; color: #303c50; font-weight: 600; }
+.cp-footer-brand { display: flex; align-items: center; gap: 12px; min-height: 44px; color: #303c50; font-weight: 600; }
+.cp-footer-links { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 4px 24px; }
+.cp-footer-links a { display: inline-flex; align-items: center; min-height: 44px; }
+.cp-footer-links a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
 .cp-footer-github { display: inline-flex; align-items: center; gap: 8px; padding: 8px 0; }
 .cp-modal-backdrop { position: fixed; inset: 0; z-index: 60; background: #17233850; display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
 .cp-modal { width: 480px; max-width: 100%; max-height: calc(100dvh - 48px); overflow: auto; border-radius: 12px; box-shadow: 0 20px 80px #14203930; padding: 28px; background: white; }
@@ -280,6 +283,8 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
   .cp-navigation a { padding: 9px 12px; }
   .cp-main { padding: 24px 20px 48px; }
   .cp-footer-inner { padding: 16px 20px; }
+  .cp-footer-inner:has(.cp-footer-links a:nth-child(2)) { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .cp-footer-links { justify-content: flex-start; gap: 0 20px; }
   .cp-heading { align-items: flex-start; flex-direction: column; gap: 22px; margin-bottom: 32px; }
   .cp-heading h1 { font-size: 27px; }
   .cp-grid { grid-template-columns: 1fr; gap: 16px; }

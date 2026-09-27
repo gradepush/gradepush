@@ -103,7 +103,13 @@ defmodule GradePushWeb.Auth do
   defp load_user(session, socket) do
     set_session_locale(session)
     {user, preview?} = session_identity(session)
-    socket = Phoenix.Component.assign(socket, current_user: user, preview?: preview?)
+
+    socket =
+      Phoenix.Component.assign(socket,
+        current_user: user,
+        preview?: preview?,
+        footer_links: if(preview?, do: %{}, else: Accounts.footer_links())
+      )
 
     if user && Phoenix.LiveView.connected?(socket) do
       token = Map.get(session, "user_token")

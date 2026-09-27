@@ -18,6 +18,10 @@ defmodule GradePush.Repo.Migrations.CreateIdentity do
       add :singleton_key, :boolean, null: false, default: true
       add :name, :string, null: false
       add :time_zone, :string, null: false, default: "America/Toronto"
+      add :support_url, :text
+      add :privacy_url, :text
+      add :accessibility_url, :text
+      add :terms_url, :text
       timestamps(type: :utc_datetime_usec)
     end
 

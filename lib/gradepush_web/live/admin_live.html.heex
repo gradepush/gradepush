@@ -230,10 +230,53 @@
                 </div>
               </form>
             </section>
+            <section class="cp-admin-panel">
+              <div class="cp-admin-panel-heading">
+                <.icon name="hero-link" class="size-5" />
+                <div>
+                  <h2>{gettext("Institution links")}</h2>
+                  <p>
+                    {gettext(
+                      "These links appear in the footer. Leave a field empty to hide its link."
+                    )}
+                  </p>
+                </div>
+              </div>
+              <.form
+                for={@footer_form}
+                id="footer-form"
+                class="cp-form cp-admin-settings-form"
+                phx-submit="save_footer"
+              >
+                <p id="footer-url-help" class="cp-field-help">
+                  {gettext("Use HTTPS links. Assistance also accepts mailto:email@example.org.")}
+                </p>
+                <.input
+                  :for={
+                    {field, label} <- [
+                      {:support_url, gettext("Assistance")},
+                      {:privacy_url, gettext("Privacy")},
+                      {:accessibility_url, gettext("Accessibility")},
+                      {:terms_url, gettext("Terms of use")}
+                    ]
+                  }
+                  field={@footer_form[field]}
+                  type="url"
+                  label={label}
+                  maxlength="2048"
+                  aria-describedby="footer-url-help"
+                />
+                <div class="cp-modal-actions">
+                  <button class="cp-button cp-primary" phx-disable-with={gettext("Saving…")}>{gettext(
+                    "Save changes"
+                  )}</button>
+                </div>
+              </.form>
+            </section>
         <% end %>
       </div>
     </main>
-    <WorkspaceLayout.footer context={@live_action} />
+    <WorkspaceLayout.footer context={@live_action} links={@footer_links} />
   </div>
   <div
     :if={@modal}

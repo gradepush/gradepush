@@ -5,6 +5,40 @@ defmodule GradePushWeb.PersistentAdminLiveTest do
   import GradePush.AccountsFixtures
   alias GradePush.Accounts
 
+  test "footer links persist, appear before sign-in, and disappear when cleared", %{conn: conn} do
+    %{user: admin} = bootstrap_fixture()
+    {:ok, view, _} = conn |> log_in_user(admin) |> live("/admin/institution?section=settings")
+    assert has_element?(view, "footer a[href='https://github.com/gradepush']", "GitHub")
+    refute has_element?(view, "footer a", "Privacy")
+
+    view |> form("#footer-form", footer: %{privacy_url: "javascript:alert(1)"}) |> render_submit()
+    assert has_element?(view, "#footer_privacy_url[aria-invalid='true']")
+    assert_push_event(view, "focus-invalid", %{id: "footer-form"})
+    refute has_element?(view, "footer a[href^='javascript:']")
+
+    view
+    |> form("#footer-form",
+      footer: %{
+        privacy_url: "https://example.org/privacy",
+        support_url: "mailto:help@example.org"
+      }
+    )
+    |> render_submit()
+
+    assert has_element?(view, "footer a[href='https://example.org/privacy']", "Privacy")
+    assert has_element?(view, "footer a[href='mailto:help@example.org']", "Assistance")
+
+    {:ok, public, _} = live(conn, "/auth/sign-in?locale=fr")
+    assert has_element?(public, "footer a[href='https://example.org/privacy']", "Confidentialité")
+
+    view |> form("#footer-form", footer: %{privacy_url: ""}) |> render_submit()
+    refute has_element?(view, "footer a", "Privacy")
+    assert has_element?(view, "footer a[href='mailto:help@example.org']")
+    assert is_nil(Accounts.footer_links().privacy_url)
+    render_patch(view, "/admin/institution?section=history")
+    assert has_element?(view, ".cp-audit-list", "Institution links updated")
+  end
+
   test "institution changes persist and create an audit entry", %{conn: conn} do
     %{user: admin} = bootstrap_fixture()
     conn = log_in_user(conn, admin)

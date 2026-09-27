@@ -180,18 +180,33 @@ defmodule GradePushWeb.WorkspaceLayout do
   defp context_path(:platform), do: "/admin/platform"
 
   attr :context, :atom, default: :teaching
+  attr :links, :map, default: %{}
 
   def footer(assigns) do
     ~H"""
     <footer class="cp-footer">
       <div class="cp-footer-inner">
         <.link {workspace_link(@context, "/classrooms")} class="cp-footer-brand">GradePush</.link>
-        <span class="cp-footer-github">
-          <svg viewBox="0 0 24 24" class="size-4" fill="currentColor" aria-hidden="true">
-            <path d="M12 .297a12 12 0 0 0-3.793 23.384c.6.111.82-.261.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.071 1.835 2.809 1.305 3.495.998.108-.776.419-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.323 3.301 1.23a11.52 11.52 0 0 1 6.006 0c2.291-1.553 3.297-1.23 3.297-1.23.653 1.652.242 2.873.119 3.176.769.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.216.694.825.576A12 12 0 0 0 12 .297Z" />
-          </svg>
-          GitHub
-        </span>
+        <nav class="cp-footer-links" aria-label={gettext("Useful links")}>
+          <a
+            :for={
+              {field, label} <- [
+                {:support_url, gettext("Assistance")},
+                {:privacy_url, gettext("Privacy")},
+                {:accessibility_url, gettext("Accessibility")},
+                {:terms_url, gettext("Terms of use")}
+              ]
+            }
+            :if={@links[field] not in [nil, ""]}
+            href={@links[field]}
+          >{label}</a>
+          <a href="https://github.com/gradepush" class="cp-footer-github">
+            <svg viewBox="0 0 24 24" class="size-4" fill="currentColor" aria-hidden="true">
+              <path d="M12 .297a12 12 0 0 0-3.793 23.384c.6.111.82-.261.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.071 1.835 2.809 1.305 3.495.998.108-.776.419-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.323 3.301 1.23a11.52 11.52 0 0 1 6.006 0c2.291-1.553 3.297-1.23 3.297-1.23.653 1.652.242 2.873.119 3.176.769.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.216.694.825.576A12 12 0 0 0 12 .297Z" />
+            </svg>
+            GitHub
+          </a>
+        </nav>
       </div>
     </footer>
     """

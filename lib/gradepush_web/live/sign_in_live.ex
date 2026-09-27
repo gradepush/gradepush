@@ -8,7 +8,13 @@ defmodule GradePushWeb.SignInLive do
   def mount(_params, session, socket) do
     locale = if session["locale"] in ~w(en fr), do: session["locale"], else: "en"
     Gettext.put_locale(GradePushWeb.Gettext, locale)
-    {:ok, assign(socket, page_title: gettext("Sign in with GitHub"), locale: locale)}
+
+    {:ok,
+     assign(socket,
+       page_title: gettext("Sign in with GitHub"),
+       locale: locale,
+       footer_links: GradePush.Accounts.footer_links()
+     )}
   end
 
   @impl true
@@ -27,6 +33,7 @@ defmodule GradePushWeb.SignInLive do
             </p>
           </div>
         </main>
+        <WorkspaceLayout.footer context={:public} links={@footer_links} />
       </div>
     </div>
     """

@@ -35,6 +35,8 @@ defmodule GradePushWeb.AdminLive do
        error: nil,
        notice: nil,
        query: "",
+       footer_form:
+         to_form(Accounts.change_footer_links(socket.assigns.footer_links), as: :footer),
        copy_status: nil
      )}
   end
@@ -158,6 +160,40 @@ defmodule GradePushWeb.AdminLive do
         else: Accounts.rename_institution(socket.assigns.current_user, name)
 
     complete(socket, result)
+  end
+
+  def handle_event("save_footer", %{"footer" => params}, socket) when is_map(params) do
+    result =
+      if socket.assigns.preview? do
+        socket.assigns.footer_links
+        |> Accounts.change_footer_links(params)
+        |> Ecto.Changeset.apply_action(:update)
+        |> case do
+          {:ok, institution} -> {:ok, Map.take(institution, Accounts.Institution.footer_fields())}
+          error -> error
+        end
+      else
+        Accounts.update_footer_links(socket.assigns.current_user, params)
+      end
+
+    case result do
+      {:ok, links} ->
+        socket
+        |> assign(
+          footer_links: links,
+          footer_form: to_form(Accounts.change_footer_links(links), as: :footer)
+        )
+        |> complete({:ok, socket.assigns.state})
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply,
+         socket
+         |> assign(footer_form: to_form(changeset, as: :footer), notice: nil)
+         |> push_event("focus-invalid", %{id: "footer-form"})}
+
+      error ->
+        complete(socket, error)
+    end
   end
 
   def handle_event(_event, _params, socket), do: {:noreply, socket}

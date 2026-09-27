@@ -83,6 +83,7 @@ defmodule GradePushWeb.AdminWorkspace do
   end
 
   defp action("institution.renamed"), do: gettext("Institution renamed")
+  defp action("institution.footer_updated"), do: gettext("Institution links updated")
   defp action("teacher.invited"), do: gettext("Teacher invited")
   defp action("teacher.removed"), do: gettext("Teacher removed from institution")
   defp action("teacher.role_changed"), do: gettext("Institution role changed")
