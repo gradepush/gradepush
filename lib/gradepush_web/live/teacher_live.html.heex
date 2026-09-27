@@ -45,50 +45,21 @@
               class="size-4"
             />{gettext("Create a classroom")}</button>
           </div>
-          <div class="cp-section-label">
-            <span>{ngettext(
-              "%{count} classroom",
-              "%{count} classrooms",
-              if(@scenario == "empty", do: 0, else: length(@classes))
-            )}</span>
-          </div>
-          <div :if={@scenario != "empty"} class="cp-grid">
-            <.link
-              :for={classroom <- @classes}
-              patch={"/classrooms/#{classroom.slug}"}
-              class="cp-class-card"
-            >
-              <div class="cp-card-top">
-                <span class="cp-course-code">{classroom.code}</span><.icon
-                  name="hero-arrow-up-right"
-                  class="size-4"
-                />
-              </div>
-              <h2>{local(classroom.title, @locale)}</h2>
-              <p :if={classroom.session != ""} class="cp-card-session">
-                <.icon name="hero-calendar-days" class="size-4" />{classroom.session}
-              </p>
-              <p class="cp-card-description">{local(classroom.description, @locale)}</p>
-              <div class="cp-card-counts">
-                <span><.icon name="hero-user-group" class="size-4" />{classroom.students} {gettext(
-                  "students"
-                )}</span><span><.icon name="hero-document-text" class="size-4" />{ngettext(
-                  "%{count} assignment",
-                  "%{count} assignments",
-                  classroom.assignments
-                )}</span>
-              </div>
-              <div class="cp-card-teachers">
-                <div class="cp-avatar-stack">
-                  <span
-                    :for={teacher <- classroom.teachers}
-                    class="cp-small-avatar"
-                    title={teacher.name}
-                  >{teacher.initials}</span>
-                </div><span>{Enum.map_join(classroom.teachers, ", ", & &1.name)}</span>
-              </div>
-            </.link>
-          </div>
+          <ClassroomComponents.grouped_classes
+            :let={classroom}
+            :if={@scenario != "empty"}
+            classes={@classes}
+          >
+            <ClassroomComponents.card
+              path={"/classrooms/#{classroom.slug}"}
+              title={local(classroom.title, @locale)}
+              code={classroom.code}
+              description={local(classroom.description, @locale)}
+              students={classroom.students}
+              assignments={classroom.assignments}
+              teachers={classroom.teachers}
+            />
+          </ClassroomComponents.grouped_classes>
           <div :if={@scenario == "empty"} class="cp-empty">
             <.icon name="hero-academic-cap" class="size-8" /><h2>
               {gettext("Your first classroom starts here")}
@@ -147,8 +118,10 @@
             />{gettext("Edit classroom")}</button>
           </div>
           <div class="cp-class-meta">
-            <span :if={@classroom.session != ""} class="cp-class-session">
-              <.icon name="hero-calendar-days" class="size-4" />{@classroom.session}
+            <span :if={Presentation.classroom_term(@classroom) != ""} class="cp-class-session">
+              <.icon name="hero-calendar-days" class="size-4" />{Presentation.classroom_term(
+                @classroom
+              )}
             </span>
             <span><.icon name="hero-code-bracket" class="size-4" />{@classroom.organization}</span><button
               phx-click={open_modal("teachers")}
@@ -352,12 +325,37 @@
               value={editing_value(assigns, :code)}
               placeholder="420-110"
             /></label>
-            <label>{gettext("Session (optional)")}<input
-              name="class[session]"
-              maxlength="80"
-              value={editing_value(assigns, :session)}
-              placeholder={gettext("e.g. Fall 2026")}
-            /></label>
+            <div class="cp-term-fields">
+              <label>{gettext("Semester (optional)")}
+              <select name="class[semester]">
+                <option value="">{gettext("No semester")}</option>
+                <option
+                  :if={legacy_term?(assigns)}
+                  value="legacy"
+                  selected={editing_value(assigns, :semester) in [nil, "legacy"]}
+                >
+                  {@classroom.session}
+                </option>
+                <option
+                  :for={{label, value} <- Presentation.semester_options()}
+                  value={value}
+                  selected={editing_value(assigns, :semester) == value}
+                >
+                  {label}
+                </option>
+              </select></label>
+              <label>{gettext("Year (optional)")}
+              <select name="class[academic_year]">
+                <option value="">{gettext("Select a year")}</option>
+                <option
+                  :for={year <- classroom_years(assigns)}
+                  value={year}
+                  selected={editing_value(assigns, :academic_year) == year}
+                >
+                  {year}
+                </option>
+              </select></label>
+            </div>
             <label>{gettext("Description (optional)")}<textarea
               name="class[description]"
               rows="3"

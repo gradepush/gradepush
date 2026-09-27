@@ -11,7 +11,7 @@
       locale={@locale}
       language_urls={Map.new(~w(en fr), &{&1, @path <> "?locale=" <> &1})}
     />
-    <main id="student-content" class="cp-main" tabindex="-1">
+    <main id="student-content" class="cp-main cp-student-main" tabindex="-1">
       <%= cond do %>
         <% @live_action == :index -> %>
           <div class="cp-heading">
@@ -28,25 +28,16 @@
               )}
             </p>
           </div>
-          <div class="cp-grid">
-            <.link
-              :for={classroom <- @classes}
-              patch={"/student/classrooms/#{classroom.slug}"}
-              class="cp-class-card"
-            >
-              <div class="cp-card-top">
-                <span class="cp-course-code">{classroom.code}</span><.icon
-                  name="hero-arrow-up-right"
-                  class="size-4"
-                />
-              </div>
-              <h2>{classroom.title}</h2>
-              <p :if={classroom.session not in [nil, ""]} class="cp-card-session">
-                <.icon name="hero-calendar-days" class="size-4" />{classroom.session}
-              </p>
-              <p class="cp-card-description">{classroom.description}</p>
-            </.link>
-          </div>
+          <ClassroomComponents.grouped_classes :let={classroom} classes={@classes}>
+            <ClassroomComponents.card
+              path={"/student/classrooms/#{classroom.slug}"}
+              title={classroom.title}
+              code={classroom.code}
+              description={classroom.description}
+              assignments={classroom.assignments_count}
+              teachers={Enum.map(classroom.teachers, &Presentation.user(&1.user))}
+            />
+          </ClassroomComponents.grouped_classes>
         <% is_nil(@classroom) or (@live_action == :assignment and is_nil(@assignment)) -> %>
           <div class="cp-empty">
             <h1>{gettext("This page is not available.")}</h1><.link
@@ -61,33 +52,54 @@
           ]} />
           <div class="cp-heading">
             <div>
-              <p class="cp-context">{@classroom.code}</p><h1>{@classroom.title}</h1><p class="cp-lead">
+              <p :if={@classroom.code not in [nil, ""]} class="cp-context">{@classroom.code}</p><h1>
+                {@classroom.title}
+              </h1><p class="cp-lead">
                 {@classroom.description}
               </p>
             </div>
           </div>
-          <h2>{gettext("Assignments")}</h2>
+          <div class="cp-class-meta">
+            <span :if={Presentation.classroom_term(@classroom) != ""}><.icon
+              name="hero-calendar-days"
+              class="size-4"
+            />{Presentation.classroom_term(@classroom)}</span>
+            <span><.icon name="hero-user-group" class="size-4" />{Enum.map_join(
+              @classroom.teachers,
+              ", ",
+              &Presentation.user(&1.user).name
+            )}</span>
+          </div>
+          <div class="cp-toolbar">
+            <h2>{gettext("Assignments")}</h2><span class="cp-list-count">{length(@assignments)}</span>
+          </div>
           <div :if={@assignments == []} class="cp-empty">
             <p>{gettext("No assignments yet")}</p>
           </div>
           <div :if={@assignments != []} class="cp-admin-table-wrap">
-            <table class="cp-admin-table">
+            <table class="cp-admin-table cp-learning-assignments">
               <caption class="sr-only">{gettext("Assignments")}</caption>
               <thead>
                 <tr>
                   <th scope="col">{gettext("Assignment")}</th><th scope="col">
                     {gettext("Deadline")}
                   </th>
+                  <th scope="col">{gettext("Latest push")}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr :for={entry <- @assignments}>
                   <th scope="row">
-                    <.link patch={assignment_path(@classroom, entry.assignment)}>{entry.assignment.title}</.link>
+                    <.link
+                      patch={assignment_path(@classroom, entry.assignment)}
+                      class="cp-assignment-title"
+                    >{entry.assignment.title}<.icon name="hero-chevron-right" class="size-4" /></.link>
+                    <span :if={!entry.subject} class="cp-assignment-hint">{gettext("Not accepted")}</span>
                   </th>
                   <td data-label={gettext("Deadline")}>
                     {due(deadline(entry.assignment, entry.subject))}
                   </td>
+                  <td data-label={gettext("Latest push")}>{push_time(entry.latest_push)}</td>
                 </tr>
               </tbody>
             </table>
@@ -100,8 +112,11 @@
           ]} />
           <div class="cp-heading">
             <div>
-              <p class="cp-context">{@classroom.title}</p><h1>{@assignment.title}</h1><p class="cp-lead">
-                {due(deadline(@assignment, @subject))}
+              <h1>{@assignment.title}</h1>
+              <p class="cp-lead cp-deadline">
+                <.icon name="hero-calendar-days" class="size-4" />{deadline_label(
+                  deadline(@assignment, @subject)
+                )}
               </p>
             </div>
             <a
@@ -114,8 +129,20 @@
               "Open repository"
             )}</a>
           </div>
+          <div class="cp-assignment-facts">
+            <span><.icon name="hero-user-group" class="size-4" />{if @assignment.kind == "team",
+              do: gettext("Team assignment"),
+              else: gettext("Individual assignment")}</span>
+            <span :if={@subject && @subject.team} class="cp-student-team">
+              <strong>{@subject.team.name}</strong>
+              <span>{team_members(@subject.team)}</span>
+            </span>
+            <span :if={@subject}><.icon name="hero-arrow-up-tray" class="size-4" />{gettext(
+              "Latest push"
+            )}: {push_time(@latest_push)}</span>
+          </div>
           <section :if={!@subject} class="cp-admin-panel">
-            <div class="cp-admin-panel-heading">
+            <div class="cp-student-notice">
               <p>
                 {gettext(
                   "Use your teacher’s assignment invitation to accept this assignment and create your repository."
@@ -124,7 +151,7 @@
             </div>
           </section>
           <section :if={@subject && !repository_url(@repository)} class="cp-admin-panel">
-            <div class="cp-admin-panel-heading">
+            <div class="cp-student-notice">
               <p role="status">
                 {if repository_failed?(@repository),
                   do:
@@ -139,8 +166,13 @@
           <section class="cp-admin-panel">
             <div class="cp-admin-panel-heading">
               <h2>{gettext("Assignment instructions")}</h2>
-            </div><div class="cp-admin-settings-form cp-markdown">
-              {Markdown.render(@assignment.instructions)}
+            </div>
+            <div class="cp-student-instructions cp-markdown">
+              <%= if @assignment.instructions in [nil, ""] do %>
+                <p class="cp-empty-copy">{gettext("No instructions provided.")}</p>
+              <% else %>
+                {Markdown.render(@assignment.instructions, 2)}
+              <% end %>
             </div>
           </section>
           <section :if={@assignment.autograding_enabled} class="cp-admin-panel">

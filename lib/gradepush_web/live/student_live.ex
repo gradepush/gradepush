@@ -54,7 +54,10 @@ defmodule GradePushWeb.StudentLive do
             {:error, _} -> []
           end
 
-        {:noreply, socket |> assign(classes: classes) |> subscribe_to(["user:#{actor.id}"])}
+        {:noreply,
+         socket
+         |> assign(classes: classes, page_title: gettext("My classrooms"))
+         |> subscribe_to(["user:#{actor.id}" | Enum.map(classes, &"classroom:#{&1.id}")])}
 
       action when action in [:show, :assignment] ->
         load_classroom(socket, params)
@@ -73,6 +76,7 @@ defmodule GradePushWeb.StudentLive do
              :classroom_joined,
              :classroom_updated,
              :classroom_removed,
+             :classroom_archived,
              :assignment_created,
              :assignment_updated,
              :assignment_archived,
@@ -124,7 +128,7 @@ defmodule GradePushWeb.StudentLive do
          page_title: if(assignment, do: assignment.title, else: classroom.title)
        )
        |> subscribe_to(
-         ["classroom:#{classroom.id}"] ++
+         ["user:#{actor.id}", "classroom:#{classroom.id}"] ++
            submission_topics(if(assignment, do: [details], else: assignments))
        )}
     else
@@ -136,7 +140,9 @@ defmodule GradePushWeb.StudentLive do
            assignment: nil,
            assignments: [],
            subject: nil,
-           repository: nil
+           repository: nil,
+           latest_push: nil,
+           page_title: gettext("This page is not available.")
          )
          |> subscribe_to([])}
     end
@@ -168,6 +174,18 @@ defmodule GradePushWeb.StudentLive do
 
   defp due(nil), do: gettext("No deadline")
   defp due(datetime), do: GradePush.Time.format_datetime(datetime)
+
+  defp deadline_label(nil), do: gettext("No deadline")
+  defp deadline_label(datetime), do: gettext("Due %{date}", date: due(datetime))
+
+  defp push_time(nil), do: "—"
+  defp push_time(push), do: GradePush.Time.format_datetime(push.observed_at)
+
+  defp team_members(team) do
+    team.members
+    |> Enum.filter(&is_nil(&1.left_at))
+    |> Enum.map_join(", ", &Presentation.user(&1.user).name)
+  end
 
   defp deadline(assignment, %{extension_until: extension}),
     do: Submissions.effective_deadline(assignment.deadline_at, extension)

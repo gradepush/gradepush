@@ -7,6 +7,24 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
 
   alias GradePush.{Assignments, Classrooms}
 
+  test "editing a legacy classroom preserves its term until explicitly replaced", %{conn: conn} do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher, %{session: "Cohorte soir 2027–2028"})
+    {:ok, view, _} = conn |> log_in_user(teacher) |> live("/classrooms/#{classroom.slug}")
+    view |> element(".cp-class-heading button") |> render_click()
+    assert has_element?(view, "select[name='class[semester]'] option[value='legacy'][selected]")
+    view |> form("#class-form", class: %{name: "Evening class"}) |> render_submit()
+
+    assert {:ok, %{session: "Cohorte soir 2027–2028"}} =
+             Classrooms.get_classroom(teacher, classroom.slug)
+
+    view |> element(".cp-class-heading button") |> render_click()
+    view |> form("#class-form", class: %{semester: "", academic_year: ""}) |> render_submit()
+
+    assert {:ok, %{session: "", semester: nil, academic_year: nil}} =
+             Classrooms.get_classroom(teacher, classroom.slug)
+  end
+
   test "teacher edits persist, assignment drafts survive background events and another teacher is denied",
        %{conn: conn} do
     %{user: teacher} = bootstrap_fixture()
@@ -18,10 +36,12 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     view |> element(".cp-class-heading button") |> render_click()
 
     view
-    |> form("#class-form", class: %{name: "Algorithms", session: "Winter 2027"})
+    |> form("#class-form",
+      class: %{name: "Algorithms", semester: "winter", academic_year: "2027"}
+    )
     |> render_submit()
 
-    assert {:ok, %{title: "Algorithms", session: "Winter 2027"}} =
+    assert {:ok, %{title: "Algorithms", semester: "winter", academic_year: 2027}} =
              Classrooms.get_classroom(teacher, classroom.slug)
 
     view |> element("a", "New assignment") |> render_click()

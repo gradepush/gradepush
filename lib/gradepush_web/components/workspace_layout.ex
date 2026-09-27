@@ -41,6 +41,13 @@ defmodule GradePushWeb.WorkspaceLayout do
   def header(assigns) do
     assigns = assign(assigns, :target_locale, if(assigns.locale == "fr", do: "en", else: "fr"))
 
+    assigns =
+      assign(
+        assigns,
+        :show_settings,
+        :teaching in assigns.contexts and assigns.context != :learning
+      )
+
     ~H"""
     <header class="cp-header">
       <div class="cp-header-inner">
@@ -119,15 +126,15 @@ defmodule GradePushWeb.WorkspaceLayout do
                 <.avatar user={@user} />
                 <div><strong>{@user.name}</strong><span>@{@user.handle}</span></div>
               </div>
-              <div class="cp-profile-institution">
+              <div class={["cp-profile-institution", @show_settings && "cp-profile-divider"]}>
                 <.icon name="hero-building-library" class="size-4" />
                 <span>{@institution}</span>
               </div>
-              <.link :if={@context != :learning} {workspace_link(@context, "/teacher/settings")}><.icon
+              <.link :if={@show_settings} {workspace_link(@context, "/teacher/settings")}><.icon
                 name="hero-cog-6-tooth"
                 class="size-4"
               />{gettext("Settings")}</.link>
-              <div class="cp-sign-out-group">
+              <div class={@show_settings && "cp-sign-out-group"}>
                 <.link :if={@preview} {workspace_link(@context, "/signed-out")}><.icon
                   name="hero-arrow-right-start-on-rectangle"
                   class="size-4"

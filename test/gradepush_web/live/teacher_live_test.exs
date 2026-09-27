@@ -6,8 +6,11 @@ defmodule GradePushWeb.TeacherLiveTest do
   test "the new entry point limits navigation to classrooms and two class sections", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms")
     assert has_element?(view, "h1", "My classrooms")
-    assert has_element?(view, ".cp-grid > a:nth-child(3)")
-    refute has_element?(view, ".cp-grid > a:nth-child(4)")
+
+    for slug <- ~w(programming web-development data-structures) do
+      assert has_element?(view, ".cp-class-card[href='/classrooms/#{slug}']")
+    end
+
     refute has_element?(view, ".sidebar")
 
     view |> element("a.cp-class-card[href='/classrooms/programming']") |> render_click()
@@ -73,29 +76,40 @@ defmodule GradePushWeb.TeacherLiveTest do
     assert has_element?(view, ".cp-class-card", "Algorithms II")
   end
 
-  test "a classroom session is optional, editable and displayed verbatim", %{conn: conn} do
+  test "semester and year are paired, editable and group classrooms chronologically", %{
+    conn: conn
+  } do
     {:ok, view, _} = live(conn, "/classrooms?locale=fr")
     view |> element(".cp-heading button") |> render_click()
-    assert has_element?(view, "input[name='class[session]'][value='']")
+    refute has_element?(view, "input[name='class[session]']")
 
     view
-    |> form("#class-form", class: %{name: "Algorithmique", session: "  Hiver 2027  "})
+    |> form("#class-form", class: %{name: "Algorithmique", semester: "winter"})
     |> render_submit()
 
+    assert has_element?(view, "[role='alert']")
+    assert has_element?(view, "input[name='class[name]'][value='Algorithmique']")
+    view |> form("#class-form", class: %{academic_year: "2027"}) |> render_submit()
     assert has_element?(view, ".cp-class-session", "Hiver 2027")
     view |> element(".cp-breadcrumbs a[href='/classrooms']") |> render_click()
-    assert has_element?(view, "a[href='/classrooms/class-4'] .cp-card-session", "Hiver 2027")
-    refute has_element?(view, "a[href='/classrooms/programming'] .cp-card-session")
+    assert has_element?(view, ".cp-term-group:first-of-type h2", "Hiver 2027")
+    assert has_element?(view, ".cp-term-group:first-of-type a[href='/classrooms/class-4']")
     view |> element("a[href='/classrooms/class-4']") |> render_click()
     view |> element(".cp-class-heading button") |> render_click()
-    assert has_element?(view, "input[name='class[session]'][value='Hiver 2027']")
-    view |> form("#class-form", class: %{session: "Cohorte soir 2027–2028"}) |> render_submit()
-    assert has_element?(view, ".cp-class-session", "Cohorte soir 2027–2028")
-    view |> element(".cp-class-heading button") |> render_click()
-    view |> form("#class-form", class: %{session: "   "}) |> render_submit()
+    assert has_element?(view, "select[name='class[semester]'] option[value='winter'][selected]")
+
+    assert has_element?(
+             view,
+             "select[name='class[academic_year]'] option[value='2027'][selected]"
+           )
+
+    view |> form("#class-form", class: %{semester: "", academic_year: ""}) |> render_submit()
     refute has_element?(view, ".cp-class-session")
+    view |> element(".cp-class-heading button") |> render_click()
+    assert has_element?(view, "select[name='class[semester]']")
+    render_click(view, "close")
     view |> element(".cp-breadcrumbs a[href='/classrooms']") |> render_click()
-    refute has_element?(view, "a[href='/classrooms/class-4'] .cp-card-session")
+    assert has_element?(view, ".cp-term-group:last-of-type h2", "Sans session")
   end
 
   test "breadcrumbs navigate from assignment editing through its parents", %{conn: conn} do
@@ -178,9 +192,9 @@ defmodule GradePushWeb.TeacherLiveTest do
     refute has_element?(view, ".sidebar")
   end
 
-  test "every assignment opens in its classroom and the session is not invented", %{conn: conn} do
+  test "every assignment opens in its classroom and configured terms are displayed", %{conn: conn} do
     {:ok, view, html} = live(conn, "/classrooms")
-    refute html =~ "Fall 2026"
+    assert html =~ "Fall 2026"
 
     for {classroom, keys} <- [
           {"programming", ~w(cli loops functions)},
@@ -188,7 +202,7 @@ defmodule GradePushWeb.TeacherLiveTest do
           {"data-structures", ~w(linked-list)}
         ] do
       render_patch(view, "/classrooms/#{classroom}")
-      refute render(view) =~ "Fall 2026"
+      assert has_element?(view, ".cp-class-session")
 
       for key <- keys do
         view

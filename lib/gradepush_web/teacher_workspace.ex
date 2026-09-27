@@ -16,6 +16,8 @@ defmodule GradePushWeb.TeacherWorkspace do
       description: Presentation.text(classroom.description),
       code: classroom.code || "",
       session: classroom.session || "",
+      semester: classroom.semester,
+      academic_year: classroom.academic_year,
       students: Map.get(classroom, :students_count, 0),
       assignments: Map.get(classroom, :assignments_count, 0),
       organization: if(connection, do: connection.login, else: ""),

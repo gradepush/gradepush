@@ -15,6 +15,65 @@ defmodule GradePushWeb.StudentLiveTest do
     %{teacher: teacher, classroom: classroom, assignment: assignment, student: student}
   end
 
+  test "student classrooms show localized terms, teachers and only published assignment counts",
+       context do
+    %{teacher: teacher, classroom: classroom, student: student, conn: conn} = context
+
+    winter =
+      classroom_fixture(teacher, %{
+        title: "Winter course",
+        semester: "winter",
+        academic_year: 2027
+      })
+
+    for class <- [classroom, winter] do
+      {:ok, invitation} = Classrooms.create_class_invitation(teacher, class.id)
+
+      {:ok, _} =
+        Classrooms.accept_class_invitation(student, invitation.token, %{
+          name: "Camille",
+          student_id: "2026001"
+        })
+    end
+
+    context.assignment |> Ecto.Changeset.change(published_at: nil) |> GradePush.Repo.update!()
+    conn = log_in_user(conn, student)
+    {:ok, view, _} = live(conn, "/student/classrooms?locale=fr")
+    assert has_element?(view, ".cp-term-group:first-of-type h2", "Hiver 2027")
+    assert has_element?(view, ".cp-term-group:last-of-type h2", "Automne 2026")
+
+    assert has_element?(
+             view,
+             "a[href='/student/classrooms/#{classroom.slug}'] .cp-card-counts",
+             "0 devoir"
+           )
+
+    assert has_element?(view, ".cp-card-teachers", teacher.name)
+    refute has_element?(view, "#profile-menu .cp-sign-out-group")
+    refute has_element?(view, "#profile-menu .cp-profile-divider")
+    refute has_element?(view, "#profile-menu a[href='/teacher/settings']")
+
+    assignment_fixture(teacher, classroom)
+
+    assert has_element?(
+             view,
+             "a[href='/student/classrooms/#{classroom.slug}'] .cp-card-counts",
+             "1 devoir"
+           )
+
+    {:ok, _} =
+      Classrooms.update_classroom(teacher, winter.id, %{
+        title: winter.title,
+        semester: "summer",
+        academic_year: 2025
+      })
+
+    assert has_element?(view, ".cp-term-group:first-of-type h2", "Automne 2026")
+    assert has_element?(view, ".cp-term-group:last-of-type h2", "Été 2025")
+    {:ok, _} = Classrooms.archive_classroom(teacher, winter.id)
+    refute has_element?(view, "a[href='/student/classrooms/#{winter.slug}']")
+  end
+
   test "a first-time student accepts an assignment, joins its classroom and sees only their repository",
        context do
     %{

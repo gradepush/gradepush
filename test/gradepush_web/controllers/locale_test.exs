@@ -12,7 +12,7 @@ defmodule GradePushWeb.LocaleTest do
     conn = get(conn, ~p"/classrooms?locale=fr")
     body = html_response(conn, 200)
     assert body =~ "Programmation I"
-    refute body =~ "Automne 2026"
+    assert body =~ "Automne 2026"
     assert get_session(conn, :locale) == "fr"
 
     body = conn |> recycle() |> get(~p"/classrooms") |> html_response(200)

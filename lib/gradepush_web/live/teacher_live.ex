@@ -650,11 +650,24 @@ defmodule GradePushWeb.TeacherLive do
 
   def handle_event("save_class", %{"class" => params}, socket) do
     name = String.trim(params["name"] || "")
+    socket = assign(socket, class_form_params: params)
 
     case {class_editor_open?(socket), name} do
-      {false, _} -> {:noreply, socket}
-      {true, ""} -> {:noreply, assign(socket, error: gettext("Enter a classroom name."))}
-      {true, name} -> persist_class(socket, params, name)
+      {false, _} ->
+        {:noreply, socket}
+
+      {true, ""} ->
+        {:noreply, assign(socket, error: gettext("Enter a classroom name."))}
+
+      {true, name} ->
+        if preserve_legacy_term?(socket.assigns, params) or
+             params["semester"] in [nil, ""] == params["academic_year"] in [nil, ""],
+           do: persist_class(socket, params, name),
+           else:
+             {:noreply,
+              assign(socket,
+                error: gettext("Choose both a semester and a year, or leave both empty.")
+              )}
     end
   end
 
@@ -810,6 +823,7 @@ defmodule GradePushWeb.TeacherLive do
     socket =
       assign(socket,
         modal: {kind, modal_handle},
+        class_form_params: %{},
         pending_teacher: nil,
         invitation_url: nil,
         available_organizations: [],
@@ -897,10 +911,16 @@ defmodule GradePushWeb.TeacherLive do
     attrs = %{
       title: name,
       code: params["code"],
-      session: params["session"],
+      semester: params["semester"],
+      academic_year: params["academic_year"],
       description: params["description"],
       github_connection_id: connection_id
     }
+
+    attrs =
+      if preserve_legacy_term?(socket.assigns, params),
+        do: Map.drop(attrs, [:semester, :academic_year]),
+        else: attrs
 
     result =
       case socket.assigns.modal do
@@ -1269,7 +1289,8 @@ defmodule GradePushWeb.TeacherLive do
       title: %{en: name, fr: name},
       description: %{en: params["description"], fr: params["description"]},
       code: params["code"],
-      session: String.trim(params["session"] || "")
+      semester: params["semester"],
+      academic_year: parse_id(params["academic_year"])
     }
 
     if elem(socket.assigns.modal, 0) == "edit" do
@@ -1416,7 +1437,7 @@ defmodule GradePushWeb.TeacherLive do
           Map.put(student, :identifier, "260#{1000 + index}")
         end)
 
-      Map.merge(classroom, %{members: students, session: ""})
+      Map.put(classroom, :members, students)
     end)
   end
 
@@ -1488,6 +1509,17 @@ defmodule GradePushWeb.TeacherLive do
   defp modal_title({"deadline_extension", _}), do: gettext("Revise submission deadline")
 
   defp editing_value(assigns, key) do
+    params = Map.get(assigns, :class_form_params, %{})
+    field = if key == :title, do: "name", else: Atom.to_string(key)
+
+    if Map.has_key?(params, field) do
+      if key == :academic_year, do: parse_id(params[field]), else: params[field]
+    else
+      original_editing_value(assigns, key)
+    end
+  end
+
+  defp original_editing_value(assigns, key) do
     if modal?(assigns.modal, "edit") do
       value = Map.get(assigns.classroom, key)
       if is_map(value), do: local(value, assigns.locale), else: value
@@ -1495,6 +1527,24 @@ defmodule GradePushWeb.TeacherLive do
       ""
     end
   end
+
+  defp classroom_years(assigns) do
+    year = Date.utc_today().year
+    selected = editing_value(assigns, :academic_year)
+    years = Enum.to_list((year + 5)..(year - 10)//-1)
+    if is_integer(selected), do: Enum.sort(Enum.uniq([selected | years]), :desc), else: years
+  end
+
+  defp legacy_term?(assigns) do
+    modal?(assigns.modal, "edit") and
+      assigns.classroom.semester in [nil, ""] and
+      Map.get(assigns.classroom, :session) not in [nil, ""]
+  end
+
+  defp preserve_legacy_term?(assigns, params),
+    do:
+      legacy_term?(assigns) and params["semester"] == "legacy" and
+        params["academic_year"] in [nil, ""]
 
   defp selected_student(classroom, {"remove", handle}),
     do: Enum.find(classroom.members, &(&1.handle == handle))

@@ -1,5 +1,6 @@
 defmodule GradePushWeb.Presentation do
   @moduledoc false
+  use Gettext, backend: GradePushWeb.Gettext
 
   alias GradePush.Accounts
 
@@ -27,6 +28,34 @@ defmodule GradePushWeb.Presentation do
   end
 
   def text(value), do: %{en: value || "", fr: value || ""}
+
+  def classroom_term(%{semester: semester, academic_year: year})
+      when semester in ["winter", "summer", "fall"] and is_integer(year),
+      do: "#{semester_label(semester)} #{year}"
+
+  def classroom_term(classroom), do: Map.get(classroom, :session) || ""
+
+  def semester_options,
+    do: Enum.map(~w(winter summer fall), &{semester_label(&1), &1})
+
+  def classroom_groups(classrooms) do
+    classrooms
+    |> Enum.group_by(&term_key/1)
+    |> Enum.sort_by(fn {key, _} -> key end, :desc)
+    |> Enum.map(fn {_key, classes} ->
+      label = classroom_term(hd(classes))
+      %{label: if(label == "", do: gettext("No semester"), else: label), classes: classes}
+    end)
+  end
+
+  defp term_key(%{semester: semester, academic_year: year})
+       when semester in ["winter", "summer", "fall"] and is_integer(year),
+       do: {year, Enum.find_index(~w(winter summer fall), &(&1 == semester)), ""}
+
+  defp term_key(classroom), do: {0, 0, classroom_term(classroom)}
+  defp semester_label("winter"), do: gettext("Winter")
+  defp semester_label("summer"), do: gettext("Summer")
+  defp semester_label("fall"), do: gettext("Fall")
 
   def contexts(user) do
     roles = Accounts.institution_roles(user)
