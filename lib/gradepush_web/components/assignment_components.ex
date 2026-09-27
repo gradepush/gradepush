@@ -81,10 +81,10 @@ defmodule GradePushWeb.AssignmentComponents do
     </div>
     <details class="cp-instructions" id={"instructions-#{@assignment.key}"}>
       <summary>
-        {gettext("Assignment instructions")}<.icon name="hero-chevron-down" class="size-4" />
+        <h2>{gettext("Assignment instructions")}</h2><.icon name="hero-chevron-down" class="size-4" />
       </summary>
       <div class="cp-instructions-content cp-markdown">
-        {Markdown.render(@instructions)}
+        {Markdown.render(@instructions, 2)}
         <h3>{gettext("Getting started")}</h3>
         <ol>
           <li>{gettext("Accept the assignment to get your repository.")}</li><li>

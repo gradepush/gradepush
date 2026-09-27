@@ -60,7 +60,8 @@ defmodule GradePushWeb.AssignmentEditor do
             <p :if={@form[:instructions].value in [nil, ""]} class="cp-field-help">
               {gettext("Write instructions to see the preview.")}
             </p>
-            {GradePushWeb.Markdown.render(@form[:instructions].value || "")}
+            <h2 class="sr-only">{gettext("Instructions preview")}</h2>
+            {GradePushWeb.Markdown.render(@form[:instructions].value || "", 2)}
           </div>
           <div hidden={@preview}>
             <.input

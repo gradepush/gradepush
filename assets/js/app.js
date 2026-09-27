@@ -78,6 +78,11 @@ const liveSocket = new LiveSocket("/live", Socket, {
 })
 
 topbar.config({barColors: {0: "#2052F2"}, shadowColor: "transparent"})
+window.addEventListener("phx:focus-invalid", ({detail: {id}}) => {
+  requestAnimationFrame(() => {
+    document.getElementById(id)?.querySelector('[aria-invalid="true"]')?.focus()
+  })
+})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 

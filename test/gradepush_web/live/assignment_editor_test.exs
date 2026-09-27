@@ -18,7 +18,7 @@ defmodule GradePushWeb.AssignmentEditorTest do
 
     path = assert_patch(view)
     assert has_element?(view, "h1", "Sorting lab")
-    assert has_element?(view, ".cp-markdown h2", "Goals")
+    assert has_element?(view, ".cp-markdown h4", "Goals")
     assert has_element?(view, ".cp-markdown strong", "Sort")
     assert has_element?(view, ".cp-assignment-facts", "No deadline")
     refute has_element?(view, ".cp-test-score")
@@ -55,6 +55,14 @@ defmodule GradePushWeb.AssignmentEditorTest do
     |> render_submit()
 
     assert has_element?(view, "[role=alert]", "Check the highlighted fields")
+
+    assert has_element?(
+             view,
+             "#assignment_title[aria-invalid='true'][aria-describedby='assignment_title-errors']"
+           )
+
+    assert has_element?(view, "#assignment_title-errors", "can't be blank")
+    assert_push_event(view, "focus-invalid", %{id: "assignment-form"})
     assert has_element?(view, "input[value='other-org/private']")
     view |> element(".cp-editor-actions a", "Cancel") |> render_click()
     assert_patch(view, "/classrooms/programming")

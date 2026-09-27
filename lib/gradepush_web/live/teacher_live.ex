@@ -41,6 +41,7 @@ defmodule GradePushWeb.TeacherLive do
        institution: institution,
        organizations: organizations,
        sharing_teachers: [],
+       class_form_errors: [],
        available_organizations: [],
        available_classroom_teachers: [],
        github_app_install_url: github_app_install_url(),
@@ -643,21 +644,24 @@ defmodule GradePushWeb.TeacherLive do
           persist_assignment(socket, draft)
 
         {:error, _changeset} ->
-          {:noreply, socket}
+          {:noreply, push_event(socket, "focus-invalid", %{id: "assignment-form"})}
       end
     end
   end
 
   def handle_event("save_class", %{"class" => params}, socket) do
     name = String.trim(params["name"] || "")
-    socket = assign(socket, class_form_params: params)
+    socket = assign(socket, class_form_params: params, class_form_errors: [])
 
     case {class_editor_open?(socket), name} do
       {false, _} ->
         {:noreply, socket}
 
       {true, ""} ->
-        {:noreply, assign(socket, error: gettext("Enter a classroom name."))}
+        {:noreply,
+         socket
+         |> assign(error: gettext("Enter a classroom name."), class_form_errors: [:name])
+         |> push_event("focus-invalid", %{id: "class-form"})}
 
       {true, name} ->
         if preserve_legacy_term?(socket.assigns, params) or
@@ -665,9 +669,12 @@ defmodule GradePushWeb.TeacherLive do
            do: persist_class(socket, params, name),
            else:
              {:noreply,
-              assign(socket,
-                error: gettext("Choose both a semester and a year, or leave both empty.")
-              )}
+              socket
+              |> assign(
+                error: gettext("Choose both a semester and a year, or leave both empty."),
+                class_form_errors: [:semester, :academic_year]
+              )
+              |> push_event("focus-invalid", %{id: "class-form"})}
     end
   end
 
@@ -824,6 +831,7 @@ defmodule GradePushWeb.TeacherLive do
       assign(socket,
         modal: {kind, modal_handle},
         class_form_params: %{},
+        class_form_errors: [],
         pending_teacher: nil,
         invitation_url: nil,
         available_organizations: [],

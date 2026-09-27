@@ -17,6 +17,7 @@
   --blue-hover: #1a43cc;
   --ink: #1c2435;
   --line: #e5e9f0;
+  --control-border: #8591a3;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
   color: var(--ink);
@@ -34,7 +35,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 a { color: inherit; text-decoration: none; }
 button, a, input, select, textarea { outline-offset: 4px; }
 :focus-visible { outline: 2px solid var(--blue); }
-input:focus, select:focus, textarea:focus { outline: 2px solid #2052f22b; border-color: var(--blue); }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--blue); border-color: var(--blue); }
 button { transition: background .15s, border-color .15s, color .15s; }
 button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 [data-phx-session], [data-phx-teleported-src] { display: contents; }
@@ -136,7 +137,7 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 .cp-editor-form .fieldset { margin-bottom: 18px; min-width: 0; }
 .cp-editor-form label, .cp-markdown-heading > label { display: block; font-size: 13px; font-weight: 550; color: #354157; }
 .cp-editor-form .label { display: block; margin-bottom: 7px; }
-.cp-editor-form input:not([type=checkbox]):not([type=hidden]), .cp-editor-form select, .cp-editor-form textarea { width: 100%; min-width: 0; border: 1px solid #d7deea; border-radius: 7px; background: white; padding: 10px 12px; color: #202838; font: inherit; font-weight: 400; min-height: 44px; }
+.cp-editor-form input:not([type=checkbox]):not([type=hidden]), .cp-editor-form select, .cp-editor-form textarea { width: 100%; min-width: 0; border: 1px solid var(--control-border); border-radius: 7px; background: white; padding: 10px 12px; color: #202838; font: inherit; font-weight: 400; min-height: 44px; }
 .cp-editor-form textarea { resize: vertical; line-height: 1.65; }
 .cp-editor-form input:disabled, .cp-editor-form select:disabled { background: #f5f7fa; color: var(--cp-muted); }
 .cp-editor-form input[type=checkbox] { width: 17px; height: 17px; vertical-align: middle; accent-color: var(--blue); margin-right: 8px; }
@@ -218,7 +219,7 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 .cp-accepted { font-size: 13px; font-variant-numeric: tabular-nums; }
 .cp-accepted > span:not(.cp-mobile-label) { color: var(--cp-muted); }
 .cp-mobile-label { display: none; }
-.cp-search { background: white; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #dce1e9; border-radius: 7px; color: #6a768a; }
+.cp-search { background: white; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--control-border); border-radius: 7px; color: #6a768a; }
 .cp-search:focus-within { border-color: var(--blue); }
 .cp-search input { border: 0; background: transparent; padding: 10px 0; outline: none; width: 240px; min-width: 0; color: var(--ink); }
 .cp-search:has(input:focus-visible) { outline: 2px solid var(--blue); outline-offset: 2px; }
@@ -245,7 +246,7 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 .cp-modal > p { color: var(--cp-muted); line-height: 1.65; }
 .cp-form { display: grid; gap: 18px; }
 .cp-form label, .cp-link-field { display: grid; gap: 7px; font-size: 13px; font-weight: 550; }
-.cp-form input, .cp-form textarea, .cp-form select, .cp-link-field input { border: 1px solid #d7dfeb; border-radius: 6px; padding: 10px 12px; width: 100%; min-width: 0; background: white; font-weight: 400; }
+.cp-form input, .cp-form textarea, .cp-form select, .cp-link-field input { border: 1px solid var(--control-border); border-radius: 6px; padding: 10px 12px; width: 100%; min-width: 0; background: white; font-weight: 400; }
 .cp-form textarea { resize: vertical; }
 .cp-link-field { margin-top: 22px; }
 .cp-link-field input { color: #5d6b83; background: #f8f9fc; font-size: 12px; }
@@ -335,7 +336,7 @@ a.cp-assignment:focus-visible { outline-offset: -3px; }
 .cp-submissions-heading > span { color: var(--cp-muted); font-size: 12px; }
 .cp-submission-filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
 .cp-submission-filters .cp-search input { width: 280px; }
-.cp-status-filter select { border: 1px solid #dce1e9; border-radius: 7px; padding: 10px 12px; height: 43px; background: white; color: #536178; font-size: 13px; }
+.cp-status-filter select { border: 1px solid var(--control-border); border-radius: 7px; padding: 10px 12px; height: 43px; background: white; color: #536178; font-size: 13px; }
 .cp-submission-table-wrap { background: white; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .cp-submission-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
 .cp-submission-table thead { background: var(--cp-list-heading); color: #303c50; }

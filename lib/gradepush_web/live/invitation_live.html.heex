@@ -74,7 +74,7 @@
           <div class="cp-admin-panel-heading">
             <h2>{gettext("Assignment instructions")}</h2>
           </div><div class="cp-admin-settings-form cp-markdown">
-            {Markdown.render(@invitation.assignment.instructions)}
+            {Markdown.render(@invitation.assignment.instructions, 2)}
           </div>
         </section>
       <% else %>

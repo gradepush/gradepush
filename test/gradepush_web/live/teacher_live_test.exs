@@ -3,6 +3,25 @@ defmodule GradePushWeb.TeacherLiveTest do
 
   import Phoenix.LiveViewTest
 
+  test "classroom term validation identifies both fields and returns focus", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/classrooms")
+    view |> element("button", "Create a classroom") |> render_click()
+
+    view
+    |> form("#class-form", class: %{name: "Test", semester: "fall", academic_year: ""})
+    |> render_submit()
+
+    for field <- ~w(semester academic_year) do
+      assert has_element?(
+               view,
+               "[name='class[#{field}]'][aria-invalid='true'][aria-describedby='class-modal-error']"
+             )
+    end
+
+    assert_push_event(view, "focus-invalid", %{id: "class-form"})
+    assert has_element?(view, "#class-modal-error", "Choose both a semester and a year")
+  end
+
   test "the new entry point limits navigation to classrooms and two class sections", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms")
     assert has_element?(view, "h1", "My classrooms")

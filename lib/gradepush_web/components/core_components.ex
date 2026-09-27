@@ -182,9 +182,9 @@ defmodule GradePushWeb.CoreComponents do
 
   def input(%{type: "checkbox"} = assigns) do
     assigns =
-      assign_new(assigns, :checked, fn ->
-        Form.normalize_value("checkbox", assigns[:value])
-      end)
+      assigns
+      |> input_error_attributes()
+      |> assign_new(:checked, fn -> Form.normalize_value("checkbox", assigns[:value]) end)
 
     ~H"""
     <div class="fieldset mb-2">
@@ -208,12 +208,14 @@ defmodule GradePushWeb.CoreComponents do
           />{@label}
         </span>
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+      <.input_errors id={@id} errors={@errors} />
     </div>
     """
   end
 
   def input(%{type: "select"} = assigns) do
+    assigns = input_error_attributes(assigns)
+
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
@@ -229,12 +231,14 @@ defmodule GradePushWeb.CoreComponents do
           {Phoenix.HTML.Form.options_for_select(@options, @value)}
         </select>
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+      <.input_errors id={@id} errors={@errors} />
     </div>
     """
   end
 
   def input(%{type: "textarea"} = assigns) do
+    assigns = input_error_attributes(assigns)
+
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
@@ -249,13 +253,14 @@ defmodule GradePushWeb.CoreComponents do
           {@rest}
         >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+      <.input_errors id={@id} errors={@errors} />
     </div>
     """
   end
 
-  # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
+    assigns = input_error_attributes(assigns)
+
     ~H"""
     <div class="fieldset mb-2">
       <label for={@id}>
@@ -272,18 +277,38 @@ defmodule GradePushWeb.CoreComponents do
           {@rest}
         />
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+      <.input_errors id={@id} errors={@errors} />
     </div>
     """
   end
 
-  # Helper used by inputs to generate form errors
-  defp error(assigns) do
+  defp input_error_attributes(assigns) do
+    if assigns.errors == [] do
+      assigns
+    else
+      description =
+        [assigns.rest[:"aria-describedby"], input_error_id(assigns.id)]
+        |> Enum.reject(&is_nil/1)
+        |> Enum.join(" ")
+
+      assign(
+        assigns,
+        :rest,
+        Map.merge(assigns.rest, %{"aria-invalid": "true", "aria-describedby": description})
+      )
+    end
+  end
+
+  defp input_error_id(nil), do: nil
+  defp input_error_id(id), do: "#{id}-errors"
+
+  defp input_errors(assigns) do
     ~H"""
-    <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
-      <.icon name="hero-exclamation-circle" class="size-5" />
-      {render_slot(@inner_block)}
-    </p>
+    <div :if={@errors != []} id={input_error_id(@id)}>
+      <p :for={msg <- @errors} class="mt-1.5 flex gap-2 items-center text-sm text-error">
+        <.icon name="hero-exclamation-circle" class="size-5" />{msg}
+      </p>
+    </div>
     """
   end
 

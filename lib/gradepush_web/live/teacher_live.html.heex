@@ -291,7 +291,7 @@
           aria-label={gettext("Close")}
         ><.icon name="hero-x-mark" class="size-5" /></button>
       </div>
-      <p :if={@error} class="cp-error" role="alert">{@error}</p>
+      <p :if={@error} id="class-modal-error" class="cp-error" role="alert">{@error}</p>
       <p :if={@notice} class="cp-notice" role="status">{@notice}</p>
       <%= cond do %>
         <% modal?(@modal, "test_results") -> %>
@@ -314,6 +314,8 @@
           <form phx-submit="save_class" id="class-form" class="cp-form">
             <label>{gettext("Classroom name")}<input
               name="class[name]"
+              aria-invalid={if :name in @class_form_errors, do: "true"}
+              aria-describedby={if :name in @class_form_errors, do: "class-modal-error"}
               required
               maxlength="100"
               value={editing_value(assigns, :title)}
@@ -327,7 +329,11 @@
             /></label>
             <div class="cp-term-fields">
               <label>{gettext("Semester (optional)")}
-              <select name="class[semester]">
+              <select
+                name="class[semester]"
+                aria-invalid={if :semester in @class_form_errors, do: "true"}
+                aria-describedby={if :semester in @class_form_errors, do: "class-modal-error"}
+              >
                 <option value="">{gettext("No semester")}</option>
                 <option
                   :if={legacy_term?(assigns)}
@@ -348,6 +354,10 @@
               <input
                 type="text"
                 name="class[academic_year]"
+                aria-invalid={if :academic_year in @class_form_errors, do: "true"}
+                aria-describedby={
+                  if :academic_year in @class_form_errors, do: "class-modal-error"
+                }
                 value={editing_value(assigns, :academic_year)}
                 maxlength="20"
               /></label>
