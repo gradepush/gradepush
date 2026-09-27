@@ -814,6 +814,7 @@ defmodule GradePushWeb.TeacherLive do
             else: %{}
           ),
         error: nil,
+        notice: nil,
         copy_status: nil
       )
 

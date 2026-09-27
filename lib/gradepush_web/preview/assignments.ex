@@ -1,5 +1,7 @@
 defmodule GradePushWeb.Preview.Assignments do
   @moduledoc "Builds simulated assignment records and submission results for the teacher preview."
+  use Gettext, backend: GradePushWeb.Gettext
+
   alias GradePushWeb.Preview.{AssignmentContent, Fixtures}
 
   def details(assignment, classroom, query, filter, locale) do
@@ -60,7 +62,7 @@ defmodule GradePushWeb.Preview.Assignments do
         row(assignment, member, index)
         |> Map.merge(%{
           key: "team-#{index + 1}",
-          team_number: index + 1,
+          name: gettext("Team %{number}", number: index + 1),
           members: Enum.map_join(members, ", ", & &1.name),
           member_profiles: members,
           search_terms: Enum.map_join(members, " ", &"#{&1.name} #{&1.identifier} #{&1.handle}"),

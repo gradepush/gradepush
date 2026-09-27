@@ -182,9 +182,7 @@ defmodule GradePushWeb.AssignmentComponents do
           <tbody>
             <tr :for={row <- @rows} id={"submission-#{row.key}"}>
               <th scope="row" class="cp-submission-person">
-                <strong>{if @assignment.group?,
-                  do: gettext("Team %{number}", number: row.team_number),
-                  else: row.name}</strong>
+                <strong>{row.name}</strong>
                 <span :if={!@assignment.group?}>{row.identifier} ·
                 <a
                   href={"https://github.com/#{row.handle}"}

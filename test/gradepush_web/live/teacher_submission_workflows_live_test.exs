@@ -73,6 +73,12 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
     assert [%{user_id: student_id}] = team.members
     assert student_id == student.id
 
+    assert has_element?(view, "[role='status']", "Student added to the team.")
+    view |> element("button", "Done") |> render_click()
+    view |> element("button", "Share assignment") |> render_click()
+    refute has_element?(view, "[role='status']", "Student added to the team.")
+    view |> element(".cp-modal-heading button[phx-click='close']") |> render_click()
+
     {:ok, invitation} = Assignments.create_assignment_invitation(teacher, assignment.id)
 
     {:ok, %{subject: subject}} =
@@ -82,6 +88,7 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
       })
 
     assert subject.team_id == team.id
+    assert has_element?(view, "#submission-team-#{team.id} strong", "Blue Team")
   end
 
   test "teacher sets and clears a submission deadline extension in Toronto local time", %{

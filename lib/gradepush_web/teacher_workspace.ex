@@ -227,7 +227,6 @@ defmodule GradePushWeb.TeacherWorkspace do
     %{
       key: "team-#{team.id}",
       subject_id: subject.id,
-      team_number: index,
       name: team.name || gettext("Team %{number}", number: index),
       members: Enum.map_join(members, ", ", & &1.name),
       member_profiles: members,
