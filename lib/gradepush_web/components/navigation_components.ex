@@ -3,6 +3,7 @@ defmodule GradePushWeb.NavigationComponents do
   use Phoenix.Component
   import GradePushWeb.CoreComponents, only: [icon: 1]
 
+  attr :id, :string, default: nil
   attr :label, :string, required: true
   attr :compact, :boolean, default: false
   attr :class, :any, default: nil
@@ -11,8 +12,10 @@ defmodule GradePushWeb.NavigationComponents do
   def tabs(assigns) do
     ~H"""
     <nav
+      data-ui="tabs"
+      id={@id}
       class={[
-        "cp-tabs mt-[28px] flex border-b border-line",
+        "mt-[28px] flex border-b border-line",
         @compact &&
           [
             "max-[760px]:grid max-[760px]:auto-cols-fr max-[760px]:grid-flow-col",
@@ -67,7 +70,7 @@ defmodule GradePushWeb.NavigationComponents do
     <details
       id={@id}
       name="header-menu"
-      class={["relative", @kind == "context" && "cp-context-switcher"]}
+      class={["relative", @kind == "context" && "max-[760px]:order-2"]}
       phx-hook="HeaderDisclosure"
     >
       <summary

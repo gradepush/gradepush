@@ -25,19 +25,24 @@ defmodule GradePushWeb.DemoLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="class-preview">
-      <div class="cp-shell">
+    <.page public>
+      <div class="min-h-screen flex flex-col">
         <WorkspaceLayout.public_header locale={@locale} path="/demo" />
-        <main class="cp-main">
-          <section class="cp-admin-panel cp-demo-panel">
-            <div class="cp-admin-panel-heading">
-              <p class="cp-context">GradePush</p>
+        <.page_content>
+          <.panel class={[
+            "max-w-[640px] my-[40px] mx-auto [&_[data-ui~=admin-panel-heading]]:block [&_h1]:text-[26px]",
+            "[&_h1]:font-[650] [&_h1]:leading-[1.25] [&_h1]:my-[8px] [&_h1]:mx-0"
+          ]}>
+            <.panel_heading>
+              <.eyebrow>
+                GradePush
+              </.eyebrow>
               <h1>{gettext("Try the demo")}</h1>
               <p>
                 {gettext("Choose a role to explore the demo with sample classrooms and assignments.")}
               </p>
-            </div>
-            <div class="cp-demo-roles">
+            </.panel_heading>
+            <div class="flex flex-wrap p-[24px] gap-[12px] [&_form]:flex-[1_1_220px] [&_button]:w-full">
               <form action="/demo/sign-in" method="post">
                 <.input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
                 <.input type="hidden" name="role" value="teacher" />
@@ -51,14 +56,18 @@ defmodule GradePushWeb.DemoLive do
                 <.button type="submit">{gettext("Continue as a student")}</.button>
               </form>
             </div>
-            <p :if={Phoenix.Flash.get(@flash, :error)} class="cp-error" role="alert">
+            <.notice
+              :if={Phoenix.Flash.get(@flash, :error)}
+              kind="error"
+              role="alert"
+            >
               {Phoenix.Flash.get(@flash, :error)}
-            </p>
-          </section>
-        </main>
+            </.notice>
+          </.panel>
+        </.page_content>
         <WorkspaceLayout.footer context={:public} links={@footer_links} />
       </div>
-    </div>
+    </.page>
     """
   end
 end

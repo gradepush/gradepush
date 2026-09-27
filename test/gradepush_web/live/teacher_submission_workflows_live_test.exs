@@ -57,7 +57,7 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
       |> live(assignment_path(classroom, assignment))
 
     view |> element("button", "Manage teams") |> render_click()
-    view |> form(".cp-team-create-form", team: %{name: "Blue Team"}) |> render_submit()
+    view |> form("[data-ui~='team-create-form']", team: %{name: "Blue Team"}) |> render_submit()
 
     {:ok, [team]} = Assignments.list_teams(teacher, assignment.id)
     assert team.name == "Blue Team"
@@ -77,7 +77,7 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
     view |> element("button", "Done") |> render_click()
     view |> element("button", "Share assignment") |> render_click()
     refute has_element?(view, "[role='status']", "Student added to the team.")
-    view |> element(".cp-modal-heading button[phx-click='close']") |> render_click()
+    view |> element("[data-ui~='modal-heading'] button[phx-click='close']") |> render_click()
 
     {:ok, invitation} = Assignments.create_assignment_invitation(teacher, assignment.id)
 
@@ -145,7 +145,7 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
     )
     |> render_click()
 
-    view |> element("button.cp-clear-extension") |> render_click()
+    view |> element("button[data-ui~='clear-extension']") |> render_click()
 
     assert Repo.get!(Subject, subject.id).extension_until == nil
     refute has_element?(view, "#submission-#{student.login}", "Deadline extended to")

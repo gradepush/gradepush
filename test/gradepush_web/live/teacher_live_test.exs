@@ -29,25 +29,25 @@ defmodule GradePushWeb.TeacherLiveTest do
     assert has_element?(view, "h1", "My classrooms")
 
     for slug <- ~w(programming web-development data-structures) do
-      assert has_element?(view, ".cp-class-card[href='/classrooms/#{slug}']")
+      assert has_element?(view, "[data-ui~='class-card'][href='/classrooms/#{slug}']")
     end
 
     refute has_element?(view, ".sidebar")
 
-    view |> element("a.cp-class-card[href='/classrooms/programming']") |> render_click()
+    view |> element("a[data-ui~='class-card'][href='/classrooms/programming']") |> render_click()
     assert has_element?(view, "h1", "Programming I")
-    assert has_element?(view, ".cp-tabs a[aria-current='page']", "Assignments")
-    refute has_element?(view, ".cp-tabs a", "Settings")
+    assert has_element?(view, "[data-ui~='tabs'] a[aria-current='page']", "Assignments")
+    refute has_element?(view, "[data-ui~='tabs'] a", "Settings")
 
     assert has_element?(
              view,
-             ".cp-toolbar a[href='/classrooms/programming/assignments/new']",
+             "[data-ui~='toolbar'] a[href='/classrooms/programming/assignments/new']",
              "New assignment"
            )
 
-    view |> element(".cp-tabs a", "Students") |> render_click()
+    view |> element("[data-ui~='tabs'] a", "Students") |> render_click()
     assert_patch(view, "/classrooms/programming?tab=students")
-    assert has_element?(view, ".cp-tabs a[aria-current='page']", "Students")
+    assert has_element?(view, "[data-ui~='tabs'] a[aria-current='page']", "Students")
     assert has_element?(view, "#student-amelie-fortin")
   end
 
@@ -62,7 +62,7 @@ defmodule GradePushWeb.TeacherLiveTest do
     view |> element("#student-amelie-fortin button") |> render_click()
     view |> element("button[phx-click='remove_student']") |> render_click()
     refute has_element?(view, "#student-amelie-fortin")
-    assert has_element?(view, ".cp-tabs a", "27")
+    assert has_element?(view, "[data-ui~='tabs'] a", "27")
     render_patch(view, "/classrooms/web-development?tab=students")
     assert has_element?(view, "#student-amelie-fortin")
     render_patch(view, "/classrooms/programming?tab=students")
@@ -75,12 +75,12 @@ defmodule GradePushWeb.TeacherLiveTest do
     assert has_element?(view, "#student-amelie-fortin")
     refute has_element?(view, "#student-max-fortin")
     view |> form("form[role='search']", query: "no-match") |> render_change()
-    assert has_element?(view, ".cp-empty", "No matching students")
+    assert has_element?(view, "[data-ui~='empty']", "No matching students")
   end
 
   test "classroom forms validate and preserve changes through navigation", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms?scenario=empty")
-    view |> element(".cp-heading button") |> render_click()
+    view |> element("[data-ui~='heading'] button") |> render_click()
     view |> form("#class-form", class: %{name: "   "}) |> render_submit()
     assert has_element?(view, "[role='alert']", "Enter a classroom name")
 
@@ -96,18 +96,18 @@ defmodule GradePushWeb.TeacherLiveTest do
 
     assert_patch(view, "/classrooms/class-4")
     assert has_element?(view, "h1", "Algorithms")
-    assert has_element?(view, ".cp-empty", "No assignments yet")
-    view |> element(".cp-class-heading button") |> render_click()
+    assert has_element?(view, "[data-ui~='empty']", "No assignments yet")
+    view |> element("[data-ui~='class-heading'] button") |> render_click()
     view |> form("#class-form", class: %{name: "Algorithms II"}) |> render_submit()
-    view |> element(".cp-breadcrumbs a[href='/classrooms']") |> render_click()
-    assert has_element?(view, ".cp-class-card", "Algorithms II")
+    view |> element("[data-ui~='breadcrumbs'] a[href='/classrooms']") |> render_click()
+    assert has_element?(view, "[data-ui~='class-card']", "Algorithms II")
   end
 
   test "semester and year are paired, editable and group classrooms chronologically", %{
     conn: conn
   } do
     {:ok, view, _} = live(conn, "/classrooms?locale=fr")
-    view |> element(".cp-heading button") |> render_click()
+    view |> element("[data-ui~='heading'] button") |> render_click()
     refute has_element?(view, "input[name='class[session]']")
 
     view
@@ -117,68 +117,82 @@ defmodule GradePushWeb.TeacherLiveTest do
     assert has_element?(view, "[role='alert']")
     assert has_element?(view, "input[name='class[name]'][value='Algorithmique']")
     view |> form("#class-form", class: %{academic_year: "2027"}) |> render_submit()
-    assert has_element?(view, ".cp-class-session", "Hiver 2027")
-    view |> element(".cp-breadcrumbs a[href='/classrooms']") |> render_click()
-    assert has_element?(view, ".cp-term-group:first-of-type h2", "Hiver 2027")
-    assert has_element?(view, ".cp-term-group:first-of-type a[href='/classrooms/class-4']")
+    assert has_element?(view, "[data-ui~='class-session']", "Hiver 2027")
+    view |> element("[data-ui~='breadcrumbs'] a[href='/classrooms']") |> render_click()
+    assert has_element?(view, "[data-ui~='term-group']:first-of-type h2", "Hiver 2027")
+
+    assert has_element?(
+             view,
+             "[data-ui~='term-group']:first-of-type a[href='/classrooms/class-4']"
+           )
+
     view |> element("a[href='/classrooms/class-4']") |> render_click()
-    view |> element(".cp-class-heading button") |> render_click()
+    view |> element("[data-ui~='class-heading'] button") |> render_click()
     assert has_element?(view, "select[name='class[semester]'] option[value='winter'][selected]")
 
     assert has_element?(view, "input[type='text'][name='class[academic_year]'][value='2027']")
 
     view |> form("#class-form", class: %{semester: "", academic_year: ""}) |> render_submit()
-    refute has_element?(view, ".cp-class-session")
-    view |> element(".cp-class-heading button") |> render_click()
+    refute has_element?(view, "[data-ui~='class-session']")
+    view |> element("[data-ui~='class-heading'] button") |> render_click()
     assert has_element?(view, "select[name='class[semester]']")
     render_click(view, "close")
-    view |> element(".cp-breadcrumbs a[href='/classrooms']") |> render_click()
-    assert has_element?(view, ".cp-term-group:last-of-type h2", "Sans session")
+    view |> element("[data-ui~='breadcrumbs'] a[href='/classrooms']") |> render_click()
+    assert has_element?(view, "[data-ui~='term-group']:last-of-type h2", "Sans session")
   end
 
   test "breadcrumbs navigate from assignment editing through its parents", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms/programming/assignments/cli/edit")
-    assert has_element?(view, ".cp-breadcrumbs [aria-current='page']", "Edit assignment")
+    assert has_element?(view, "[data-ui~='breadcrumbs'] [aria-current='page']", "Edit assignment")
 
     view
-    |> element(".cp-breadcrumbs a[href='/classrooms/programming/assignments/cli']")
+    |> element("[data-ui~='breadcrumbs'] a[href='/classrooms/programming/assignments/cli']")
     |> render_click()
 
     assert_patch(view, "/classrooms/programming/assignments/cli")
-    assert has_element?(view, ".cp-breadcrumbs [aria-current='page']", "CLI Argument Parser")
-    view |> element(".cp-breadcrumbs a[href='/classrooms/programming']") |> render_click()
-    assert has_element?(view, ".cp-breadcrumbs [aria-current='page']", "Programming I")
-    view |> element(".cp-toolbar a") |> render_click()
-    assert has_element?(view, ".cp-breadcrumbs [aria-current='page']", "New assignment")
-    refute has_element?(view, ".cp-breadcrumbs a[href*='/assignments/']")
-    view |> element(".cp-breadcrumbs a[href='/classrooms']") |> render_click()
+
+    assert has_element?(
+             view,
+             "[data-ui~='breadcrumbs'] [aria-current='page']",
+             "CLI Argument Parser"
+           )
+
+    view
+    |> element("[data-ui~='breadcrumbs'] a[href='/classrooms/programming']")
+    |> render_click()
+
+    assert has_element?(view, "[data-ui~='breadcrumbs'] [aria-current='page']", "Programming I")
+    view |> element("[data-ui~='toolbar'] a") |> render_click()
+    assert has_element?(view, "[data-ui~='breadcrumbs'] [aria-current='page']", "New assignment")
+    refute has_element?(view, "[data-ui~='breadcrumbs'] a[href*='/assignments/']")
+    view |> element("[data-ui~='breadcrumbs'] a[href='/classrooms']") |> render_click()
     assert has_element?(view, "h1", "My classrooms")
   end
 
   test "colleagues have equal roles and the last teacher cannot be removed", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms/data-structures")
-    view |> element(".cp-teachers-link") |> render_click()
+    view |> element("[data-ui~='teachers-link']") |> render_click()
     assert has_element?(view, "[role='dialog']", "same permissions")
-    refute has_element?(view, ".cp-teacher-list button")
+    refute has_element?(view, "[data-ui~='teacher-list'] button")
     render_click(view, "remove_teacher", %{"name" => "Jordan Rioux"})
-    assert has_element?(view, ".cp-teacher-list", "Jordan Rioux")
+    assert has_element?(view, "[data-ui~='teacher-list']", "Jordan Rioux")
     render_click(view, "request_teacher_removal", %{"teacher" => "Jordan Rioux"})
     refute has_element?(view, "#teacher-removal-confirmation")
     view |> form("form[phx-submit='add_teacher']", teacher: "Alex Nguyen") |> render_submit()
-    assert has_element?(view, ".cp-teacher-list", "Alex Nguyen")
+    assert has_element?(view, "[data-ui~='teacher-list']", "Alex Nguyen")
     view |> element("#teacher-remove-AN") |> render_click()
-    assert has_element?(view, ".cp-teacher-list", "Alex Nguyen")
+    assert has_element?(view, "[data-ui~='teacher-list']", "Alex Nguyen")
     view |> element("#teacher-removal-confirmation button", "Remove") |> render_click()
-    refute has_element?(view, ".cp-teacher-list", "Alex Nguyen")
+    refute has_element?(view, "[data-ui~='teacher-list']", "Alex Nguyen")
   end
 
   test "teacher removal requires confirmation and closing or cancelling discards it", %{
     conn: conn
   } do
     {:ok, view, _} = live(conn, "/classrooms/programming")
-    view |> element(".cp-teachers-link") |> render_click()
+    view |> element("[data-ui~='teachers-link']") |> render_click()
     render_click(view, "remove_teacher", %{"name" => "Camille Bergeron"})
-    assert has_element?(view, ".cp-teacher-list", "Camille Bergeron")
+    assert has_element?(view, "[data-ui~='teacher-list']", "Camille Bergeron")
     view |> element("#teacher-remove-CB") |> render_click()
 
     assert has_element?(
@@ -189,28 +203,28 @@ defmodule GradePushWeb.TeacherLiveTest do
 
     view |> element("#cancel-teacher-removal") |> render_click()
     refute has_element?(view, "#teacher-removal-confirmation")
-    assert has_element?(view, ".cp-teacher-list", "Camille Bergeron")
+    assert has_element?(view, "[data-ui~='teacher-list']", "Camille Bergeron")
     render_click(view, "remove_teacher", %{})
-    assert has_element?(view, ".cp-teacher-list", "Camille Bergeron")
+    assert has_element?(view, "[data-ui~='teacher-list']", "Camille Bergeron")
     view |> element("#teacher-remove-CB") |> render_click()
     render_click(view, "close")
-    view |> element(".cp-teachers-link") |> render_click()
+    view |> element("[data-ui~='teachers-link']") |> render_click()
     refute has_element?(view, "#teacher-removal-confirmation")
     view |> element("#teacher-remove-CB") |> render_click()
     view |> element("#teacher-removal-confirmation button", "Remove") |> render_click()
-    refute has_element?(view, ".cp-teacher-list", "Camille Bergeron")
+    refute has_element?(view, "[data-ui~='teacher-list']", "Camille Bergeron")
     assert has_element?(view, "#class-dialog")
     render_patch(view, "/classrooms/web-development")
-    view |> element(".cp-teachers-link") |> render_click()
-    assert has_element?(view, ".cp-teacher-list", "Camille Bergeron")
+    view |> element("[data-ui~='teachers-link']") |> render_click()
+    assert has_element?(view, "[data-ui~='teacher-list']", "Camille Bergeron")
   end
 
   test "French deep links and unknown classes render without exposing the old dashboard", %{
     conn: conn
   } do
     {:ok, view, _} = live(conn, "/classrooms/programming?tab=students&locale=fr")
-    assert has_element?(view, ".cp-tabs a[aria-current='page']", "Étudiants")
-    assert has_element?(view, ".cp-student-labels", "Matricule")
+    assert has_element?(view, "[data-ui~='tabs'] a[aria-current='page']", "Étudiants")
+    assert has_element?(view, "[data-ui~='student-labels']", "Matricule")
     {:ok, view, _} = live(conn, "/classrooms/unknown")
     assert has_element?(view, "h1", "Classroom not found")
     refute has_element?(view, ".sidebar")
@@ -226,16 +240,20 @@ defmodule GradePushWeb.TeacherLiveTest do
           {"data-structures", ~w(linked-list)}
         ] do
       render_patch(view, "/classrooms/#{classroom}")
-      assert has_element?(view, ".cp-class-session")
+      assert has_element?(view, "[data-ui~='class-session']")
 
       for key <- keys do
         view
-        |> element("a.cp-assignment[href='/classrooms/#{classroom}/assignments/#{key}']")
+        |> element("a[data-ui~='assignment'][href='/classrooms/#{classroom}/assignments/#{key}']")
         |> render_click()
 
-        assert has_element?(view, ".cp-instructions")
+        assert has_element?(view, "[data-ui~='instructions']")
         assert has_element?(view, "#assignment-submissions-title")
-        view |> element(".cp-breadcrumbs a[href='/classrooms/#{classroom}']") |> render_click()
+
+        view
+        |> element("[data-ui~='breadcrumbs'] a[href='/classrooms/#{classroom}']")
+        |> render_click()
+
         assert_patch(view, "/classrooms/#{classroom}")
       end
     end
@@ -244,18 +262,18 @@ defmodule GradePushWeb.TeacherLiveTest do
   test "assignment progress includes unaccepted students and distinguishes unused repositories",
        %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms/programming/assignments/cli")
-    assert has_element?(view, ".cp-submission-table thead", "Test score")
+    assert has_element?(view, "[data-ui~='submission-table'] thead", "Test score")
 
     assert has_element?(
              view,
-             "#submission-mia-leduc .cp-push-cell .cp-dash[aria-label='No pushes']"
+             "#submission-mia-leduc [data-ui~='push-cell'] [data-ui~='dash'][aria-label='No pushes']"
            )
 
     refute has_element?(view, "#submission-mia-leduc button")
 
     assert has_element?(
              view,
-             "#submission-maude-gauthier .cp-push-cell .cp-dash[aria-label='No pushes']"
+             "#submission-maude-gauthier [data-ui~='push-cell'] [data-ui~='dash'][aria-label='No pushes']"
            )
 
     assert has_element?(view, "#submission-maude-gauthier button[disabled]")
@@ -270,7 +288,7 @@ defmodule GradePushWeb.TeacherLiveTest do
 
   test "late work and team repositories use their own assignment data", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms/programming/assignments/loops")
-    refute has_element?(view, ".cp-submission-table thead", "Test score")
+    refute has_element?(view, "[data-ui~='submission-table'] thead", "Test score")
     view |> form("#submission-search", status: "late", query: "") |> render_change()
     assert has_element?(view, "#submission-max-fortin", "Sep 19")
     refute has_element?(view, "#submission-amelie-fortin")
@@ -288,14 +306,14 @@ defmodule GradePushWeb.TeacherLiveTest do
     assert has_element?(view, "#submission-team-1")
     refute has_element?(view, "#submission-team-2")
     render_patch(view, "/classrooms/programming/assignments/functions")
-    assert has_element?(view, ".cp-empty", "No teams yet")
+    assert has_element?(view, "[data-ui~='empty']", "No teams yet")
   end
 
   test "assignment invitations are explicit examples and cross-class URLs do not resolve", %{
     conn: conn
   } do
     {:ok, view, _} = live(conn, "/classrooms/programming/assignments/cli")
-    view |> element(".cp-assignment-heading button") |> render_click()
+    view |> element("[data-ui~='assignment-heading'] button") |> render_click()
 
     assert has_element?(
              view,
@@ -305,17 +323,17 @@ defmodule GradePushWeb.TeacherLiveTest do
     assert has_element?(view, "[role='dialog']", "Invitations are not active")
     render_patch(view, "/classrooms/web-development/assignments/cli")
     assert has_element?(view, "h1", "Assignment not found")
-    refute has_element?(view, ".cp-submission-table")
+    refute has_element?(view, "[data-ui~='submission-table']")
   end
 
   test "submission columns show activity and weighted scores without duplicate progress", %{
     conn: conn
   } do
     {:ok, view, _} = live(conn, "/classrooms/programming/assignments/cli")
-    refute has_element?(view, ".cp-submission-table thead", "Progress")
+    refute has_element?(view, "[data-ui~='submission-table'] thead", "Progress")
     refute render(view) =~ "Same scale for everyone"
-    assert has_element?(view, "#submission-camille-roy .cp-test-score", "60")
-    assert has_element?(view, "#submission-camille-roy .cp-test-score", "100")
+    assert has_element?(view, "#submission-camille-roy [data-ui~='test-score']", "60")
+    assert has_element?(view, "#submission-camille-roy [data-ui~='test-score']", "100")
     assert has_element?(view, "#submission-amelie-fortin svg[role='img']")
     refute has_element?(view, "#submission-maude-gauthier svg")
 
@@ -324,20 +342,20 @@ defmodule GradePushWeb.TeacherLiveTest do
              "#submission-amelie-fortin a[href='https://github.com/amelie-fortin'][rel='noopener noreferrer']"
            )
 
-    view |> element(".cp-assignment-tabs a", "Tests") |> render_click()
+    view |> element("#assignment-sections a", "Tests") |> render_click()
     assert_patch(view, "/classrooms/programming/assignments/cli?view=tests")
     assert has_element?(view, "#test-catalog-title", "Automatic tests")
-    assert has_element?(view, ".cp-test-list li", "40 points")
-    refute has_element?(view, ".cp-submission-table")
-    view |> element(".cp-assignment-tabs a", "Submissions") |> render_click()
-    assert has_element?(view, ".cp-submission-table")
+    assert has_element?(view, "[data-ui~='test-list'] li", "40 points")
+    refute has_element?(view, "[data-ui~='submission-table']")
+    view |> element("#assignment-sections a", "Submissions") |> render_click()
+    assert has_element?(view, "[data-ui~='submission-table']")
   end
 
   test "tests deep link and copy feedback are localized and non-destructive", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms/programming/assignments/loops?view=tests&locale=fr")
-    assert has_element?(view, ".cp-empty", "Aucun test automatique")
-    assert has_element?(view, ".cp-language[href*='view=tests']")
-    view |> element(".cp-assignment-heading button") |> render_click()
+    assert has_element?(view, "[data-ui~='empty']", "Aucun test automatique")
+    assert has_element?(view, "[data-ui~='language'][href*='view=tests']")
+    view |> element("[data-ui~='assignment-heading'] button") |> render_click()
 
     assert has_element?(
              view,

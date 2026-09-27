@@ -89,14 +89,14 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     %{user: teacher} = bootstrap_fixture()
     classroom = classroom_fixture(teacher, %{session: "Cohorte soir 2027–2028"})
     {:ok, view, _} = conn |> log_in_user(teacher) |> live("/classrooms/#{classroom.slug}")
-    view |> element(".cp-class-heading button") |> render_click()
+    view |> element("[data-ui~='class-heading'] button") |> render_click()
     assert has_element?(view, "select[name='class[semester]'] option[value='legacy'][selected]")
     view |> form("#class-form", class: %{name: "Evening class"}) |> render_submit()
 
     assert {:ok, %{session: "Cohorte soir 2027–2028"}} =
              Classrooms.get_classroom(teacher, classroom.slug)
 
-    view |> element(".cp-class-heading button") |> render_click()
+    view |> element("[data-ui~='class-heading'] button") |> render_click()
     view |> form("#class-form", class: %{semester: "", academic_year: ""}) |> render_submit()
 
     assert {:ok, %{session: "", semester: nil, academic_year: nil}} =
@@ -111,7 +111,7 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     {:ok, view, html} = live(conn, "/classrooms/#{classroom.slug}")
     assert html =~ classroom.title
 
-    view |> element(".cp-class-heading button") |> render_click()
+    view |> element("[data-ui~='class-heading'] button") |> render_click()
     assert has_element?(view, "input[type='text'][name='class[academic_year]']")
 
     view
@@ -229,7 +229,7 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     teacher_membership_fixture(colleague)
     {:ok, _} = Classrooms.add_teacher(teacher, classroom.id, colleague.id)
     {:ok, view, _} = conn |> log_in_user(teacher) |> live("/classrooms/#{classroom.slug}")
-    view |> element(".cp-teachers-link") |> render_click()
+    view |> element("[data-ui~='teachers-link']") |> render_click()
     assert has_element?(view, "[role='dialog']", "Colleague")
     render_click(view, "close")
     assert {:ok, current} = Classrooms.get_classroom(teacher, classroom.slug)

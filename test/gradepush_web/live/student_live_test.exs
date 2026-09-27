@@ -39,25 +39,25 @@ defmodule GradePushWeb.StudentLiveTest do
     context.assignment |> Ecto.Changeset.change(published_at: nil) |> GradePush.Repo.update!()
     conn = log_in_user(conn, student)
     {:ok, view, _} = live(conn, "/student/classrooms?locale=fr")
-    assert has_element?(view, ".cp-term-group:first-of-type h2", "Hiver 2027")
-    assert has_element?(view, ".cp-term-group:last-of-type h2", "Automne 2026")
+    assert has_element?(view, "[data-ui~='term-group']:first-of-type h2", "Hiver 2027")
+    assert has_element?(view, "[data-ui~='term-group']:last-of-type h2", "Automne 2026")
 
     assert has_element?(
              view,
-             "a[href='/student/classrooms/#{classroom.slug}'] .cp-card-counts",
+             "a[href='/student/classrooms/#{classroom.slug}'] [data-ui~='card-counts']",
              "0 devoir"
            )
 
-    assert has_element?(view, ".cp-card-teachers", teacher.name)
-    refute has_element?(view, "#profile-menu .cp-sign-out-group")
-    refute has_element?(view, "#profile-menu .cp-profile-divider")
+    assert has_element?(view, "[data-ui~='card-teachers']", teacher.name)
+    refute has_element?(view, "#profile-menu [data-ui~='sign-out-group']")
+    refute has_element?(view, "#profile-menu [data-ui~='profile-divider']")
     refute has_element?(view, "#profile-menu a[href='/teacher/settings']")
 
     assignment_fixture(teacher, classroom)
 
     assert has_element?(
              view,
-             "a[href='/student/classrooms/#{classroom.slug}'] .cp-card-counts",
+             "a[href='/student/classrooms/#{classroom.slug}'] [data-ui~='card-counts']",
              "1 devoir"
            )
 
@@ -68,8 +68,8 @@ defmodule GradePushWeb.StudentLiveTest do
         academic_year: "2025"
       })
 
-    assert has_element?(view, ".cp-term-group:first-of-type h2", "Automne 2026")
-    assert has_element?(view, ".cp-term-group:last-of-type h2", "Été 2025")
+    assert has_element?(view, "[data-ui~='term-group']:first-of-type h2", "Automne 2026")
+    assert has_element?(view, "[data-ui~='term-group']:last-of-type h2", "Été 2025")
     {:ok, _} = Classrooms.archive_classroom(teacher, winter.id)
     refute has_element?(view, "a[href='/student/classrooms/#{winter.slug}']")
   end

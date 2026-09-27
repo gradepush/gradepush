@@ -20,22 +20,26 @@ defmodule GradePushWeb.SignInLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="class-preview">
-      <div class="cp-shell">
+    <.page public>
+      <div class="min-h-screen flex flex-col">
         <WorkspaceLayout.public_header locale={@locale} path="/auth/sign-in" />
-        <main class="cp-main">
-          <div class="cp-empty">
+        <.page_content>
+          <.empty_state>
             <h1>{gettext("Sign in with GitHub")}</h1>
             <p>{gettext("Sign in with GitHub to return to your classrooms.")}</p>
             <.button href="/auth/github" variant="primary">{gettext("Continue on GitHub")}</.button>
-            <p :if={Phoenix.Flash.get(@flash, :error)} class="cp-error" role="alert">
+            <.notice
+              :if={Phoenix.Flash.get(@flash, :error)}
+              kind="error"
+              role="alert"
+            >
               {Phoenix.Flash.get(@flash, :error)}
-            </p>
-          </div>
-        </main>
+            </.notice>
+          </.empty_state>
+        </.page_content>
         <WorkspaceLayout.footer context={:public} links={@footer_links} />
       </div>
-    </div>
+    </.page>
     """
   end
 end

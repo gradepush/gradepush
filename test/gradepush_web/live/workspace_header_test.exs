@@ -28,32 +28,32 @@ defmodule GradePushWeb.WorkspaceHeaderTest do
 
   test "teacher navigation opens settings and the connection preview", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms/programming?locale=fr")
-    assert has_element?(view, ".cp-navigation a[aria-current='page']", "Classes")
+    assert has_element?(view, "[data-ui~='navigation'] a[aria-current='page']", "Classes")
     assert has_element?(view, "#profile-menu", "Cégep de Sorel-Tracy")
-    refute has_element?(view, ".cp-institution")
-    assert has_element?(view, ".cp-profile-identity .cp-avatar", "JR")
+    refute has_element?(view, "[data-ui~='institution']")
+    assert has_element?(view, "[data-ui~='profile-identity'] [data-avatar]", "JR")
 
-    view |> element(".cp-navigation a[href='/teacher/settings']") |> render_click()
+    view |> element("[data-ui~='navigation'] a[href='/teacher/settings']") |> render_click()
     assert_patch(view, "/teacher/settings")
     assert has_element?(view, "h1", "Paramètres")
-    assert has_element?(view, ".cp-navigation a[aria-current='page']", "Paramètres")
+    assert has_element?(view, "[data-ui~='navigation'] a[aria-current='page']", "Paramètres")
     assert has_element?(view, "#github-account-title", "Compte GitHub")
-    refute has_element?(view, ".cp-organization-row")
+    refute has_element?(view, "[data-ui~='organization-row']")
 
     view
-    |> element(".cp-settings-nav a[href='/teacher/settings?section=organizations']")
+    |> element("[data-ui~='settings-nav'] a[href='/teacher/settings?section=organizations']")
     |> render_click()
 
     assert_patch(view, "/teacher/settings?section=organizations")
-    assert has_element?(view, ".cp-settings-nav a[aria-current='page']", "Organisations")
+    assert has_element?(view, "[data-ui~='settings-nav'] a[aria-current='page']", "Organisations")
     refute has_element?(view, "#github-account-title")
-    assert has_element?(view, ".cp-organization-row", "cegep-sorel-tracy")
-    view |> element(".cp-settings-actions button") |> render_click()
+    assert has_element?(view, "[data-ui~='organization-row']", "cegep-sorel-tracy")
+    view |> element("[data-ui~='settings-actions'] button") |> render_click()
     assert has_element?(view, "[role='dialog']", "Aucune permission ne sera modifiée")
     assert has_element?(view, "[role='dialog'] button[disabled]", "Continuer sur GitHub")
     render_click(view, "close")
     refute has_element?(view, "[role='dialog']")
-    view |> element(".cp-navigation a[href='/classrooms']") |> render_click()
+    view |> element("[data-ui~='navigation'] a[href='/classrooms']") |> render_click()
     assert has_element?(view, "h1", "Mes classes")
   end
 
@@ -63,10 +63,10 @@ defmodule GradePushWeb.WorkspaceHeaderTest do
 
     assert has_element?(
              view,
-             ".cp-language[href*='section=organizations'][href*='locale=en']"
+             "[data-ui~='language'][href*='section=organizations'][href*='locale=en']"
            )
 
-    view |> element(".cp-settings-nav a[href='/teacher/settings']") |> render_click()
+    view |> element("[data-ui~='settings-nav'] a[href='/teacher/settings']") |> render_click()
     assert has_element?(view, "#github-account-title")
     refute has_element?(view, "#github-organizations-title")
     render_patch(view, "/teacher/settings?section=unknown")
@@ -82,11 +82,11 @@ defmodule GradePushWeb.WorkspaceHeaderTest do
 
       assert has_element?(
                view,
-               ".cp-language[lang='#{target}'][href*='locale=#{target}'][href*='view=tests']",
+               "[data-ui~='language'][lang='#{target}'][href*='locale=#{target}'][href*='view=tests']",
                String.upcase(target)
              )
 
-      assert has_element?(view, ".cp-language .hero-globe-alt")
+      assert has_element?(view, "[data-ui~='language'] .hero-globe-alt")
     end
   end
 
@@ -95,12 +95,12 @@ defmodule GradePushWeb.WorkspaceHeaderTest do
     view |> element("#profile-menu a[href='/signed-out']") |> render_click()
     assert_patch(view, "/signed-out")
     assert has_element?(view, "h1", "See you soon")
-    assert has_element?(view, ".cp-sign-in", "simulated in this preview")
-    refute has_element?(view, ".cp-navigation")
+    assert has_element?(view, "[data-ui~='sign-in']", "simulated in this preview")
+    refute has_element?(view, "[data-ui~='navigation']")
     refute has_element?(view, "#profile-menu")
-    view |> element(".cp-sign-in a") |> render_click()
+    view |> element("[data-ui~='sign-in'] a") |> render_click()
     assert_patch(view, "/classrooms")
-    assert has_element?(view, ".cp-navigation")
+    assert has_element?(view, "[data-ui~='navigation']")
     assert has_element?(view, "h1", "My classrooms")
   end
 end

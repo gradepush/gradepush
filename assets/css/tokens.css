@@ -1,4 +1,40 @@
 @theme {
+  --color-connection: #31634b;
+  --color-connection-dot: #397c59;
+  --color-error-surface: #fff0f1;
+  --color-success-surface: #eff8f3;
+  --color-success-ink: #246445;
+  --color-brand-outline: #94afff;
+  --color-card-meta: #3e4b62;
+  --color-card-divider: #e8ecf4;
+  --shadow-classroom: 0 2px 3px #263a6003, 0 12px 30px -22px #1e356d35;
+  --shadow-classroom-hover: 0 7px 26px -9px #23438124;
+  --color-avatar: #eef1f7;
+  --color-avatar-small: #e9eefb;
+  --color-avatar-ink: #314b8f;
+  --color-list-divider: #d4deed;
+  --color-body: #202838;
+  --color-canvas: #f5f7fb;
+  --color-panel: #dfe5f0;
+  --color-surface-hover: #f8faff;
+  --color-heading: #303c50;
+  --color-subtle: #e0e5ee;
+  --color-neutral-hover: #f3f5f8;
+  --color-selected: #edf0f4;
+  --color-faint: #8994a6;
+  --color-soft: #eef1f5;
+  --color-secondary: #4c5970;
+  --color-error: #a32a38;
+  --color-success: #167044;
+  --color-failure: #a52a2a;
+  --color-warning: #96631e;
+  --color-divider: #dce3ef;
+  --color-brand-soft: #edf2ff;
+  --color-brand-strong: #1644d2;
+  --color-icon: #77849a;
+  --color-caption: #5c687d;
+  --shadow-panel: 0 8px 28px -24px #203f6f40;
+  --shadow-overview: 0 12px 32px -26px #203f6f40;
   --color-brand: #2052f2;
   --color-brand-hover: #1a43cc;
   --color-ink: #1c2435;
@@ -9,12 +45,4 @@
   --color-danger: #b4313d;
   --color-danger-hover: #952331;
   --shadow-button: 0 3px 0 #123ad418, 0 5px 15px #2052f215;
-}
-
-:root {
-  --blue: var(--color-brand);
-  --ink: var(--color-ink);
-  --line: var(--color-line);
-  --surface-heading: var(--color-surface-heading);
-  --cp-muted: var(--color-muted);
 }

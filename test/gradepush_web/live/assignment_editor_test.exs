@@ -18,11 +18,11 @@ defmodule GradePushWeb.AssignmentEditorTest do
 
     path = assert_patch(view)
     assert has_element?(view, "h1", "Sorting lab")
-    assert has_element?(view, ".cp-markdown h4", "Goals")
-    assert has_element?(view, ".cp-markdown strong", "Sort")
-    assert has_element?(view, ".cp-assignment-facts", "No deadline")
-    refute has_element?(view, ".cp-test-score")
-    assert has_element?(view, ".cp-submissions-heading", "0 of 28")
+    assert has_element?(view, ".markdown h4", "Goals")
+    assert has_element?(view, ".markdown strong", "Sort")
+    assert has_element?(view, "[data-ui~='assignment-facts']", "No deadline")
+    refute has_element?(view, "[data-ui~='test-score']")
+    assert has_element?(view, "[data-ui~='submissions-heading']", "0 of 28")
 
     view |> element("a", "Edit assignment") |> render_click()
     assert has_element?(view, "input[name='assignment[title]'][value='Sorting lab']")
@@ -36,9 +36,9 @@ defmodule GradePushWeb.AssignmentEditorTest do
     refute has_element?(view, "input[name='assignment[cutoff]'][type=checkbox][disabled]")
     view |> form("#assignment-form", assignment: %{cutoff: "true"}) |> render_submit()
     assert_patch(view, path)
-    assert has_element?(view, ".cp-assignment-facts", "October 15, 2026 at 16:30")
+    assert has_element?(view, "[data-ui~='assignment-facts']", "October 15, 2026 at 16:30")
     render_patch(view, "/classrooms/programming")
-    assert has_element?(view, ".cp-assignment", "Sorting algorithms")
+    assert has_element?(view, "[data-ui~='assignment']", "Sorting algorithms")
     render_patch(view, path)
     assert has_element?(view, "h1", "Sorting algorithms")
     view |> element("a", "Edit assignment") |> render_click()
@@ -64,9 +64,9 @@ defmodule GradePushWeb.AssignmentEditorTest do
     assert has_element?(view, "#assignment_title-errors", "can't be blank")
     assert_push_event(view, "focus-invalid", %{id: "assignment-form"})
     assert has_element?(view, "input[value='other-org/private']")
-    view |> element(".cp-editor-actions a", "Cancel") |> render_click()
+    view |> element("[data-ui~='editor-actions'] a", "Cancel") |> render_click()
     assert_patch(view, "/classrooms/programming")
-    refute has_element?(view, ".cp-assignment:nth-of-type(4)")
+    refute has_element?(view, "[data-ui~='assignment']:nth-of-type(4)")
   end
 
   test "tests can be added, removed and scored on a new team assignment", %{conn: conn} do
@@ -105,12 +105,18 @@ defmodule GradePushWeb.AssignmentEditorTest do
     view |> element("button[phx-value-index='1']") |> render_click()
     view |> form("#assignment-form") |> render_submit()
     path = assert_patch(view)
-    assert has_element?(view, ".cp-empty", "No teams yet")
-    view |> element(".cp-assignment-tabs a", "Tests") |> render_click()
-    assert has_element?(view, ".cp-test-list", "Source exists")
-    assert has_element?(view, ".cp-test-list p", "Include the entry point for your program.")
-    assert has_element?(view, ".cp-test-list", "25 points")
-    assert has_element?(view, ".cp-test-command", "main.py")
+    assert has_element?(view, "[data-ui~='empty']", "No teams yet")
+    view |> element("#assignment-sections a", "Tests") |> render_click()
+    assert has_element?(view, "[data-ui~='test-list']", "Source exists")
+
+    assert has_element?(
+             view,
+             "[data-ui~='test-list'] p",
+             "Include the entry point for your program."
+           )
+
+    assert has_element?(view, "[data-ui~='test-list']", "25 points")
+    assert has_element?(view, "[data-ui~='test-command']", "main.py")
     render_patch(view, path <> "/edit")
     assert has_element?(view, "option[value='teacher'][selected]")
     assert has_element?(view, "input[name='assignment[team_size]'][value='3']")
@@ -130,7 +136,7 @@ defmodule GradePushWeb.AssignmentEditorTest do
     assert has_element?(view, "select[name='assignment[kind]'][disabled]")
     view |> form("#assignment-form", assignment: %{title: "CLI revised"}) |> render_submit()
     assert_patch(view, "/classrooms/programming/assignments/cli")
-    assert has_element?(view, "#submission-camille-roy .cp-test-score", "60")
+    assert has_element?(view, "#submission-camille-roy [data-ui~='test-score']", "60")
     view |> element("a", "Edit assignment") |> render_click()
 
     assert has_element?(
@@ -142,7 +148,7 @@ defmodule GradePushWeb.AssignmentEditorTest do
     |> form("#assignment-form", assignment: %{tests: %{"0" => %{points: "50"}}})
     |> render_submit()
 
-    refute has_element?(view, ".cp-test-score")
+    refute has_element?(view, "[data-ui~='test-score']")
     assert has_element?(view, "#submission-amelie-fortin")
   end
 
@@ -169,17 +175,23 @@ defmodule GradePushWeb.AssignmentEditorTest do
     )
     |> render_submit()
 
-    assert has_element?(view, "#submission-camille-roy .cp-test-score", "60")
-    view |> element(".cp-assignment-tabs a", "Tests") |> render_click()
-    assert has_element?(view, ".cp-test-list p", "Help students discover available options.")
+    assert has_element?(view, "#submission-camille-roy [data-ui~='test-score']", "60")
+    view |> element("#assignment-sections a", "Tests") |> render_click()
+
+    assert has_element?(
+             view,
+             "[data-ui~='test-list'] p",
+             "Help students discover available options."
+           )
+
     view |> element("a", "Edit assignment") |> render_click()
 
     view
     |> form("#assignment-form", assignment: %{tests: %{"0" => %{description: ""}}})
     |> render_submit()
 
-    view |> element(".cp-assignment-tabs a", "Tests") |> render_click()
-    refute has_element?(view, ".cp-test-list li:first-child p")
-    assert has_element?(view, ".cp-test-list li:first-child h3", "Help flag")
+    view |> element("#assignment-sections a", "Tests") |> render_click()
+    refute has_element?(view, "[data-ui~='test-list'] li:first-child p")
+    assert has_element?(view, "[data-ui~='test-list'] li:first-child h3", "Help flag")
   end
 end

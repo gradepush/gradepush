@@ -1,5 +1,5 @@
-<div class="class-preview cp-workspace">
-  <div class="cp-shell">
+<.page>
+  <div class="min-h-screen flex flex-col">
     <a class="skip-link" href="#student-content">{gettext("Skip to content")}</a>
     <WorkspaceLayout.header
       user={@user}
@@ -11,15 +11,21 @@
       locale={@locale}
       language_urls={Map.new(~w(en fr), &{&1, @path <> "?locale=" <> &1})}
     />
-    <main id="student-content" class="cp-main cp-student-main" tabindex="-1">
+    <.page_content
+      id="student-content"
+      student
+      tabindex="-1"
+    >
       <%= cond do %>
         <% @live_action == :index -> %>
-          <div class="cp-heading">
+          <.page_heading>
             <div>
-              <p class="cp-context">{gettext("Learning")}</p><h1>{gettext("My classrooms")}</h1>
+              <.eyebrow>
+                {gettext("Learning")}
+              </.eyebrow><h1>{gettext("My classrooms")}</h1>
             </div>
-          </div>
-          <div :if={@classes == []} class="cp-empty">
+          </.page_heading>
+          <.empty_state :if={@classes == []}>
             <.icon name="hero-academic-cap" class="size-8" />
             <h2>{gettext("No classrooms yet")}</h2>
             <p>
@@ -27,7 +33,7 @@
                 "Use an invitation link from your teacher to join a classroom or accept an assignment."
               )}
             </p>
-          </div>
+          </.empty_state>
           <ClassroomComponents.grouped_classes :let={classroom} classes={@classes}>
             <ClassroomComponents.card
               path={"/student/classrooms/#{classroom.slug}"}
@@ -39,26 +45,28 @@
             />
           </ClassroomComponents.grouped_classes>
         <% is_nil(@classroom) or (@live_action == :assignment and is_nil(@assignment)) -> %>
-          <div class="cp-empty">
+          <.empty_state>
             <h1>{gettext("This page is not available.")}</h1><.button navigate="/student/classrooms">{gettext(
               "My classrooms"
             )}</.button>
-          </div>
+          </.empty_state>
         <% @live_action == :show -> %>
           <ClassroomComponents.breadcrumbs items={[
             {gettext("Classrooms"), "/student/classrooms"},
             {@classroom.title, nil}
           ]} />
-          <div class="cp-heading">
+          <.page_heading>
             <div>
-              <p :if={@classroom.code not in [nil, ""]} class="cp-context">{@classroom.code}</p><h1>
+              <.eyebrow :if={@classroom.code not in [nil, ""]}>
+                {@classroom.code}
+              </.eyebrow><h1>
                 {@classroom.title}
-              </h1><p class="cp-lead">
+              </h1><.lead>
                 {@classroom.description}
-              </p>
+              </.lead>
             </div>
-          </div>
-          <div class="cp-class-meta">
+          </.page_heading>
+          <.classroom_meta>
             <span :if={Presentation.classroom_term(@classroom) != ""}><.icon
               name="hero-calendar-days"
               class="size-4"
@@ -68,46 +76,50 @@
               ", ",
               &Presentation.user(&1.user).name
             )}</span>
-          </div>
-          <div class="cp-toolbar">
-            <h2>{gettext("Assignments")}</h2><span class="cp-list-count">{length(@assignments)}</span>
-          </div>
-          <div :if={@assignments == []} class="cp-empty">
+          </.classroom_meta>
+          <.list_toolbar>
+            <h2>{gettext("Assignments")}</h2><span class="text-[13px] text-muted">{length(
+              @assignments
+            )}</span>
+          </.list_toolbar>
+          <.empty_state :if={@assignments == []}>
             <p>{gettext("No assignments yet")}</p>
-          </div>
-          <.data_list
-            :if={@assignments != []}
-            class="cp-assignment-list cp-student-assignment-list"
-          >
-            <div class="cp-assignment-labels">
+          </.empty_state>
+          <.data_list :if={@assignments != []}>
+            <.list_header kind="student_assignments">
               <span>{gettext("Assignment")}</span><span>{gettext("Deadline")}</span><span>{gettext(
                 "Latest push"
               )}</span>
-            </div>
-            <.link
+            </.list_header>
+            <.list_row
               :for={entry <- @assignments}
               patch={assignment_path(@classroom, entry.assignment)}
-              class="cp-assignment"
+              kind="student_assignments"
             >
-              <div class="cp-assignment-name">
-                <span class="cp-file-icon"><.icon name="hero-document-text" class="size-5" /></span>
+              <div class="flex items-center min-w-0 gap-[14px] max-[760px]:col-span-full">
+                <span class="text-icon inline-flex"><.icon
+                  name="hero-document-text"
+                  class="size-5"
+                /></span>
                 <div>
                   <h3>{entry.assignment.title}</h3><p :if={!entry.subject}>
                     {gettext("Not accepted")}
                   </p>
                 </div>
               </div>
-              <div class="cp-due">
-                <span class="cp-mobile-label">{gettext("Deadline")}</span>{due(
-                  deadline(entry.assignment, entry.subject)
-                )}
+              <div class="wrap-anywhere text-[13px] text-caption">
+                <span
+                  data-ui="mobile-label"
+                  class="hidden max-[760px]:block max-[760px]:text-[11px] max-[760px]:text-muted max-[760px]:mb-[3px]"
+                >{gettext("Deadline")}</span>{due(deadline(entry.assignment, entry.subject))}
               </div>
-              <div class="cp-due">
-                <span class="cp-mobile-label">{gettext("Latest push")}</span>{push_time(
-                  entry.latest_push
-                )}
+              <div class="wrap-anywhere text-[13px] text-caption">
+                <span
+                  data-ui="mobile-label"
+                  class="hidden max-[760px]:block max-[760px]:text-[11px] max-[760px]:text-muted max-[760px]:mb-[3px]"
+                >{gettext("Latest push")}</span>{push_time(entry.latest_push)}
               </div>
-            </.link>
+            </.list_row>
           </.data_list>
         <% true -> %>
           <ClassroomComponents.breadcrumbs items={[
@@ -115,16 +127,18 @@
             {@classroom.title, "/student/classrooms/#{@classroom.slug}"},
             {@assignment.title, nil}
           ]} />
-          <div class="cp-student-overview">
-            <div class="cp-heading">
+          <.overview kind="student">
+            <.page_heading variant="student">
               <div>
-                <p class="cp-context">{gettext("Assignment")}</p>
+                <.eyebrow>
+                  {gettext("Assignment")}
+                </.eyebrow>
                 <h1>{@assignment.title}</h1>
-                <p class="cp-lead cp-deadline">
+                <.lead class="flex items-center gap-[8px] [&>span]:shrink-0">
                   <.icon name="hero-calendar-days" class="size-4" />{deadline_label(
                     deadline(@assignment, @subject)
                   )}
-                </p>
+                </.lead>
               </div>
               <.button
                 :if={repository_url(@repository)}
@@ -135,31 +149,31 @@
               ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
                 "Open repository"
               )}</.button>
-            </div>
-            <div class="cp-assignment-facts">
+            </.page_heading>
+            <.assignment_facts>
               <span><.icon name="hero-user-group" class="size-4" />{if @assignment.kind == "team",
                 do: gettext("Team assignment"),
                 else: gettext("Individual assignment")}</span>
-              <span :if={@subject && @subject.team} class="cp-student-team">
+              <span :if={@subject && @subject.team} data-team class="[&_strong]:font-[550]">
                 <strong>{@subject.team.name}</strong>
                 <span>{team_members(@subject.team)}</span>
               </span>
               <span :if={@subject}><.icon name="hero-arrow-up-tray" class="size-4" />{gettext(
                 "Latest push"
               )}: {push_time(@latest_push)}</span>
-            </div>
-          </div>
-          <section :if={!@subject} class="cp-admin-panel">
-            <div class="cp-student-notice">
+            </.assignment_facts>
+          </.overview>
+          <.panel :if={!@subject}>
+            <div class="text-muted py-[20px] px-[22px] [&_p]:m-0 max-[760px]:p-[18px]">
               <p>
                 {gettext(
                   "Use your teacher’s assignment invitation to accept this assignment and create your repository."
                 )}
               </p>
             </div>
-          </section>
-          <section :if={@subject && !repository_url(@repository)} class="cp-admin-panel">
-            <div class="cp-student-notice">
+          </.panel>
+          <.panel :if={@subject && !repository_url(@repository)}>
+            <div class="text-muted py-[20px] px-[22px] [&_p]:m-0 max-[760px]:p-[18px]">
               <p role="status">
                 {if repository_failed?(@repository),
                   do:
@@ -170,31 +184,31 @@
                     gettext("Your repository is being prepared. This page updates automatically.")}
               </p>
             </div>
-          </section>
-          <section class="cp-admin-panel">
-            <div class="cp-admin-panel-heading">
+          </.panel>
+          <.panel>
+            <.panel_heading>
               <h2>{gettext("Assignment instructions")}</h2>
-            </div>
-            <div class="cp-student-instructions cp-markdown">
+            </.panel_heading>
+            <div class="leading-[1.75] wrap-anywhere markdown p-[22px] max-[760px]:p-[18px]">
               <%= if @assignment.instructions in [nil, ""] do %>
-                <p class="cp-empty-copy">{gettext("No instructions provided.")}</p>
+                <p class="text-muted">{gettext("No instructions provided.")}</p>
               <% else %>
                 {Markdown.render(@assignment.instructions, 2)}
               <% end %>
             </div>
-          </section>
-          <section :if={@assignment.autograding_enabled} class="cp-admin-panel">
-            <div class="cp-admin-panel-heading">
+          </.panel>
+          <.panel :if={@assignment.autograding_enabled}>
+            <.panel_heading>
               <h2>{gettext("Automatic tests")}</h2>
-            </div>
+            </.panel_heading>
             <GradingComponents.results
               id="student-test-results"
               tests={@assignment.tests}
               subject={@subject}
             />
-          </section>
+          </.panel>
       <% end %>
-    </main>
+    </.page_content>
     <WorkspaceLayout.footer context={:learning} links={@footer_links} />
   </div>
-</div>
+</.page>

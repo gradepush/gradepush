@@ -80,12 +80,12 @@ defmodule GradePushWeb.SetupLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="class-preview">
-      <div class="cp-shell">
+    <.page public>
+      <div class="min-h-screen flex flex-col">
         <WorkspaceLayout.public_header locale={@locale} path="/setup" />
-        <main class="cp-main">
-          <section class="cp-admin-panel mx-auto" style="max-width: 720px">
-            <div class="cp-admin-panel-heading">
+        <.page_content>
+          <.panel class="mx-auto max-w-[720px]">
+            <.panel_heading>
               <.icon name="hero-building-library" class="size-5" />
               <div>
                 <h1 class="text-xl font-semibold">{gettext("Set up GradePush")}</h1>
@@ -93,15 +93,22 @@ defmodule GradePushWeb.SetupLive do
                   {gettext("Create the institution for this installation and connect its GitHub App.")}
                 </p>
               </div>
-            </div>
+            </.panel_heading>
 
-            <p :if={not @https_ready?} class="cp-admin-panel-note" role="note">
+            <p
+              :if={not @https_ready?}
+              class="border-t border-t-line text-muted text-[12px] py-[16px] px-[22px]"
+              role="note"
+            >
               {gettext(
                 "GitHub needs a public HTTPS address for app callbacks and webhooks. Expose this server through HTTPS before setup."
               )}
             </p>
 
-            <div :if={@configured?} class="cp-admin-settings-form">
+            <div
+              :if={@configured?}
+              class="max-w-[660px] p-[24px] max-[760px]:p-[18px]"
+            >
               <p>{gettext("This GradePush installation is already configured.")}</p>
               <.button href="/auth/sign-in" variant="primary" class="mt-[16px]">
                 {gettext("Sign in with GitHub")}
@@ -117,9 +124,12 @@ defmodule GradePushWeb.SetupLive do
               action={@manifest_action}
               method="post"
               target="_top"
-              class="cp-admin-settings-form cp-form cp-setup-form"
+              class="max-w-[660px] grid p-[24px] gap-[18px] max-[760px]:p-[18px]"
             >
-              <div :if={is_nil(@manifest_action)} class="cp-setup-fields">
+              <div
+                :if={is_nil(@manifest_action)}
+                class="grid gap-[18px]"
+              >
                 <.field for={@form[:institution_name].id}>
                   {gettext("Institution name")}
                   <.input
@@ -142,7 +152,13 @@ defmodule GradePushWeb.SetupLive do
                     maxlength="128"
                     required
                   />
-                  <span class="cp-setup-token-help">
+                  <span
+                    data-ui="setup-token-help"
+                    class={[
+                      "text-muted text-[12px] font-normal leading-[1.6] [&_code]:block [&_code]:mt-[4px] [&_code]:text-body",
+                      "[&_code]:wrap-anywhere [&_code]:whitespace-normal"
+                    ]}
+                  >
                     {gettext("Generate a private setup link with this command:")}
                     <code>docker compose exec app gradepush-setup</code>
                   </span>
@@ -153,19 +169,29 @@ defmodule GradePushWeb.SetupLive do
               </div>
 
               <.input :if={@manifest_action} type="hidden" name="manifest" value={@manifest_json} />
-              <div :if={@manifest_action} class="cp-setup-progress" role="status" aria-live="polite">
+              <div
+                :if={@manifest_action}
+                data-ui="setup-progress"
+                class="items-center bg-[#f6f8fc] border border-line rounded-[8px] text-muted flex min-h-[48px] py-[12px] px-[14px] gap-[10px]"
+                role="status"
+                aria-live="polite"
+              >
                 <.icon name="hero-arrow-path" class="size-4 animate-spin" />
                 <span>{gettext("Opening GitHub...")}</span>
               </div>
             </form>
 
-            <p :if={@error} class="cp-error" role="alert">
+            <.notice
+              :if={@error}
+              kind="error"
+              role="alert"
+            >
               {@error}
-            </p>
-          </section>
-        </main>
+            </.notice>
+          </.panel>
+        </.page_content>
       </div>
-    </div>
+    </.page>
     """
   end
 

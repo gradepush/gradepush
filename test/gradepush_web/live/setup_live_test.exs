@@ -39,7 +39,7 @@ defmodule GradePushWeb.SetupLiveTest do
 
     assert has_element?(
              view,
-             ".cp-setup-token-help code",
+             "[data-ui~='setup-token-help'] code",
              "docker compose exec app gradepush-setup"
            )
 
@@ -48,7 +48,7 @@ defmodule GradePushWeb.SetupLiveTest do
     |> render_submit()
 
     assert has_element?(view, "#setup-form[phx-trigger-action='true']")
-    assert has_element?(view, "#setup-form .cp-setup-progress", "Opening GitHub...")
+    assert has_element?(view, "#setup-form [data-ui~='setup-progress']", "Opening GitHub...")
     assert has_element?(view, "#setup-form input[name='manifest']")
     refute has_element?(view, "#setup-form input[name='setup[institution_name]']")
     refute has_element?(view, "#setup-form input[name='setup[setup_token]']")

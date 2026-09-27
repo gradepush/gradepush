@@ -81,6 +81,8 @@ defmodule GradePushWeb do
       import Phoenix.HTML
       import GradePushWeb.CoreComponents
       import GradePushWeb.NavigationComponents
+      import GradePushWeb.SurfaceComponents
+      import GradePushWeb.ListComponents
 
       alias GradePushWeb.Layouts
       alias Phoenix.LiveView.JS

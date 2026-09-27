@@ -1,0 +1,29 @@
+@layer components {
+.markdown h1 { font-weight: 600; margin: 18px 0 10px; line-height: 1.4; font-size: 22px; }
+.markdown h2 { font-weight: 600; margin: 18px 0 10px; line-height: 1.4; font-size: 19px; }
+.markdown h3 { font-weight: 600; margin: 18px 0 10px; line-height: 1.4; font-size: 16px; }
+.markdown > :first-child { margin-top: 0; }
+.markdown p { margin: 0 0 14px; }
+.markdown ul { padding-left: 24px; margin: 10px 0 16px; list-style: disc; }
+.markdown ol { padding-left: 24px; margin: 10px 0 16px; list-style: decimal; }
+.markdown a { color: var(--color-brand); text-decoration: underline; }
+.markdown pre { overflow: auto; background: #f5f7fa; border-radius: 6px; padding: 12px; font-size: 12px; margin: 12px 0; }
+.markdown code { font-family: ui-monospace, monospace; }
+.markdown table { display: block; overflow-x: auto; border-collapse: collapse; }
+.markdown td { border: 1px solid var(--color-line); padding: 7px; }
+.markdown th { border: 1px solid var(--color-line); padding: 7px; }
+.markdown blockquote { border-left: 3px solid #d7deea; padding-left: 15px; color: var(--color-muted); }
+.markdown img { max-width: 100%; }
+.markdown > :last-child { margin-bottom: 0; }
+.sparkline { width: 110px; height: 34px; display: block; color: #597ad0; }
+.sparkline polyline { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.sparkline circle { fill: currentColor; }
+.sparkline-base { stroke: #e4e9f3; stroke-width: 1; }
+.acceptance-ring circle { fill: none; stroke-width: 4; }
+.ring-track { stroke: #eaf0ff; }
+.ring-progress { stroke: var(--color-brand); stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+@media (prefers-reduced-motion: reduce) { *::before { transition: none !important; scroll-behavior: auto !important; } }
+@media (prefers-reduced-motion: reduce) { *::after { transition: none !important; scroll-behavior: auto !important; } }
+@media (forced-colors: active) { .sparkline { color: CanvasText; } }
+}

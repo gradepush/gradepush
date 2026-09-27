@@ -6,6 +6,45 @@ defmodule GradePushWeb.CoreComponents do
   alias Phoenix.HTML.Form
   alias Phoenix.LiveView.JS
 
+  attr :src, :string, default: nil
+  attr :size, :string, default: "default", values: ~w(default small)
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block
+
+  def user_avatar(assigns) do
+    assigns =
+      assign(assigns, :classes, [
+        "inline-flex shrink-0 items-center justify-center rounded-full object-cover font-semibold",
+        if(assigns.size == "small",
+          do: "size-[29px] bg-avatar-small text-[10px] text-avatar-ink",
+          else: "size-[34px] bg-avatar text-[12px] text-secondary"
+        ),
+        assigns.class
+      ])
+
+    ~H"""
+    <img :if={@src} src={@src} alt="" data-avatar class={@classes} {@rest} />
+    <span :if={!@src} data-avatar class={@classes} {@rest}>{render_slot(@inner_block)}</span>
+    """
+  end
+
+  attr :icon, :string, default: nil
+  slot :inner_block, required: true
+
+  def connection_status(assigns) do
+    ~H"""
+    <span
+      data-ui="connection-state"
+      class="ml-auto inline-flex items-center gap-[6px] whitespace-nowrap text-[11px] text-connection max-[760px]:ml-[50px]"
+    >
+      <.icon :if={@icon} name={@icon} class="size-[16px]" />
+      <span :if={!@icon} class="size-[6px] rounded-full bg-connection-dot" aria-hidden="true"></span>
+      {render_slot(@inner_block)}
+    </span>
+    """
+  end
+
   @doc "Renders an action or navigation link with a shared visual variant."
   attr :variant, :string,
     default: "secondary",
@@ -29,12 +68,18 @@ defmodule GradePushWeb.CoreComponents do
       ])
 
     ~H"""
-    <.link :if={@rest[:href] || @rest[:navigate] || @rest[:patch]} class={@classes} {@rest}>
+    <.link
+      :if={@rest[:href] || @rest[:navigate] || @rest[:patch]}
+      data-variant={@variant}
+      class={@classes}
+      {@rest}
+    >
       {render_slot(@inner_block)}
     </.link>
     <button
       :if={!(@rest[:href] || @rest[:navigate] || @rest[:patch])}
       type={@type}
+      data-variant={@variant}
       class={@classes}
       {@rest}
     >
@@ -49,7 +94,7 @@ defmodule GradePushWeb.CoreComponents do
       variant != "primary" && "disabled:opacity-50",
       button_variant(variant),
       if(variant == "link", do: "font-normal", else: "font-[550]"),
-      variant in ~w(primary secondary danger) && "cp-button gap-[8px] rounded-[9px] border",
+      variant in ~w(primary secondary danger) && "gap-[8px] rounded-[9px] border",
       variant in ~w(primary secondary danger) && button_size(size),
       compact_on_mobile && "max-[760px]:px-[8px] max-[760px]:py-[9px] max-[760px]:text-[12px]"
     ]
@@ -57,7 +102,7 @@ defmodule GradePushWeb.CoreComponents do
 
   defp button_variant("primary"),
     do:
-      "cp-primary border-brand bg-brand text-white shadow-button hover:border-brand-hover hover:bg-brand-hover disabled:opacity-100 disabled:border-[#e4e8f0] disabled:bg-[#edf0f6] disabled:text-[#6a7485]"
+      "border-brand bg-brand text-white shadow-button hover:border-brand-hover hover:bg-brand-hover disabled:opacity-100 disabled:border-[#e4e8f0] disabled:bg-[#edf0f6] disabled:text-[#6a7485]"
 
   defp button_variant("secondary"),
     do: "border-[#dce1e9] bg-white text-ink hover:border-[#c5ccd8] hover:bg-[#f6f8fb]"
@@ -73,7 +118,7 @@ defmodule GradePushWeb.CoreComponents do
 
   defp button_variant("icon"),
     do:
-      "cp-remove size-[32px] rounded-[5px] border-0 bg-transparent p-[7px] text-[#67758a] hover:bg-[#f3f5f9] hover:text-danger"
+      "size-[32px] rounded-[5px] border-0 bg-transparent p-[7px] text-[#67758a] hover:bg-[#f3f5f9] hover:text-danger"
 
   defp button_variant("ghost"),
     do:
@@ -97,7 +142,15 @@ defmodule GradePushWeb.CoreComponents do
 
   def data_list(assigns) do
     ~H"""
-    <div class={["cp-data-list", @class]} {@rest}>{render_slot(@inner_block)}</div>
+    <div
+      class={[
+        "overflow-hidden rounded-[12px] border border-line bg-white shadow-panel [&>[data-list-row]+[data-list-row]]:border-t",
+        @class
+      ]}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </div>
     """
   end
 
@@ -265,7 +318,11 @@ defmodule GradePushWeb.CoreComponents do
     ~H"""
     <label
       for={@id}
-      class="ui-search flex min-h-[44px] min-w-0 items-center gap-2 rounded-[7px] border border-control bg-white px-[12px] text-muted focus-within:border-brand focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand"
+      class={[
+        "ui-search flex min-h-[44px] min-w-0 items-center gap-2 rounded-[7px] border border-control bg-white",
+        "px-[12px] text-muted focus-within:border-brand focus-within:outline-2 focus-within:outline-offset-2",
+        "focus-within:outline-brand"
+      ]}
     >
       <.icon name="hero-magnifying-glass" class="size-4" />
       <span class="sr-only">{@label}</span>
@@ -302,7 +359,7 @@ defmodule GradePushWeb.CoreComponents do
       <.focus_wrap
         id={@dialog_id}
         class={[
-          "cp-modal w-[480px] max-w-full max-h-[calc(100dvh-48px)] overflow-auto rounded-xl bg-white p-[28px] shadow-[0_20px_80px_#14203930] max-[760px]:max-h-[calc(100dvh-32px)] max-[760px]:p-[22px]",
+          "w-[480px] max-w-full max-h-[calc(100dvh-48px)] overflow-auto rounded-xl bg-white p-[28px] shadow-[0_20px_80px_#14203930] [&>p]:text-muted [&>p]:leading-[1.65] max-[760px]:max-h-[calc(100dvh-32px)] max-[760px]:p-[22px]",
           @class
         ]}
         role="dialog"
@@ -310,7 +367,7 @@ defmodule GradePushWeb.CoreComponents do
         aria-labelledby={@title_id}
         phx-mounted={@initial_focus}
       >
-        <div class="cp-modal-heading mb-[22px] flex items-center justify-between gap-4">
+        <div data-ui="modal-heading" class="mb-[22px] flex items-center justify-between gap-4">
           <h2 id={@title_id} tabindex="-1" class="text-[20px] font-semibold tracking-[-.3px]">
             {@title}
           </h2>

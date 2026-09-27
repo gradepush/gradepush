@@ -1,5 +1,5 @@
-<div class="class-preview cp-workspace">
-  <div class="cp-shell" inert={@modal != nil}>
+<.page>
+  <div class="min-h-screen flex flex-col" inert={@modal != nil}>
     <a class="skip-link" href="#class-content">{gettext("Skip to content")}</a>
     <WorkspaceLayout.header
       user={@user}
@@ -17,10 +17,17 @@
         Map.new(~w(fr en), &{&1, locale_url(@path, @tab, @assignment_tab, @settings_section, &1)})
       }
     />
-    <main id="class-content" class="cp-main" tabindex="-1">
-      <p :if={@error && !@modal && @live_action != :settings} class="cp-error" role="alert">
+    <.page_content
+      id="class-content"
+      tabindex="-1"
+    >
+      <.notice
+        :if={@error && !@modal && @live_action != :settings}
+        kind="error"
+        role="alert"
+      >
         {@error}
-      </p>
+      </.notice>
       <%= cond do %>
         <% @live_action == :settings -> %>
           <AccountComponents.settings
@@ -34,17 +41,19 @@
         <% @live_action == :signed_out -> %>
           <AccountComponents.signed_out preview={@preview?} />
         <% @live_action == :index -> %>
-          <div class="cp-heading">
+          <.page_heading>
             <div>
-              <p class="cp-context">{gettext("Teaching")}</p><h1>{gettext("My classrooms")}</h1><p class="cp-lead">
+              <.eyebrow>
+                {gettext("Teaching")}
+              </.eyebrow><h1>{gettext("My classrooms")}</h1><.lead>
                 {gettext("A space for each course, shared with your students and colleagues.")}
-              </p>
+              </.lead>
             </div>
             <.button variant="primary" phx-click={open_modal("create")}><.icon
               name="hero-plus"
               class="size-4"
             />{gettext("Create a classroom")}</.button>
-          </div>
+          </.page_heading>
           <ClassroomComponents.grouped_classes
             :let={classroom}
             :if={@scenario != "empty"}
@@ -60,7 +69,7 @@
               teachers={classroom.teachers}
             />
           </ClassroomComponents.grouped_classes>
-          <div :if={@scenario == "empty"} class="cp-empty">
+          <.empty_state :if={@scenario == "empty"}>
             <.icon name="hero-academic-cap" class="size-8" /><h2>
               {gettext("Your first classroom starts here")}
             </h2><p>
@@ -68,7 +77,7 @@
             </p><.button variant="primary" phx-click={open_modal("create")}>{gettext(
               "Create a classroom"
             )}</.button>
-          </div>
+          </.empty_state>
         <% @live_action in [:new_assignment, :edit_assignment] and @classroom != nil and (@live_action == :new_assignment or @assignment != nil) -> %>
           <AssignmentEditor.page
             form={@assignment_form}
@@ -93,39 +102,39 @@
             members={@members}
           />
         <% @live_action in [:assignment, :new_assignment, :edit_assignment] -> %>
-          <div class="cp-empty">
+          <.empty_state>
             <h1>{gettext("Assignment not found")}</h1><.button patch={
               if @classroom, do: "/classrooms/#{@classroom.slug}", else: "/classrooms"
             }>{gettext("Back to classrooms")}</.button>
-          </div>
+          </.empty_state>
         <% @classroom != nil -> %>
           <ClassroomComponents.breadcrumbs items={[
             {gettext("Classrooms"), "/classrooms"},
             {local(@classroom.title, @locale), nil}
           ]} />
-          <div class="cp-heading cp-class-heading">
+          <.page_heading variant="classroom">
             <div>
-              <p :if={@classroom.code not in [nil, ""]} class="cp-context">
+              <.eyebrow :if={@classroom.code not in [nil, ""]}>
                 {@classroom.code}
-              </p><h1>{local(@classroom.title, @locale)}</h1><p class="cp-lead">
+              </.eyebrow><h1>{local(@classroom.title, @locale)}</h1><.lead>
                 {local(@classroom.description, @locale)}
-              </p>
+              </.lead>
             </div>
             <.button phx-click={open_modal("edit")}><.icon
               name="hero-pencil-square"
               class="size-4"
             />{gettext("Edit classroom")}</.button>
-          </div>
-          <div class="cp-class-meta">
-            <span :if={Presentation.classroom_term(@classroom) != ""} class="cp-class-session">
+          </.page_heading>
+          <.classroom_meta>
+            <span :if={Presentation.classroom_term(@classroom) != ""} data-ui="class-session">
               <.icon name="hero-calendar-days" class="size-4" />{Presentation.classroom_term(
                 @classroom
               )}
             </span>
             <span><.icon name="hero-code-bracket" class="size-4" />{@classroom.organization}</span><.button
+              data-ui="teachers-link"
               phx-click={open_modal("teachers")}
               variant="link"
-              class="cp-teachers-link"
             ><.icon name="hero-user-group" class="size-4" />{Enum.map_join(
               @classroom.teachers,
               ", ",
@@ -133,7 +142,7 @@
             )}<.icon name="hero-chevron-down" class="size-3" /><span class="sr-only">{gettext(
               "Manage teachers"
             )}</span></.button>
-          </div>
+          </.classroom_meta>
           <.tabs label={gettext("Classroom sections")}>
             <.tab
               patch={"/classrooms/#{@classroom.slug}"}
@@ -150,57 +159,69 @@
               <.icon name="hero-user-group" class="size-4" />{gettext("Students")}
             </.tab>
           </.tabs>
-          <p :if={@notice} class="cp-notice" role="status">{@notice}</p>
+          <.notice
+            :if={@notice}
+            kind="success"
+            role="status"
+          >
+            {@notice}
+          </.notice>
           <%= if @tab == "assignments" do %>
-            <div class="cp-toolbar">
+            <.list_toolbar>
               <h2>{gettext("Assignments")}</h2><.button
                 variant="primary"
                 patch={"/classrooms/#{@classroom.slug}/assignments/new"}
               ><.icon name="hero-plus" class="size-4" />{gettext("New assignment")}</.button>
-            </div>
-            <.data_list :if={@classroom.assignments > 0} class="cp-assignment-list">
-              <div class="cp-assignment-labels">
+            </.list_toolbar>
+            <.data_list :if={@classroom.assignments > 0}>
+              <.list_header kind="assignments">
                 <span>{gettext("Assignment")}</span><span>{gettext("Deadline")}</span><span>{gettext(
                   "Acceptances"
                 )}</span>
-              </div>
-              <.link
+              </.list_header>
+              <.list_row
                 :for={assignment <- classroom_assignments(@assignments, @classroom)}
                 patch={"/classrooms/#{@classroom.slug}/assignments/#{assignment.key}"}
-                class="cp-assignment"
+                kind="assignments"
               >
-                <div class="cp-assignment-name">
-                  <span class="cp-file-icon"><.icon name="hero-document-text" class="size-5" /></span><div>
+                <div class="flex items-center min-w-0 gap-[14px] max-[760px]:col-span-full">
+                  <span class="text-icon inline-flex"><.icon
+                    name="hero-document-text"
+                    class="size-5"
+                  /></span><div>
                     <h3>{local(assignment.title, @locale)}</h3><p>
                       {local(assignment.kind, @locale)}
                     </p>
                   </div>
                 </div>
-                <div class="cp-due">
-                  <span class="cp-mobile-label">{gettext("Deadline")}</span>{if assignment.status ==
-                                                                                  :draft,
-                                                                                do:
-                                                                                  gettext(
-                                                                                    "No deadline"
-                                                                                  ),
-                                                                                else:
-                                                                                  local(
-                                                                                    assignment.due,
-                                                                                    @locale
-                                                                                  )}
+                <div class="text-[13px] text-caption">
+                  <span
+                    data-ui="mobile-label"
+                    class="hidden max-[760px]:block max-[760px]:text-[11px] max-[760px]:text-muted max-[760px]:mb-[3px]"
+                  >{gettext("Deadline")}</span>{if assignment.status ==
+                                                     :draft,
+                                                   do: gettext("No deadline"),
+                                                   else:
+                                                     local(
+                                                       assignment.due,
+                                                       @locale
+                                                     )}
                 </div>
-                <div class="cp-accepted">
-                  <span class="cp-mobile-label">{gettext("Acceptances")}</span>{assignment.submitted}<span> / {assignment.total}</span>
+                <div class="text-[13px] tabular-nums [&>span:not([data-ui~=mobile-label])]:text-muted max-[760px]:text-right">
+                  <span
+                    data-ui="mobile-label"
+                    class="hidden max-[760px]:block max-[760px]:text-[11px] max-[760px]:text-muted max-[760px]:mb-[3px]"
+                  >{gettext("Acceptances")}</span>{assignment.submitted}<span> / {assignment.total}</span>
                 </div>
-              </.link>
+              </.list_row>
             </.data_list>
-            <div :if={@classroom.assignments == 0} class="cp-empty">
+            <.empty_state :if={@classroom.assignments == 0}>
               <.icon name="hero-document-plus" class="size-8" /><h2>
                 {gettext("No assignments yet")}
               </h2><p>{gettext("Your classroom is ready for its first assignment.")}</p>
-            </div>
+            </.empty_state>
           <% else %>
-            <div class="cp-toolbar">
+            <.list_toolbar>
               <form id="student-search" phx-change="search" role="search">
                 <.search_input
                   id="student-query"
@@ -222,23 +243,23 @@
                 name="hero-link"
                 class="size-4"
               />{gettext("Invite students")}</.button>
-            </div>
-            <.data_list
-              :if={visible_students(@classroom, @query) != []}
-              class="cp-student-list"
-            >
-              <div class="cp-student-labels">
+            </.list_toolbar>
+            <.data_list :if={visible_students(@classroom, @query) != []}>
+              <.list_header kind="students">
                 <span>{gettext("Student")}</span><span>{gettext("Student ID")}</span><span>GitHub</span><span></span>
-              </div>
-              <div
+              </.list_header>
+              <.list_row
                 :for={student <- visible_students(@classroom, @query)}
                 id={"student-#{student.handle}"}
-                class="cp-student"
+                kind="students"
               >
-                <div class="cp-student-name">
-                  <span class="cp-small-avatar">{student.initials}</span><strong>{student.name}</strong>
-                </div><span class="cp-student-id">{student.identifier}</span><a
-                  class="cp-handle cp-profile-link"
+                <div class="flex items-center min-w-0 gap-[12px] [&_strong]:font-[550] max-[760px]:row-start-1 max-[760px]:col-start-1">
+                  <.user_avatar size="small">{student.initials}</.user_avatar><strong>{student.name}</strong>
+                </div><span class="tabular-nums text-muted max-[760px]:row-start-2 max-[760px]:col-start-1 max-[760px]:pl-[41px] max-[760px]:text-[12px]">{student.identifier}</span><a
+                  class={[
+                    "text-muted wrap-anywhere underline-offset-[3px] max-[760px]:row-start-3 max-[760px]:col-start-1",
+                    "max-[760px]:pl-[41px] max-[760px]:text-[12px] hover:text-brand hover:underline"
+                  ]}
                   href={"https://github.com/#{student.handle}"}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -250,9 +271,9 @@
                     |> JS.push("open", value: %{kind: "remove", handle: student.handle})
                   }
                 ><.icon name="hero-x-mark" class="size-4" /></.button>
-              </div>
+              </.list_row>
             </.data_list>
-            <div :if={visible_students(@classroom, @query) == []} class="cp-empty">
+            <.empty_state :if={visible_students(@classroom, @query) == []}>
               <.icon name="hero-user-group" class="size-8" /><h2>
                 {if @query == "",
                   do: gettext("No students yet"),
@@ -262,16 +283,16 @@
                   do: gettext("Share the classroom link to let your students join."),
                   else: gettext("Try another name, student ID, or GitHub username.")}
               </p>
-            </div>
+            </.empty_state>
           <% end %>
         <% true -> %>
-          <div class="cp-empty">
+          <.empty_state>
             <h1>{gettext("Classroom not found")}</h1><.button patch="/classrooms">{gettext(
               "My classrooms"
             )}</.button>
-          </div>
+          </.empty_state>
       <% end %>
-    </main>
+    </.page_content>
     <WorkspaceLayout.footer links={@footer_links} />
   </div>
   <.modal
@@ -280,15 +301,31 @@
     dialog_id="class-dialog"
     title_id="class-modal-title"
     title={modal_title(@modal)}
-    class={modal?(@modal, "test_results") && "cp-results-modal"}
+    class={
+      modal?(@modal, "test_results") &&
+        "w-[640px] [&_[data-ui~=grading]]:border [&_[data-ui~=grading]]:border-line [&_[data-ui~=grading]]:rounded-[9px] [&_[data-ui~=grading]]:overflow-hidden"
+    }
   >
-    <p :if={@error} id="class-modal-error" class="cp-error" role="alert">{@error}</p>
-    <p :if={@notice} class="cp-notice" role="status">{@notice}</p>
+    <.notice
+      :if={@error}
+      kind="error"
+      id="class-modal-error"
+      role="alert"
+    >
+      {@error}
+    </.notice>
+    <.notice
+      :if={@notice}
+      kind="success"
+      role="status"
+    >
+      {@notice}
+    </.notice>
     <%= cond do %>
       <% modal?(@modal, "test_results") -> %>
         <% subject = Enum.find(@assignment_subjects, &(&1.id == elem(@modal, 1))) %>
         <%= if subject do %>
-          <p class="cp-grading-owner">
+          <p class="font-semibold mb-[16px]">
             {if subject.team,
               do: subject.team.name,
               else: subject.user.student_name || subject.user.name || subject.user.login}
@@ -302,7 +339,11 @@
           <p>{gettext("This submission is no longer available.")}</p>
         <% end %>
       <% modal?(@modal, "create") or modal?(@modal, "edit") -> %>
-        <form phx-submit="save_class" id="class-form" class="cp-form">
+        <form
+          phx-submit="save_class"
+          id="class-form"
+          class="grid gap-[18px]"
+        >
           <.field>
             {gettext("Classroom name")}<.input
               name="class[name]"
@@ -325,7 +366,7 @@
               placeholder="420-110"
             />
           </.field>
-          <div class="cp-term-fields">
+          <div class="grid grid-cols-[1fr_1fr] gap-[16px] max-[480px]:grid-cols-1">
             <.field>
               {gettext("Semester (optional)")}
               <.input
@@ -403,19 +444,16 @@
               </option>
             </.input>
           </.field>
-          <p :if={classroom_organization_locked?(assigns)} class="cp-field-help">
+          <.field_hint :if={classroom_organization_locked?(assigns)}>
             {gettext("The GitHub organization cannot change after assignments have been created.")}
-          </p>
-          <p
-            :if={classroom_organizations(@organizations) == [] and not @preview?}
-            class="cp-field-help"
-          >
+          </.field_hint>
+          <.field_hint :if={classroom_organizations(@organizations) == [] and not @preview?}>
             {gettext("Connect a GitHub organization in settings before creating a classroom.")}
             <.link patch="/teacher/settings?section=organizations">{gettext(
               "Open organization settings"
             )}</.link>
-          </p>
-          <div class="cp-modal-actions">
+          </.field_hint>
+          <.modal_actions>
             <.button type="button" phx-click="close">{gettext("Cancel")}</.button><.button
               type="submit"
               variant="primary"
@@ -425,10 +463,16 @@
                  ),
                  do: gettext("Create classroom"),
                  else: gettext("Save changes")}</.button>
-          </div>
+          </.modal_actions>
         </form>
       <% modal?(@modal, "clone_all") -> %>
-        <div class="cp-clone-steps">
+        <div class={[
+          "text-[14px] leading-[1.5] [&_ol]:pl-[20px] [&_ol]:my-[22px] [&_ol]:mx-0 [&_li+li]:mt-[22px]",
+          "[&_h3]:text-[14px] [&_h3]:font-semibold [&_h3]:mb-[6px] [&_p]:text-muted [&_p]:my-[6px] [&_p]:mx-0",
+          "[&_a]:underline [&_a]:underline-offset-[3px] [&_code]:text-[12px] [&_code]:wrap-anywhere",
+          "[&_code]:whitespace-pre-wrap [&_pre]:bg-surface-heading [&_pre]:border [&_pre]:border-line",
+          "[&_pre]:rounded-[6px] [&_pre]:mt-[10px] [&_pre]:p-[12px]"
+        ]}>
           <p>
             {gettext("Download every student repository for this assignment into a local folder.")}
           </p>
@@ -453,13 +497,13 @@
               </p><pre aria-label={gettext("Command preview")}><code>gh gradepush clone --assignment {@assignment.key} --classroom {@classroom.slug}</code></pre>
             </li>
           </ol>
-          <p class="cp-preview-note">
+          <p class="text-muted text-[12px] mt-[16px] mb-0 mx-0">
             {gettext("Preview only. Bulk cloning and this command are not available yet.")}
           </p>
         </div>
-        <div class="cp-modal-actions">
+        <.modal_actions>
           <.button phx-click="close">{gettext("Close")}</.button>
-        </div>
+        </.modal_actions>
       <% modal?(@modal, "assignment_invite") -> %>
         <p>
           {gettext(
@@ -480,19 +524,19 @@
           }
           status={@copy_status}
         />
-        <p :if={GradePush.Demo.enabled?()} class="cp-field-help">
+        <.field_hint :if={GradePush.Demo.enabled?()}>
           {gettext("Invitations are disabled in demo mode.")}
-        </p>
+        </.field_hint>
         <p
           :if={@preview? && !GradePush.Demo.enabled?()}
           id="assignment-invitation-note"
-          class="cp-preview-note"
+          class="text-muted text-[12px] mt-[16px] mb-0 mx-0"
         >
           {gettext("Example link only. Invitations are not active in this preview.")}
         </p>
-        <div class="cp-modal-actions">
+        <.modal_actions>
           <.button phx-click="close">{gettext("Close")}</.button>
-        </div>
+        </.modal_actions>
       <% modal?(@modal, "invite") -> %>
         <p>
           {gettext(
@@ -506,19 +550,30 @@
           url={@invitation_url || "https://gradepush.example/join/classroom/#{@classroom.slug}"}
           status={@copy_status}
         />
-        <p :if={@preview?} id="invitation-note" class="cp-preview-note">
+        <p
+          :if={@preview?}
+          id="invitation-note"
+          class="text-muted text-[12px] mt-[16px] mb-0 mx-0"
+        >
           {gettext("Example link only. Invitations are not active in this preview.")}
         </p>
-        <div class="cp-modal-actions">
+        <.modal_actions>
           <.button phx-click="close">{gettext("Close")}</.button>
-        </div>
+        </.modal_actions>
       <% modal?(@modal, "teachers") -> %>
         <p>{gettext("All teachers in this classroom have the same permissions.")}</p>
-        <ul class="cp-teacher-list">
+        <ul
+          data-ui="teacher-list"
+          class={[
+            "list-none p-0 my-[22px] mx-0 [&_li]:flex [&_li]:items-center [&_li]:border-b [&_li]:border-b-line",
+            "[&_li]:py-[12px] [&_li]:px-0 [&_li]:gap-[12px] [&_strong]:text-[13px] [&_strong]:font-[550]",
+            "[&_[data-variant=icon]]:ml-auto"
+          ]}
+        >
           <li :for={teacher <- @classroom.teachers}>
-            <span class="cp-small-avatar">{teacher.initials}</span><strong>{teacher.name}</strong><span
+            <.user_avatar size="small">{teacher.initials}</.user_avatar><strong>{teacher.name}</strong><span
               :if={not not_current_teacher?(teacher, assigns)}
-              class="cp-you"
+              class="ml-auto text-muted text-[12px]"
             >{gettext("You")}</span><.button
               :if={not_current_teacher?(teacher, assigns)}
               id={teacher_remove_id(teacher)}
@@ -532,7 +587,7 @@
         <div
           :if={@pending_teacher}
           id="teacher-removal-confirmation"
-          class="cp-inline-confirm"
+          class="border border-subtle rounded-[8px] bg-[#f6f7fa] mb-[20px] p-[16px] [&_[data-ui~=modal-actions]]:mt-[16px]"
           role="group"
           aria-labelledby="teacher-removal-question"
           phx-mounted={JS.focus(to: "#cancel-teacher-removal")}
@@ -540,7 +595,7 @@
           <p id="teacher-removal-question" role="status">
             {gettext("Remove %{name} from this classroom?", name: @pending_teacher.name)}
           </p>
-          <div class="cp-modal-actions">
+          <.modal_actions>
             <.button
               id="cancel-teacher-removal"
               phx-click={
@@ -552,12 +607,12 @@
               variant="danger"
               phx-click={JS.push("remove_teacher") |> JS.focus(to: "#class-modal-title")}
             >{gettext("Remove")}</.button>
-          </div>
+          </.modal_actions>
         </div>
         <form
           :if={@pending_teacher == nil and @available_classroom_teachers != []}
           phx-submit="add_teacher"
-          class="cp-form"
+          class="grid gap-[18px]"
         >
           <.field>
             {gettext("Add a colleague")}
@@ -571,7 +626,7 @@
             </.input>
           </.field><.button type="submit" variant="primary">{gettext("Add to classroom")}</.button>
         </form>
-        <p :if={@preview?} class="cp-preview-note">
+        <p :if={@preview?} class="text-muted text-[12px] mt-[16px] mb-0 mx-0">
           {gettext("Teachers are added locally in this preview. No invitation is sent.")}
         </p>
       <% modal?(@modal, "connect_organization") -> %>
@@ -580,7 +635,10 @@
             "Authorize GradePush on GitHub to create assignment repositories in your organization."
           )}
         </p>
-        <div :if={@preview?} class="cp-preview-note">
+        <div
+          :if={@preview?}
+          class="text-muted text-[12px] mt-[16px] mb-0 mx-0"
+        >
           {gettext(
             "GitHub connections are unavailable in this preview. No permissions will be changed."
           )}
@@ -588,7 +646,7 @@
         <form
           :if={!@preview? and @available_organizations != []}
           phx-submit="connect_organization"
-          class="cp-form"
+          class="grid gap-[18px]"
         >
           <.field>
             {gettext("Installed organization")}
@@ -609,12 +667,15 @@
               <option value="institution">{gettext("All institution teachers")}</option>
             </.input>
           </.field>
-          <div class="cp-modal-actions">
+          <.modal_actions>
             <.button type="button" phx-click="close">{gettext("Cancel")}</.button>
             <.button type="submit" variant="primary">{gettext("Connect organization")}</.button>
-          </div>
+          </.modal_actions>
         </form>
-        <div :if={!@preview? and @available_organizations == []} class="cp-empty-inline">
+        <div
+          :if={!@preview? and @available_organizations == []}
+          class="text-muted text-[13px] leading-[1.6] py-[20px] px-[22px] m-0 max-[760px]:p-[18px]"
+        >
           <p>{gettext("No GitHub organization is installed for GradePush yet.")}</p>
           <.button
             :if={@github_app_install_url}
@@ -632,36 +693,40 @@
             {gettext("Ask the platform administrator to connect GitHub first.")}
           </p>
         </div>
-        <div :if={@preview? or @available_organizations == []} class="cp-modal-actions">
+        <.modal_actions :if={@preview? or @available_organizations == []}>
           <.button phx-click="close">{gettext("Close")}</.button>
           <.button :if={@preview?} type="submit" variant="primary" disabled>{gettext(
             "Continue on GitHub"
           )}</.button>
-        </div>
+        </.modal_actions>
       <% modal?(@modal, "remove") -> %>
         <p>
           {gettext("Remove %{name} from this classroom?",
             name: selected_student(@classroom, @modal).name
           )}
         </p>
-        <p class="cp-removal-detail">
+        <p class="rounded-[7px] bg-[#f6f8fb] mt-[16px] mb-[22px] text-[13px] p-[14px] mx-0">
           {gettext(
             "Their repositories and GitHub access will be kept. If they rejoin, they will recover their existing work."
           )}
         </p>
-        <div class="cp-modal-actions">
+        <.modal_actions>
           <.button phx-click="close">{gettext("Cancel")}</.button><.button
             variant="danger"
             phx-click="remove_student"
           >{gettext("Remove from classroom")}</.button>
-        </div>
+        </.modal_actions>
       <% modal?(@modal, "teams") -> %>
         <p>
           {gettext(
             "Assign students to teams. Students receive their team when they accept the assignment."
           )}
         </p>
-        <form phx-submit="create_team" class="cp-form cp-team-create-form">
+        <form
+          data-ui="team-create-form"
+          phx-submit="create_team"
+          class="grid gap-[18px]"
+        >
           <.field>
             {gettext("Team name")}<.input
               name="team[name]"
@@ -674,22 +739,31 @@
             class="size-4"
           />{gettext("Create team")}</.button>
         </form>
-        <div :if={@teams != []} class="cp-teacher-list cp-managed-teams">
+        <div
+          :if={@teams != []}
+          data-ui="teacher-list"
+          class={[
+            "list-none grid p-0 my-[22px] mx-0 gap-[18px] [&_li]:flex [&_li]:items-center [&_li]:border-b",
+            "[&_li]:border-b-line [&_li]:py-[6px] [&_li]:px-0 [&_li]:gap-[10px] [&_strong]:text-[13px]",
+            "[&_strong]:font-[550] [&_[data-variant=icon]]:ml-auto [&>section]:pb-[18px] [&>section]:border-b",
+            "[&>section]:border-b-line [&_ul]:list-none [&_ul]:mt-0 [&_ul]:mb-[12px] [&_ul]:p-0 [&_ul]:mx-0"
+          ]}
+        >
           <section :for={team <- @teams} id={"managed-team-#{team.id}"}>
-            <div class="cp-team-heading">
+            <div class="flex justify-between items-baseline mb-[10px] gap-[12px] [&_span]:text-muted [&_span]:text-[12px]">
               <strong>{team.name}</strong><span>
                 {ngettext("%{count} student", "%{count} students", length(team.members))}
               </span>
             </div>
             <ul :if={team.members != []}>
               <li :for={student <- team.members}>
-                <span class="cp-small-avatar">{student.initials}</span><strong>{student.name}</strong>
+                <.user_avatar size="small">{student.initials}</.user_avatar><strong>{student.name}</strong>
               </li>
             </ul>
             <form
               :if={team.can_add? and unassigned_students(@members, @teams) != []}
               phx-submit="add_team_member"
-              class="cp-form cp-team-member-form"
+              class="grid grid-cols-[minmax(0,1fr)_auto] [align-items:end] gap-[18px]"
             >
               <.input type="hidden" name="team_id" value={team.id} />
               <.field>
@@ -704,22 +778,29 @@
                 </.input>
               </.field><.button type="submit">{gettext("Add to team")}</.button>
             </form>
-            <p :if={not team.can_add?} class="cp-field-help">
+            <.field_hint :if={not team.can_add?}>
               {gettext("This team has reached its member limit.")}
-            </p>
+            </.field_hint>
           </section>
         </div>
-        <div :if={@teams == []} class="cp-empty-inline">
+        <div
+          :if={@teams == []}
+          class="text-muted text-[13px] leading-[1.6] py-[20px] px-[22px] m-0 max-[760px]:p-[18px]"
+        >
           {gettext("No teams yet. Create a team to start assigning students.")}
         </div>
-        <div class="cp-modal-actions">
+        <.modal_actions>
           <.button phx-click="close">{gettext("Done")}</.button>
-        </div>
+        </.modal_actions>
       <% modal?(@modal, "deadline_extension") -> %>
         <% subject = Enum.find(@assignment_subjects, &(&1.id == elem(@modal, 1))) %>
         <%= if subject do %>
-          <div class="cp-extension-summary">
-            <p class="cp-extension-owner">
+          <div class={[
+            "mb-[22px] leading-[1.5] text-muted text-[13px] [&_p]:m-0 [&_[data-ui~=extension-owner]]:text-ink",
+            "[&_[data-ui~=extension-owner]]:text-[15px] [&_[data-ui~=extension-owner]]:font-semibold",
+            "[&_[data-ui~=extension-owner]]:mb-[6px]"
+          ]}>
+            <p data-ui="extension-owner">
               {if subject.team,
                 do: subject.team.name,
                 else: subject.user.student_name || subject.user.name || subject.user.login}
@@ -732,7 +813,7 @@
             id="deadline-extension-form"
             phx-change="validate_extension"
             phx-submit="save_extension"
-            class="cp-form"
+            class="grid gap-[18px]"
           >
             <.field>
               {gettext("Revised deadline")}
@@ -744,14 +825,18 @@
                 required
               />
             </.field>
-            <div class="cp-modal-actions">
+            <.modal_actions>
               <.button type="button" phx-click="close">{gettext("Cancel")}</.button>
               <.button type="submit" variant="primary">{gettext("Save deadline")}</.button>
-            </div>
-            <div :if={extension_set?(assigns)} class="cp-extension-reset">
+            </.modal_actions>
+            <div
+              :if={extension_set?(assigns)}
+              class="border-t border-t-line pt-[16px]"
+            >
               <.button
+                data-ui="clear-extension"
                 type="button"
-                class="cp-profile-link cp-clear-extension"
+                class="underline-offset-[3px] text-left leading-[1.5] hover:text-brand hover:underline"
                 phx-click="clear_extension"
               >{gettext("Clear extension and use the assignment deadline")}</.button>
             </div>
@@ -761,4 +846,4 @@
         <% end %>
     <% end %>
   </.modal>
-</div>
+</.page>

@@ -36,7 +36,7 @@ defmodule GradePushWeb.PersistentAdminLiveTest do
     assert has_element?(view, "footer a[href='mailto:help@example.org']")
     assert is_nil(Accounts.footer_links().privacy_url)
     render_patch(view, "/admin/institution?section=history")
-    assert has_element?(view, ".cp-audit-list", "Institution links updated")
+    assert has_element?(view, "[data-ui~='audit-list']", "Institution links updated")
   end
 
   test "institution changes persist and create an audit entry", %{conn: conn} do

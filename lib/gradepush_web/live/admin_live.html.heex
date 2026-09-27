@@ -1,5 +1,5 @@
-<div class="class-preview cp-workspace">
-  <div class="cp-shell" inert={@modal != nil}>
+<.page>
+  <div class="min-h-screen flex flex-col" inert={@modal != nil}>
     <a class="skip-link" href="#admin-content">{gettext("Skip to content")}</a>
     <WorkspaceLayout.header
       user={@user}
@@ -11,22 +11,31 @@
       locale={@locale}
       language_urls={Map.new(~w(en fr), &{&1, language_url(@live_action, @section, &1)})}
     />
-    <main id="admin-content" class="cp-main cp-admin" tabindex="-1">
-      <div class="cp-admin-overview">
-        <div class="cp-heading cp-admin-heading">
+    <.page_content
+      id="admin-content"
+      tabindex="-1"
+    >
+      <.overview kind="institution">
+        <.page_heading variant="admin">
           <div>
-            <p class="cp-context">{gettext("Administration")}</p><h1>
+            <.eyebrow>
+              {gettext("Administration")}
+            </.eyebrow><h1>
               {if @live_action == :institution, do: @state.name, else: gettext("Platform")}
-            </h1><p class="cp-lead">
+            </h1><.lead>
               {if @live_action == :institution,
                 do: gettext("Manage your teaching team and classroom assignments."),
                 else: gettext("Configuration and operation of your GradePush instance.")}
-            </p>
+            </.lead>
           </div>
-        </div>
+        </.page_heading>
         <dl
           :if={@live_action == :institution}
-          class="cp-institution-summary"
+          class={[
+            "flex mt-0 mb-[30px] mx-0 gap-[40px] [&>div]:flex [&>div]:flex-col-reverse [&>div]:gap-[2px]",
+            "[&_dt]:text-muted [&_dt]:text-[12px] [&_dd]:text-[24px] [&_dd]:font-semibold [&_dd]:tracking-[-.5px]",
+            "max-[760px]:gap-[28px]"
+          ]}
           aria-label={gettext("Institution overview")}
         >
           <div>
@@ -39,9 +48,9 @@
             <dt>{gettext("Students")}</dt><dd>{@state.students}</dd>
           </div>
         </dl>
-      </div>
+      </.overview>
       <%= if @live_action == :institution do %>
-        <.tabs compact label={gettext("Institution sections")} class="cp-admin-tabs">
+        <.tabs compact label={gettext("Institution sections")}>
           <.tab
             :for={
               {key, title, icon} <- [
@@ -58,7 +67,7 @@
           </.tab>
         </.tabs>
       <% else %>
-        <.tabs compact label={gettext("Platform sections")} class="cp-admin-tabs">
+        <.tabs compact label={gettext("Platform sections")}>
           <.tab
             :for={
               {key, title, icon} <- [
@@ -74,14 +83,26 @@
           </.tab>
         </.tabs>
       <% end %>
-      <p :if={@notice} class="cp-notice" role="status">{@notice}</p>
-      <p :if={@error && !@modal} class="cp-error" role="alert">{@error}</p>
-      <div class="cp-admin-content">
+      <.notice
+        :if={@notice}
+        kind="success"
+        role="status"
+      >
+        {@notice}
+      </.notice>
+      <.notice
+        :if={@error && !@modal}
+        kind="error"
+        role="alert"
+      >
+        {@error}
+      </.notice>
+      <div class="pt-[28px] [&>[data-ui~=toolbar]]:mt-0">
         <%= cond do %>
           <% @live_action == :platform -> %>
             <AdminComponents.platform section={@section} user={@user} platform={@platform} />
           <% @section == "teachers" -> %>
-            <div class="cp-toolbar">
+            <.list_toolbar>
               <form id="admin-search" phx-change="search" role="search">
                 <.search_input
                   id="teacher-query"
@@ -104,13 +125,10 @@
                 name="hero-plus"
                 class="size-4"
               />{gettext("Invite a teacher")}</.button>
-            </div>
-            <.data_list
-              :if={visible(@state.teachers, @query) != []}
-              class="cp-admin-table-wrap"
-            >
-              <table class="cp-admin-table">
-                <caption class="sr-only">{gettext("Institution teachers")}</caption><thead>
+            </.list_toolbar>
+            <.data_list :if={visible(@state.teachers, @query) != []}>
+              <.data_table kind="admin">
+                <caption class="sr-only">{gettext("Institution teachers")}</caption><.list_header kind="table">
                   <tr>
                     <th scope="col">{gettext("Teacher")}</th><th scope="col">
                       {gettext("Institution role")}
@@ -118,31 +136,33 @@
                       <span class="sr-only">{gettext("Actions")}</span>
                     </th>
                   </tr>
-                </thead>
+                </.list_header>
                 <tbody>
                   <tr
                     :for={teacher <- visible(@state.teachers, @query)}
                     id={"admin-teacher-#{teacher.id}"}
                   >
                     <th scope="row">
-                      <div class="cp-admin-person">
-                        <span class="cp-small-avatar">{teacher.initials}</span><div>
+                      <div class={[
+                        "flex items-center gap-[12px] [&_strong]:flex [&_strong]:items-center [&_strong]:gap-[8px] [&>div>span]:block",
+                        "[&>div>span]:text-muted [&>div>span]:text-[12px] [&>div>span]:mt-[4px]"
+                      ]}>
+                        <.user_avatar size="small">{teacher.initials}</.user_avatar><div>
                           <strong>{teacher.name}<span
                             :if={teacher.id == @actor_id}
-                            class="cp-admin-you"
+                            class="text-[11px] font-normal text-muted"
                           >{gettext("You")}</span></strong><span>@{teacher.handle}</span>
                         </div>
                       </div>
                     </th>
                     <td data-label={gettext("Institution role")}>
-                      <span class={if teacher.admin?, do: "cp-admin-tag", else: "cp-admin-role"}>{if teacher.admin?,
-                        do: gettext("Administrator"),
-                        else: gettext("Teacher")}</span>
+                      <.badge :if={teacher.admin?}>{gettext("Administrator")}</.badge>
+                      <span :if={!teacher.admin?}>{gettext("Teacher")}</span>
                     </td>
                     <td data-label={gettext("Classrooms")}>
                       {AdminWorkspace.class_count(@state, teacher.id)}
                     </td>
-                    <td class="cp-admin-row-action">
+                    <td class="text-right max-[760px]:col-span-full max-[760px]:border-t max-[760px]:border-t-line max-[760px]:pt-[12px]!">
                       <.button
                         size="compact"
                         phx-click={open_modal("member", teacher.id)}
@@ -151,24 +171,27 @@
                     </td>
                   </tr>
                 </tbody>
-              </table>
+              </.data_table>
             </.data_list>
-            <div :if={visible(@state.teachers, @query) == []} class="cp-empty">
+            <.empty_state :if={visible(@state.teachers, @query) == []}>
               <.icon name="hero-user-group" class="size-8" /><h3>
                 {gettext("No matching teachers")}
               </h3><p>{gettext("Try another name or GitHub username.")}</p>
-            </div>
+            </.empty_state>
           <% @section == "classrooms" -> %>
-            <div class="cp-admin-section-heading">
+            <div class={[
+              "flex justify-between items-start mb-[20px] gap-[20px] [&_h2]:text-[16px] [&_h2]:font-semibold",
+              "[&_p]:text-[13px] [&_p]:text-muted [&_p]:mt-[6px] [&_p]:leading-[1.6]"
+            ]}>
               <div>
                 <h2>{gettext("All classrooms")}</h2><p>
                   {gettext("Assign teachers without accessing assignments or student work.")}
                 </p>
               </div>
             </div>
-            <.data_list class="cp-admin-table-wrap">
-              <table class="cp-admin-table cp-admin-classes">
-                <caption class="sr-only">{gettext("Institution classrooms")}</caption><thead>
+            <.data_list>
+              <.data_table kind="admin">
+                <caption class="sr-only">{gettext("Institution classrooms")}</caption><.list_header kind="table">
                   <tr>
                     <th scope="col">{gettext("Classroom")}</th><th scope="col">
                       {gettext("Teachers")}
@@ -176,19 +199,19 @@
                       <span class="sr-only">{gettext("Actions")}</span>
                     </th>
                   </tr>
-                </thead>
+                </.list_header>
                 <tbody>
                   <tr :for={classroom <- @state.classrooms} id={"admin-class-#{classroom.id}"}>
                     <th scope="row">
-                      <strong>{local(classroom.title, @locale)}</strong><span class="cp-admin-secondary">{classroom.code}</span>
+                      <strong>{local(classroom.title, @locale)}</strong><span class="block text-muted text-[12px] mt-[4px]">{classroom.code}</span>
                     </th>
                     <td data-label={gettext("Teachers")}>
-                      <div class="cp-admin-teacher-names">
+                      <div class="grid text-[12px] gap-[4px]">
                         <span :for={id <- classroom.teachers}>{AdminWorkspace.teacher(@state, id).name}</span>
                       </div>
                     </td>
                     <td data-label={gettext("Students")}>{classroom.students}</td>
-                    <td class="cp-admin-row-action">
+                    <td class="text-right max-[760px]:col-span-full max-[760px]:border-t max-[760px]:border-t-line max-[760px]:pt-[12px]!">
                       <.button
                         size="compact"
                         phx-click={open_modal("staff", classroom.id)}
@@ -201,22 +224,22 @@
                     </td>
                   </tr>
                 </tbody>
-              </table>
+              </.data_table>
             </.data_list>
           <% @section == "history" -> %>
             <AdminComponents.history events={@state.history} />
           <% @section == "settings" -> %>
-            <section class="cp-admin-panel">
-              <div class="cp-admin-panel-heading">
+            <.panel>
+              <.panel_heading>
                 <.icon name="hero-building-library" class="size-5" /><div>
                   <h2>{gettext("Institution identity")}</h2><p>
                     {gettext("This name is visible to everyone in your institution.")}
                   </p>
                 </div>
-              </div>
+              </.panel_heading>
               <form
                 id="institution-form"
-                class="cp-form cp-admin-settings-form"
+                class="grid max-w-[660px] p-[24px] gap-[18px] max-[760px]:p-[18px]"
                 phx-submit="save_institution"
               >
                 <.field>
@@ -226,15 +249,15 @@
                     maxlength="100"
                     value={@state.name}
                   />
-                </.field><div class="cp-modal-actions">
+                </.field><.modal_actions>
                   <.button type="submit" variant="primary" phx-disable-with={gettext("Saving…")}>{gettext(
                     "Save changes"
                   )}</.button>
-                </div>
+                </.modal_actions>
               </form>
-            </section>
-            <section class="cp-admin-panel">
-              <div class="cp-admin-panel-heading">
+            </.panel>
+            <.panel>
+              <.panel_heading>
                 <.icon name="hero-link" class="size-5" />
                 <div>
                   <h2>{gettext("Institution links")}</h2>
@@ -244,16 +267,16 @@
                     )}
                   </p>
                 </div>
-              </div>
+              </.panel_heading>
               <.form
                 for={@footer_form}
                 id="footer-form"
-                class="cp-form cp-admin-settings-form"
+                class="grid max-w-[660px] p-[24px] gap-[18px] max-[760px]:p-[18px]"
                 phx-submit="save_footer"
               >
-                <p id="footer-url-help" class="cp-field-help">
+                <.field_hint id="footer-url-help">
                   {gettext("Use HTTPS links. Assistance also accepts mailto:email@example.org.")}
-                </p>
+                </.field_hint>
                 <.input
                   :for={
                     {field, label} <- [
@@ -269,16 +292,16 @@
                   maxlength="2048"
                   aria-describedby="footer-url-help"
                 />
-                <div class="cp-modal-actions">
+                <.modal_actions>
                   <.button type="submit" variant="primary" phx-disable-with={gettext("Saving…")}>{gettext(
                     "Save changes"
                   )}</.button>
-                </div>
+                </.modal_actions>
               </.form>
-            </section>
+            </.panel>
         <% end %>
       </div>
-    </main>
+    </.page_content>
     <WorkspaceLayout.footer context={@live_action} links={@footer_links} />
   </div>
   <.modal
@@ -290,7 +313,13 @@
     close_id="admin-modal-close"
     initial_focus={JS.focus(to: "#admin-modal-close")}
   >
-    <p :if={@error} class="cp-error" role="alert">{@error}</p>
+    <.notice
+      :if={@error}
+      kind="error"
+      role="alert"
+    >
+      {@error}
+    </.notice>
     <%= case @modal do %>
       <% {"invite", _} -> %>
         <p>
@@ -304,20 +333,27 @@
           url={@invitation_url}
           status={@copy_status}
         />
-        <p :if={@preview?} class="cp-preview-note">
+        <p :if={@preview?} class="text-muted text-[12px] mt-[16px] mb-0 mx-0">
           {gettext("Example link only. Invitations are not active in this preview.")}
         </p>
-        <div class="cp-modal-actions">
+        <.modal_actions>
           <.button phx-click="close">{gettext("Close")}</.button>
-        </div>
+        </.modal_actions>
       <% {"member", id} -> %>
         <% member = AdminWorkspace.teacher(@state, id) %>
-        <div class="cp-admin-modal-person">
-          <span class="cp-avatar">{member.initials}</span><div>
+        <div class={[
+          "flex items-center pt-0 pb-[24px] px-0 gap-[12px] [&_strong]:text-[14px] [&_strong]:font-[550]",
+          "[&_p]:text-muted [&_p]:text-[12px]"
+        ]}>
+          <.user_avatar size="default">{member.initials}</.user_avatar><div>
             <strong>{member.name}</strong><p>@{member.handle}</p>
           </div>
         </div>
-        <form id="member-form" class="cp-form" phx-submit="save_role">
+        <form
+          id="member-form"
+          class="grid gap-[18px]"
+          phx-submit="save_role"
+        >
           <.field>
             {gettext("Institution role")}
             <.input
@@ -332,24 +368,30 @@
                 {gettext("Administrator")}
               </option>
             </.input>
-          </.field><p class="cp-field-help">
+          </.field><.field_hint>
             {gettext(
               "Administrators manage the institution, without access to classroom content."
             )}
-          </p>
-          <div :if={id != @actor_id} class="cp-modal-actions">
+          </.field_hint>
+          <.modal_actions :if={id != @actor_id}>
             <.button type="button" phx-click="close">{gettext("Cancel")}</.button><.button
               type="submit"
               variant="primary"
             >{gettext("Save changes")}</.button>
-          </div>
+          </.modal_actions>
         </form>
-        <div :if={id != @actor_id} class="cp-admin-remove-member">
+        <div
+          :if={id != @actor_id}
+          class="mt-[24px] pt-[12px] border-t border-t-line"
+        >
           <.button variant="text-danger" phx-click="confirm_remove">{gettext(
             "Remove from institution"
           )}</.button>
         </div>
-        <p :if={id == @actor_id} class="cp-preview-note">
+        <p
+          :if={id == @actor_id}
+          class="text-muted text-[12px] mt-[16px] mb-0 mx-0"
+        >
           {gettext("Ask another administrator to change your role.")}
         </p>
       <% {"remove", id} -> %>
@@ -358,25 +400,32 @@
             name: AdminWorkspace.teacher(@state, id).name
           )}
         </p>
-        <p class="cp-removal-detail">
+        <p class="rounded-[7px] bg-[#f6f8fb] mt-[16px] mb-[22px] text-[13px] p-[14px] mx-0">
           {gettext("Their GitHub repositories and access will be kept.")}
         </p>
-        <p :if={AdminWorkspace.class_count(@state, id) > 0} class="cp-error">
+        <.notice
+          :if={AdminWorkspace.class_count(@state, id) > 0}
+          kind="error"
+        >
           {gettext("Reassign this teacher’s classrooms before removing them.")}
-        </p>
-        <div class="cp-modal-actions">
+        </.notice>
+        <.modal_actions>
           <.button id="cancel-member-removal" phx-click="close">{gettext("Cancel")}</.button><.button
             variant="danger"
             phx-click="remove_member"
             disabled={AdminWorkspace.class_count(@state, id) > 0}
           >{gettext("Remove")}</.button>
-        </div>
+        </.modal_actions>
       <% {"staff", id} -> %>
         <% classroom = AdminWorkspace.classroom(@state, id) %>
-        <p class="cp-admin-modal-class">
+        <p class="font-[550] mb-[24px] [&_span]:block [&_span]:font-normal [&_span]:text-[12px]">
           {local(classroom.title, @locale)}<span>{classroom.code}</span>
         </p>
-        <form id="staff-form" class="cp-form" phx-submit="save_staff">
+        <form
+          id="staff-form"
+          class="grid gap-[18px]"
+          phx-submit="save_staff"
+        >
           <.field>
             {gettext("Teacher to assign")}
             <.input type="select" name="staff[teacher]" required>
@@ -400,17 +449,17 @@
               </option>
             </.input>
           </.field>
-          <p class="cp-field-help">
+          <.field_hint>
             {gettext("You cannot assign yourself. A classroom teacher can invite you.")}
-          </p>
-          <div class="cp-modal-actions">
+          </.field_hint>
+          <.modal_actions>
             <.button type="button" phx-click="close">{gettext("Cancel")}</.button><.button
               type="submit"
               variant="primary"
               phx-disable-with={gettext("Saving…")}
             >{gettext("Confirm assignment")}</.button>
-          </div>
+          </.modal_actions>
         </form>
     <% end %>
   </.modal>
-</div>
+</.page>

@@ -13,7 +13,12 @@
   <body>
     <aside
       :if={Application.get_env(:gradepush, :demo_mode, false)}
-      class="demo-banner"
+      class={[
+        "demo-banner flex flex-wrap items-center justify-center gap-y-[8px] gap-x-[20px] bg-[#eef3ff] border-b",
+        "border-b-[#d7e2ff] text-[#233b73] text-[13px] py-[10px] px-[20px] [&_a]:font-semibold [&_a]:underline",
+        "[&_a]:underline-offset-[3px] [&_a:focus-visible]:[outline:2px_solid_currentColor]",
+        "[&_a:focus-visible]:outline-offset-[3px]"
+      ]}
       aria-label={gettext("Demo mode")}
     >
       <span>{gettext("Demo mode · Data is reset regularly.")}</span>

@@ -17,32 +17,36 @@ defmodule GradePushWeb.AssignmentEditor do
       assign(assigns, :locked, assigns.assignment != nil and assigns.assignment.submitted > 0)
 
     ~H"""
-    <div class="cp-editor">
+    <div class={[
+      "max-[600px]:[&_[data-ui~=form-grid]]:grid-cols-[minmax(0,1fr)] max-[600px]:[&_[data-ui~=form-grid]]:gap-0",
+      "max-[600px]:[&_[data-ui~=test-name-row]]:grid-cols-[minmax(0,1fr)_80px]",
+      "max-[600px]:[&_[data-ui~=test-name-row]]:gap-[12px]"
+    ]}>
       <ClassroomComponents.breadcrumbs items={breadcrumb_items(@classroom, @assignment, @locale)} />
-      <div class="cp-heading cp-editor-heading">
+      <.page_heading>
         <div>
           <h1>
             {if @assignment, do: gettext("Edit assignment"), else: gettext("New assignment")}
           </h1>
         </div>
-      </div>
+      </.page_heading>
       <.form
         for={@form}
         id="assignment-form"
         phx-change="validate_assignment"
         phx-submit="save_assignment"
-        class="cp-editor-form"
+        class="[&_.ui-field]:mb-[18px] [&_.ui-field]:min-w-0"
       >
-        <p
+        <.notice
           :if={@form.source.action == :insert and not @form.source.valid?}
-          class="cp-error"
+          kind="error"
           role="alert"
         >
           {gettext("Check the highlighted fields before saving.")}
-        </p>
-        <section class="cp-form-section cp-form-basics" aria-label={gettext("Assignment details")}>
+        </.notice>
+        <.form_section aria-label={gettext("Assignment details")}>
           <.input field={@form[:title]} label={gettext("Title")} required maxlength="120" />
-          <div class="cp-markdown-heading">
+          <div class="flex items-center justify-between gap-[16px] mb-[8px]">
             <.field for={@form[:instructions].id}>{gettext("Instructions (Markdown)")}</.field>
             <.button
               type="button"
@@ -53,13 +57,13 @@ defmodule GradePushWeb.AssignmentEditor do
           </div>
           <div
             :if={@preview}
-            class="cp-markdown-preview cp-markdown"
+            class="min-h-[210px] rounded-[7px] border border-[#d7deea] p-[18px] mb-[18px] wrap-anywhere markdown"
             role="region"
             aria-label={gettext("Instructions preview")}
           >
-            <p :if={@form[:instructions].value in [nil, ""]} class="cp-field-help">
+            <.field_hint :if={@form[:instructions].value in [nil, ""]}>
               {gettext("Write instructions to see the preview.")}
-            </p>
+            </.field_hint>
             <h2 class="sr-only">{gettext("Instructions preview")}</h2>
             {GradePushWeb.Markdown.render(@form[:instructions].value || "", 2)}
           </div>
@@ -72,7 +76,7 @@ defmodule GradePushWeb.AssignmentEditor do
               aria-label={gettext("Instructions (Markdown)")}
             />
           </div>
-          <div class="cp-form-grid cp-work-deadline">
+          <div data-ui="form-grid" class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-[16px]">
             <.input
               field={@form[:kind]}
               type="select"
@@ -95,12 +99,16 @@ defmodule GradePushWeb.AssignmentEditor do
                   @form[:deadline].value not in [nil, ""] and @form[:cutoff].value in [true, "true"]
                 }
               />
-              <p :if={!@demo} class="cp-field-help">
+              <.field_hint :if={!@demo}>
                 {gettext("Hard cutoffs are unavailable for connected GitHub repositories.")}
-              </p>
+              </.field_hint>
             </div>
           </div>
-          <div :if={@form[:kind].value == "team"} class="cp-form-grid">
+          <div
+            :if={@form[:kind].value == "team"}
+            data-ui="form-grid"
+            class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-[16px]"
+          >
             <.input
               field={@form[:team_mode]}
               type="select"
@@ -120,14 +128,14 @@ defmodule GradePushWeb.AssignmentEditor do
               disabled={@locked}
             />
           </div>
-        </section>
-        <section class="cp-form-section" aria-labelledby="assignment-repository">
+        </.form_section>
+        <.form_section aria-labelledby="assignment-repository">
           <h2 id="assignment-repository">{gettext("Repository")}</h2>
-          <p class="cp-field-help">
+          <.field_hint>
             {gettext("Repositories will be created in %{organization}.",
               organization: @classroom.organization
             )}
-          </p>
+          </.field_hint>
           <.input
             field={@form[:template]}
             label={gettext("Starter template (optional)")}
@@ -137,15 +145,15 @@ defmodule GradePushWeb.AssignmentEditor do
             autocomplete="off"
           />
           <datalist id="assignment-templates"><option :for={template <- @templates} value={template} /></datalist>
-          <p :if={@locked} class="cp-field-help">
+          <.field_hint :if={@locked}>
             {gettext("The template and work type are fixed once students have accepted.")}
-          </p>
-        </section>
-        <section class="cp-form-section" aria-labelledby="assignment-grading">
+          </.field_hint>
+        </.form_section>
+        <.form_section aria-labelledby="assignment-grading">
           <h2 id="assignment-grading">{gettext("Automatic tests")}</h2>
-          <p :if={@locked and not @demo} class="cp-field-help">
+          <.field_hint :if={@locked and not @demo}>
             {gettext("Automatic tests are fixed once students have accepted.")}
-          </p>
+          </.field_hint>
           <fieldset disabled={@locked and not @demo} aria-labelledby="assignment-grading">
             <.input
               field={@form[:autograding]}
@@ -153,15 +161,21 @@ defmodule GradePushWeb.AssignmentEditor do
               label={gettext("Enable automatic tests")}
             />
             <div :if={@form[:autograding].value in [true, "true"]}>
-              <p class="cp-field-help">
+              <.field_hint>
                 {gettext(
                   "GitHub Actions runs these tests on each push. Points are added for each successful test."
                 )}
-              </p>
+              </.field_hint>
               <.inputs_for :let={test} field={@form[:tests]}>
-                <fieldset class="cp-test-editor">
+                <fieldset class={[
+                  "border border-line rounded-[9px] min-w-0 p-[18px] my-[20px] mx-0 [&_legend]:text-[13px]",
+                  "[&_legend]:font-semibold [&_legend]:py-0 [&_legend]:px-[7px]"
+                ]}>
                   <legend>{gettext("Test %{number}", number: test.index + 1)}</legend>
-                  <div class="cp-form-grid cp-test-name-row">
+                  <div
+                    data-ui="form-grid test-name-row"
+                    class="grid grid-cols-[minmax(0,1fr)_100px] gap-[16px]"
+                  >
                     <.input field={test[:name]} label={gettext("Test name")} required maxlength="120" />
                     <.input
                       field={test[:points]}
@@ -203,7 +217,11 @@ defmodule GradePushWeb.AssignmentEditor do
                     placeholder="python -m unittest"
                     required
                   />
-                  <div :if={test[:type].value == "io"} class="cp-form-grid">
+                  <div
+                    :if={test[:type].value == "io"}
+                    data-ui="form-grid"
+                    class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-[16px]"
+                  >
                     <.input
                       field={test[:input]}
                       type="textarea"
@@ -218,9 +236,9 @@ defmodule GradePushWeb.AssignmentEditor do
                       required
                     />
                   </div>
-                  <p :if={test[:type].value == "io"} class="cp-field-help">
+                  <.field_hint :if={test[:type].value == "io"}>
                     {gettext("The output must match exactly, including whitespace.")}
-                  </p>
+                  </.field_hint>
                   <.button
                     type="button"
                     variant="text-danger"
@@ -229,7 +247,7 @@ defmodule GradePushWeb.AssignmentEditor do
                   ><.icon name="hero-trash" class="size-4" />{gettext("Remove test")}</.button>
                 </fieldset>
               </.inputs_for>
-              <div class="cp-test-editor-footer">
+              <div class="flex items-center justify-between mb-[16px] gap-[16px] [&>span]:text-[12px] [&>span]:text-muted">
                 <.button type="button" phx-click="add_assignment_test"><.icon
                   name="hero-plus"
                   class="size-4"
@@ -238,8 +256,11 @@ defmodule GradePushWeb.AssignmentEditor do
               </div>
             </div>
           </fieldset>
-        </section>
-        <div class="cp-editor-actions">
+        </.form_section>
+        <div
+          data-ui="editor-actions"
+          class="flex justify-end pt-[4px] gap-[12px] max-[600px]:justify-stretch max-[600px]:[&>*]:flex-1"
+        >
           <.button patch={back_path(@classroom, @assignment)}>{gettext("Cancel")}</.button>
           <.button type="submit" variant="primary" phx-disable-with={gettext("Saving…")}>{if @assignment,
             do: gettext("Save changes"),

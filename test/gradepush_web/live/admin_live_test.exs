@@ -17,7 +17,7 @@ defmodule GradePushWeb.AdminLiveTest do
     assert has_element?(admin, "h1", "Cégep de Sorel-Tracy")
     assert has_element?(admin, "#admin-teacher-camille", "Administrateur")
     assert has_element?(admin, "#context-menu a[aria-current='true']", "Institution")
-    refute has_element?(admin, ".cp-sign-in")
+    refute has_element?(admin, "[data-ui~='sign-in']")
 
     {:ok, teacher, _} =
       admin
@@ -33,7 +33,7 @@ defmodule GradePushWeb.AdminLiveTest do
   } do
     {:ok, view, _} = live(conn, "/admin/institution?section=classrooms")
     refute has_element?(view, "a[href^='/classrooms/']")
-    refute has_element?(view, ".cp-submission-table")
+    refute has_element?(view, "[data-ui~='submission-table']")
     refute render(view) =~ "amelie-fortin"
     view |> element("#admin-class-databases button") |> render_click()
     refute has_element?(view, "select[name='staff[teacher]'] option[value='jordan']")
@@ -42,9 +42,9 @@ defmodule GradePushWeb.AdminLiveTest do
     assert has_element?(view, "#admin-class-databases", "Sophie Gagnon")
     refute has_element?(view, "#admin-class-databases", "Alex Nguyen")
     render_patch(view, "/admin/institution?section=history")
-    assert has_element?(view, ".cp-audit-list", "Classroom teacher replaced")
-    assert has_element?(view, ".cp-audit-list", "Alex Nguyen → Sophie Gagnon")
-    refute has_element?(view, ".cp-audit-list button")
+    assert has_element?(view, "[data-ui~='audit-list']", "Classroom teacher replaced")
+    assert has_element?(view, "[data-ui~='audit-list']", "Alex Nguyen → Sophie Gagnon")
+    refute has_element?(view, "[data-ui~='audit-list'] button")
     view |> element("#context-menu a[href='/admin/platform']") |> render_click()
     assert_patch(view, "/admin/platform")
     view |> element("#context-menu a[href='/admin/institution']") |> render_click()
@@ -70,7 +70,7 @@ defmodule GradePushWeb.AdminLiveTest do
     view |> element("button[phx-click='remove_member']") |> render_click()
     refute has_element?(view, "#admin-teacher-sophie")
     render_patch(view, "/admin/institution?section=history")
-    assert has_element?(view, ".cp-audit-list", "Teacher removed from institution")
+    assert has_element?(view, "[data-ui~='audit-list']", "Teacher removed from institution")
   end
 
   test "role editing, identity and invitation feedback work in the preview", %{conn: conn} do
@@ -79,8 +79,8 @@ defmodule GradePushWeb.AdminLiveTest do
     view |> form("#member-form", member: %{role: "admin"}) |> render_submit()
     assert has_element?(view, "#admin-teacher-sophie", "Administrator")
     view |> form("#admin-search", query: "no-match") |> render_change()
-    assert has_element?(view, ".cp-empty", "No matching teachers")
-    view |> element(".cp-toolbar button") |> render_click()
+    assert has_element?(view, "[data-ui~='empty']", "No matching teachers")
+    view |> element("[data-ui~='toolbar'] button") |> render_click()
     assert has_element?(view, "#teacher-invitation-input[value^='https://gradepush.example/']")
     render_hook(view, "invitation_copied", %{"ok" => false})
     assert has_element?(view, "[role=status]", "manually")
@@ -94,12 +94,12 @@ defmodule GradePushWeb.AdminLiveTest do
 
   test "platform status is explicitly simulated and separate from institution data", %{conn: conn} do
     {:ok, view, _} = live(conn, "/admin/platform?section=services&locale=fr")
-    assert has_element?(view, ".cp-admin-tag", "État simulé")
-    assert has_element?(view, ".cp-service-list", "PostgreSQL")
-    refute has_element?(view, ".cp-admin-table")
-    assert has_element?(view, ".cp-language[href*='section=services']")
+    assert has_element?(view, "[data-ui~='admin-tag']", "État simulé")
+    assert has_element?(view, "[data-ui~='service-list']", "PostgreSQL")
+    refute has_element?(view, "[data-ui~='admin-table']")
+    assert has_element?(view, "[data-ui~='language'][href*='section=services']")
     render_patch(view, "/admin/platform?section=unknown")
-    assert has_element?(view, ".cp-admin-properties", "America/Toronto")
+    assert has_element?(view, "[data-ui~='admin-properties']", "America/Toronto")
     refute has_element?(view, "input[type=password]")
   end
 end

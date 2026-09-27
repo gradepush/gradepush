@@ -67,7 +67,7 @@ defmodule GradePushWeb.GradingResultsLiveTest do
       refute has_element?(teacher_view, "#submission-test-results")
     end
 
-    teacher_view |> element("button.cp-results-link") |> render_click()
+    teacher_view |> element("button[data-ui~='results-link']") |> render_click()
     assert has_element?(teacher_view, "#submission-test-results", "No results yet")
 
     first_sha = String.duplicate("a", 40)
@@ -81,16 +81,19 @@ defmodule GradePushWeb.GradingResultsLiveTest do
 
     record_grade(c, first_sha, 1)
 
-    assert eventually(fn -> has_element?(teacher_view, ".cp-test-score", "25 / 100") end)
-    refute has_element?(teacher_view, ".cp-test-score", "25.00")
+    assert eventually(fn -> has_element?(teacher_view, "[data-ui~='test-score']", "25 / 100") end)
+    refute has_element?(teacher_view, "[data-ui~='test-score']", "25.00")
 
     for {view, id} <- [
           {student_view, "student-test-results"},
           {teacher_view, "submission-test-results"}
         ] do
-      assert eventually(fn -> has_element?(view, "##{id} .cp-grading-total", "25 / 100") end)
-      assert has_element?(view, "##{id} .cp-grading-success", "Passed")
-      assert has_element?(view, "##{id} .cp-grading-failure", "Failed")
+      assert eventually(fn ->
+               has_element?(view, "##{id} [data-ui~='grading-total']", "25 / 100")
+             end)
+
+      assert has_element?(view, "##{id} [data-result='success']", "Passed")
+      assert has_element?(view, "##{id} [data-result='failure']", "Failed")
       assert has_element?(view, "##{id} code[title='#{first_sha}']", "aaaaaaa")
 
       assert has_element?(
@@ -104,11 +107,15 @@ defmodule GradePushWeb.GradingResultsLiveTest do
 
     for view <- [student_view, teacher_view] do
       assert eventually(fn ->
-               has_element?(view, ".cp-grading-summary", "Awaiting results for the latest push.")
+               has_element?(
+                 view,
+                 "[data-ui~='grading-summary']",
+                 "Awaiting results for the latest push."
+               )
              end)
 
-      refute has_element?(view, ".cp-grading-success")
-      refute has_element?(view, ".cp-grading-total")
+      refute has_element?(view, "[data-result='success']")
+      refute has_element?(view, "[data-ui~='grading-total']")
     end
 
     {:ok, _} =
@@ -119,9 +126,12 @@ defmodule GradePushWeb.GradingResultsLiveTest do
       })
 
     for view <- [student_view, teacher_view] do
-      assert eventually(fn -> has_element?(view, ".cp-grading-warning", "cannot be verified") end)
-      assert has_element?(view, ".cp-grading-status", "Not verified")
-      refute has_element?(view, ".cp-grading-total")
+      assert eventually(fn ->
+               has_element?(view, "[data-ui~='grading-warning']", "cannot be verified")
+             end)
+
+      assert has_element?(view, "[data-ui~='grading-status']", "Not verified")
+      refute has_element?(view, "[data-ui~='grading-total']")
     end
   end
 
@@ -144,7 +154,7 @@ defmodule GradePushWeb.GradingResultsLiveTest do
 
     {:ok, own_view, _} = build_conn() |> log_in_user(stranger) |> live("/student" <> path)
     assert has_element?(own_view, "#student-test-results", "No results yet")
-    refute has_element?(own_view, ".cp-grading-total")
+    refute has_element?(own_view, "[data-ui~='grading-total']")
     refute render(own_view) =~ "actions/runs/1"
 
     colleague = user_fixture()

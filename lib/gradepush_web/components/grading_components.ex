@@ -28,18 +28,35 @@ defmodule GradePushWeb.GradingComponents do
       )
 
     ~H"""
-    <section id={@id} class="cp-grading" aria-label={gettext("Automatic test results")}>
-      <div class="cp-grading-summary">
-        <p :if={@grade && !@untrusted?} class="cp-grading-total">
+    <section
+      data-ui="grading"
+      id={@id}
+      aria-label={gettext("Automatic test results")}
+    >
+      <div
+        data-ui="grading-summary"
+        class={[
+          "flex flex-wrap items-center gap-y-[12px] gap-x-[24px] border-b border-b-line text-[13px] text-muted p-[22px]",
+          "[&>p:first-child]:basis-full max-[640px]:p-[18px] max-[640px]:gap-[12px]"
+        ]}
+      >
+        <p
+          :if={@grade && !@untrusted?}
+          data-ui="grading-total"
+          class="[&_strong]:ml-[8px] [&_strong]:text-[18px] [&_strong]:text-ink"
+        >
           {gettext("Test score")} <strong>{points(@grade.score)} / {points(@grade.max_score)}</strong>
         </p>
-        <p :if={@untrusted?} role="status" class="cp-grading-warning">
+        <p :if={@untrusted?} data-ui="grading-warning" role="status" class="text-failure">
           {gettext("The grading workflow changed. This result cannot be verified.")}
         </p>
         <p :if={!@grade} role="status">
           {waiting_message(@subject, @push)}
         </p>
-        <p :if={@push} class="cp-grading-commit">
+        <p
+          :if={@push}
+          class="flex items-center gap-[8px] [&_code]:text-ink"
+        >
           {if @grade && !@untrusted?, do: gettext("Assessed commit"), else: gettext("Latest commit")}
           <code title={@push.commit_sha}>{String.slice(@push.commit_sha, 0, 7)}</code>
         </p>
@@ -48,28 +65,45 @@ defmodule GradePushWeb.GradingComponents do
           href={@actions_url}
           target="_blank"
           rel="noopener noreferrer"
-          class="cp-repo-link"
+          class={[
+            "inline-flex items-center whitespace-nowrap border-0 bg-transparent py-[4px] px-0 gap-[6px]",
+            "disabled:opacity-[1] disabled:text-muted"
+          ]}
         >
           <.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
             "View GitHub Actions"
           )}
         </a>
       </div>
-      <ul class="cp-test-list cp-test-list-embedded">
+      <.test_list embedded>
         <li :for={test <- @tests} id={"#{@id}-test-#{test.id}"}>
           <% result = Map.get(@results, test.id) %>
-          <div class="cp-grading-description">
+          <div class="min-w-0 wrap-anywhere">
             <h3>{test.name}</h3><p :if={test.description not in [nil, ""]}>{test.description}</p>
           </div>
-          <div class="cp-grading-outcome">
-            <span class={["cp-grading-status", result && "cp-grading-#{result.status}"]}>
+          <div class={[
+            "flex flex-col items-end text-[13px] whitespace-nowrap tabular-nums text-muted gap-[6px] max-[640px]:w-full",
+            "max-[640px]:flex-row max-[640px]:items-center max-[640px]:justify-between max-[640px]:gap-[12px]"
+          ]}>
+            <span
+              data-ui="grading-status"
+              data-result={result && result.status}
+              class={[
+                "font-semibold",
+                case result && result.status do
+                  "success" -> "text-success"
+                  "failure" -> "text-failure"
+                  _ -> "text-ink"
+                end
+              ]}
+            >
               {status_label(result, @untrusted?, @push)}
             </span>
             <span :if={result}>{points(result.points_awarded)} / {points(result.max_points)}</span>
             <span :if={!result}>{gettext("%{points} points", points: points(test.points))}</span>
           </div>
         </li>
-      </ul>
+      </.test_list>
     </section>
     """
   end
