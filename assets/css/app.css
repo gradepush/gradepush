@@ -1,5 +1,5 @@
 @import "tailwindcss" source(none);
-@import "./teacher-workspace.css";
+@import "./workspace.css";
 @import "./data-lists.css";
 @import "phoenix-colocated/gradepush/colocated.css";
 @source "../css";
@@ -174,7 +174,6 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 .cp-markdown > :last-child { margin-bottom: 0; }
 .cp-term-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .cp-term-fields label { min-width: 0; }
-.cp-student-main .cp-heading { margin-bottom: 28px; }
 .cp-student-main .cp-heading h1:last-child { margin-bottom: 0; }
 .cp-student-main .cp-class-meta { flex-wrap: wrap; }
 .cp-student-main .cp-class-meta > span { overflow-wrap: anywhere; min-width: 0; }

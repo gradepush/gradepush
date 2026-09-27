@@ -1,4 +1,4 @@
-<div class="class-preview">
+<div class="class-preview cp-workspace">
   <div class="cp-shell" inert={@modal != nil}>
     <a class="skip-link" href="#admin-content">{gettext("Skip to content")}</a>
     <WorkspaceLayout.header
@@ -12,19 +12,23 @@
       language_urls={Map.new(~w(en fr), &{&1, language_url(@live_action, @section, &1)})}
     />
     <main id="admin-content" class="cp-main cp-admin" tabindex="-1">
-      <div class="cp-heading cp-admin-heading">
-        <div>
-          <p class="cp-context">{gettext("Administration")}</p><h1>
-            {if @live_action == :institution, do: @state.name, else: gettext("Platform")}
-          </h1><p class="cp-lead">
-            {if @live_action == :institution,
-              do: gettext("Manage your teaching team and classroom assignments."),
-              else: gettext("Configuration and operation of your GradePush instance.")}
-          </p>
+      <div class="cp-admin-overview">
+        <div class="cp-heading cp-admin-heading">
+          <div>
+            <p class="cp-context">{gettext("Administration")}</p><h1>
+              {if @live_action == :institution, do: @state.name, else: gettext("Platform")}
+            </h1><p class="cp-lead">
+              {if @live_action == :institution,
+                do: gettext("Manage your teaching team and classroom assignments."),
+                else: gettext("Configuration and operation of your GradePush instance.")}
+            </p>
+          </div>
         </div>
-      </div>
-      <%= if @live_action == :institution do %>
-        <dl class="cp-institution-summary" aria-label={gettext("Institution overview")}>
+        <dl
+          :if={@live_action == :institution}
+          class="cp-institution-summary"
+          aria-label={gettext("Institution overview")}
+        >
           <div>
             <dt>{gettext("Teachers")}</dt><dd>{length(@state.teachers)}</dd>
           </div>
@@ -35,6 +39,8 @@
             <dt>{gettext("Students")}</dt><dd>{@state.students}</dd>
           </div>
         </dl>
+      </div>
+      <%= if @live_action == :institution do %>
         <nav class="cp-tabs cp-admin-tabs" aria-label={gettext("Institution sections")}>
           <.link
             :for={

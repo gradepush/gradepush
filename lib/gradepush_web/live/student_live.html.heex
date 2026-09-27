@@ -1,4 +1,4 @@
-<div class="class-preview">
+<div class="class-preview cp-workspace">
   <div class="cp-shell">
     <a class="skip-link" href="#student-content">{gettext("Skip to content")}</a>
     <WorkspaceLayout.header
@@ -116,36 +116,39 @@
             {@classroom.title, "/student/classrooms/#{@classroom.slug}"},
             {@assignment.title, nil}
           ]} />
-          <div class="cp-heading">
-            <div>
-              <h1>{@assignment.title}</h1>
-              <p class="cp-lead cp-deadline">
-                <.icon name="hero-calendar-days" class="size-4" />{deadline_label(
-                  deadline(@assignment, @subject)
-                )}
-              </p>
+          <div class="cp-student-overview">
+            <div class="cp-heading">
+              <div>
+                <p class="cp-context">{gettext("Assignment")}</p>
+                <h1>{@assignment.title}</h1>
+                <p class="cp-lead cp-deadline">
+                  <.icon name="hero-calendar-days" class="size-4" />{deadline_label(
+                    deadline(@assignment, @subject)
+                  )}
+                </p>
+              </div>
+              <a
+                :if={repository_url(@repository)}
+                href={repository_url(@repository)}
+                class="cp-button cp-primary"
+                target="_blank"
+                rel="noopener noreferrer"
+              ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
+                "Open repository"
+              )}</a>
             </div>
-            <a
-              :if={repository_url(@repository)}
-              href={repository_url(@repository)}
-              class="cp-button cp-primary"
-              target="_blank"
-              rel="noopener noreferrer"
-            ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
-              "Open repository"
-            )}</a>
-          </div>
-          <div class="cp-assignment-facts">
-            <span><.icon name="hero-user-group" class="size-4" />{if @assignment.kind == "team",
-              do: gettext("Team assignment"),
-              else: gettext("Individual assignment")}</span>
-            <span :if={@subject && @subject.team} class="cp-student-team">
-              <strong>{@subject.team.name}</strong>
-              <span>{team_members(@subject.team)}</span>
-            </span>
-            <span :if={@subject}><.icon name="hero-arrow-up-tray" class="size-4" />{gettext(
-              "Latest push"
-            )}: {push_time(@latest_push)}</span>
+            <div class="cp-assignment-facts">
+              <span><.icon name="hero-user-group" class="size-4" />{if @assignment.kind == "team",
+                do: gettext("Team assignment"),
+                else: gettext("Individual assignment")}</span>
+              <span :if={@subject && @subject.team} class="cp-student-team">
+                <strong>{@subject.team.name}</strong>
+                <span>{team_members(@subject.team)}</span>
+              </span>
+              <span :if={@subject}><.icon name="hero-arrow-up-tray" class="size-4" />{gettext(
+                "Latest push"
+              )}: {push_time(@latest_push)}</span>
+            </div>
           </div>
           <section :if={!@subject} class="cp-admin-panel">
             <div class="cp-student-notice">
