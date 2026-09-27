@@ -8,6 +8,30 @@ defmodule GradePush.TeachingDomainTest do
   alias GradePush.Assignments.{AssignmentTest, Repository, Subject}
   alias GradePush.Classrooms.GitHubConnection
 
+  test "removing a colleague revokes only that classroom and preserves its last teacher" do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher)
+    other_classroom = classroom_fixture(teacher)
+    colleague = user_fixture()
+    teacher_membership_fixture(colleague)
+
+    for class <- [classroom, other_classroom] do
+      assert {:ok, _} = Classrooms.add_teacher(teacher, class.id, colleague.id)
+    end
+
+    assert {:ok, remaining} = Classrooms.remove_teacher(teacher, classroom.id, colleague.id)
+    assert Enum.map(remaining, & &1.user_id) == [teacher.id]
+    assert {:error, :not_found} = Classrooms.get_classroom(colleague, classroom.slug)
+    assert {:ok, _} = Classrooms.get_classroom(colleague, other_classroom.slug)
+
+    assert {:error, :not_found} =
+             Classrooms.remove_teacher(colleague, classroom.id, teacher.id)
+
+    assert {:error, :not_found} = Classrooms.remove_teacher(teacher, classroom.id, colleague.id)
+    assert {:error, :last_teacher} = Classrooms.remove_teacher(teacher, classroom.id, teacher.id)
+    assert {:ok, _} = Classrooms.get_classroom(teacher, classroom.slug)
+  end
+
   test "duplicate team names return validation errors instead of raising" do
     %{user: teacher} = bootstrap_fixture()
     classroom = classroom_fixture(teacher)
