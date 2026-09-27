@@ -24,4 +24,18 @@ defmodule GradePushWeb.ConnCase do
     {:ok, token} = GradePush.Accounts.create_session(user)
     Phoenix.ConnTest.init_test_session(conn, %{"user_token" => token, "ui_preview" => false})
   end
+
+  def eventually(check, attempts \\ 50) do
+    cond do
+      check.() ->
+        true
+
+      attempts <= 1 ->
+        false
+
+      true ->
+        Process.sleep(10)
+        eventually(check, attempts - 1)
+    end
+  end
 end

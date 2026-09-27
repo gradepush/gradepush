@@ -312,7 +312,7 @@ defmodule GradePush.Submissions do
   def enrich_subjects(subjects) when is_list(subjects) do
     ids = Enum.map(subjects, & &1.id)
 
-    pushes = latest_by_subject(Push, ids, asc: :subject_id, desc: :observed_at, desc: :id)
+    pushes = latest_pushes_for_subjects(ids)
 
     grades = latest_grades_for_latest_pushes(ids)
 
@@ -589,24 +589,38 @@ defmodule GradePush.Submissions do
     }
   end
 
-  defp latest_by_subject(schema, subject_ids, order_by, preload \\ nil) do
-    query =
-      from(record in schema,
-        where: record.subject_id in ^subject_ids,
-        distinct: record.subject_id,
-        order_by: ^order_by
+  defp latest_pushes_for_subjects(subject_ids) do
+    latest_push =
+      from(push in Push,
+        where: push.subject_id == parent_as(:subject_ids).id,
+        order_by: [desc: push.observed_at, desc: push.id],
+        limit: 1
       )
 
-    query = if preload, do: preload(query, ^preload), else: query
-    query |> Repo.all() |> Map.new(&{&1.subject_id, &1})
+    from(subject_id in fragment("SELECT unnest(?::bigint[]) AS id", ^subject_ids),
+      as: :subject_ids,
+      inner_lateral_join: push in subquery(latest_push),
+      on: true,
+      select: push
+    )
+    |> Repo.all()
+    |> Map.new(&{&1.subject_id, &1})
   end
 
   defp latest_grades_for_latest_pushes(subject_ids) do
-    latest_pushes =
+    latest_push =
       from(push in Push,
-        where: push.subject_id in ^subject_ids,
-        distinct: push.subject_id,
-        order_by: [asc: push.subject_id, desc: push.observed_at, desc: push.id],
+        where: push.subject_id == parent_as(:subject_ids).id,
+        order_by: [desc: push.observed_at, desc: push.id],
+        limit: 1,
+        select: %{subject_id: push.subject_id, commit_sha: push.commit_sha}
+      )
+
+    latest_pushes =
+      from(subject_id in fragment("SELECT unnest(?::bigint[]) AS id", ^subject_ids),
+        as: :subject_ids,
+        inner_lateral_join: push in subquery(latest_push),
+        on: true,
         select: %{subject_id: push.subject_id, commit_sha: push.commit_sha}
       )
 

@@ -7,6 +7,64 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
 
   alias GradePush.{Assignments, Classrooms}
 
+  test "overlapping classroom and assignment notifications reload the workspace once", %{
+    conn: conn
+  } do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher)
+    assignment = assignment_fixture(teacher, classroom)
+
+    {:ok, view, _} =
+      conn
+      |> log_in_user(teacher)
+      |> live("/classrooms/#{classroom.slug}/assignments/#{assignment.slug}")
+
+    counter = :atomics.new(1, [])
+    handler = "workspace-queries-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach(
+      handler,
+      [:grade_push, :repo, :query],
+      &__MODULE__.count_workspace_query/4,
+      {view.pid, counter}
+    )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+
+    send(view.pid, {:submission_changed, 1})
+    wait_for_refresh(view)
+    single_refresh_queries = :atomics.get(counter, 1)
+    assert single_refresh_queries > 0
+    :atomics.put(counter, 1, 0)
+
+    assignment |> Ecto.Changeset.change(title: "Updated lab") |> GradePush.Repo.update!()
+    :sys.suspend(view.pid)
+    send(view.pid, {:assignment_accepted, 1})
+    send(view.pid, {:submission_changed, 1})
+    :sys.resume(view.pid)
+    wait_for_refresh(view)
+
+    assert has_element?(view, "h1", "Updated lab")
+    assert :atomics.get(counter, 1) == single_refresh_queries
+
+    send(view.pid, {:submission_changed, 1})
+    render_patch(view, "/classrooms/#{classroom.slug}/assignments/#{assignment.slug}/edit")
+    view |> form("#assignment-form", assignment: %{title: "Unsaved draft"}) |> render_change()
+    wait_for_refresh(view)
+    assert has_element?(view, "input[name='assignment[title]'][value='Unsaved draft']")
+  end
+
+  def count_workspace_query(_event, _measurements, _metadata, {pid, counter}) do
+    if self() == pid, do: :atomics.add_get(counter, 1, 1)
+  end
+
+  defp wait_for_refresh(view) do
+    Process.sleep(75)
+    render(view)
+    Process.sleep(75)
+    render(view)
+  end
+
   test "creating a classroom selects the first connected organization", %{conn: conn} do
     %{user: teacher} = bootstrap_fixture()
     existing = classroom_fixture(teacher)

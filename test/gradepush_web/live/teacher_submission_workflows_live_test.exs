@@ -88,7 +88,10 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
       })
 
     assert subject.team_id == team.id
-    assert has_element?(view, "#submission-team-#{team.id} strong", "Blue Team")
+
+    assert eventually(fn ->
+             has_element?(view, "#submission-team-#{team.id} strong", "Blue Team")
+           end)
   end
 
   test "teacher sets and clears a submission deadline extension in Toronto local time", %{

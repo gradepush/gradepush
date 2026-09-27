@@ -65,6 +65,7 @@ defmodule GradePushWeb.TeacherLive do
        teams: [],
        assignment_activity: %{},
        subscribed_topics: [],
+       refresh_pending?: false,
        templates: [],
        invitation_url: nil,
        submission_filter: "all",
@@ -368,17 +369,21 @@ defmodule GradePushWeb.TeacherLive do
   @impl true
   def handle_info(_message, %{assigns: %{preview?: true}} = socket), do: {:noreply, socket}
 
-  def handle_info({_event, _id}, %{assigns: %{live_action: action}} = socket)
-      when action in [:new_assignment, :edit_assignment], do: {:noreply, socket}
-
-  def handle_info({_event, _id}, %{assigns: %{modal: {"test_results", _}}} = socket),
-    do: reload_real_workspace(socket, nil)
-
-  def handle_info({_event, _id}, %{assigns: %{modal: modal}} = socket) when not is_nil(modal),
-    do: {:noreply, socket}
-
   def handle_info({_event, _id}, socket) do
-    reload_real_workspace(socket, nil)
+    if refreshable_workspace?(socket.assigns) and not socket.assigns.refresh_pending? do
+      Process.send_after(self(), :refresh_workspace, 50)
+      {:noreply, assign(socket, refresh_pending?: true)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info(:refresh_workspace, socket) do
+    socket = assign(socket, refresh_pending?: false)
+
+    if refreshable_workspace?(socket.assigns),
+      do: reload_real_workspace(socket, nil),
+      else: {:noreply, socket}
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
@@ -1161,6 +1166,11 @@ defmodule GradePushWeb.TeacherLive do
       handle_real_params(socket.assigns.route_params, socket.assigns.path, socket)
 
     {:noreply, assign(socket, modal: modal, notice: notice)}
+  end
+
+  defp refreshable_workspace?(%{live_action: action, modal: modal}) do
+    action not in [:new_assignment, :edit_assignment] and
+      (is_nil(modal) or modal?(modal, "test_results"))
   end
 
   defp subscribe_to_workspace(socket, classroom, assignment) do

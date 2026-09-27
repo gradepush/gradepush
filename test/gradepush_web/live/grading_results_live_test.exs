@@ -85,7 +85,7 @@ defmodule GradePushWeb.GradingResultsLiveTest do
           {student_view, "student-test-results"},
           {teacher_view, "submission-test-results"}
         ] do
-      assert has_element?(view, "##{id} .cp-grading-total", "25 / 100")
+      assert eventually(fn -> has_element?(view, "##{id} .cp-grading-total", "25 / 100") end)
       assert has_element?(view, "##{id} .cp-grading-success", "Passed")
       assert has_element?(view, "##{id} .cp-grading-failure", "Failed")
       assert has_element?(view, "##{id} code[title='#{first_sha}']", "aaaaaaa")
@@ -100,6 +100,10 @@ defmodule GradePushWeb.GradingResultsLiveTest do
     record_push(c, latest_sha, "second")
 
     for view <- [student_view, teacher_view] do
+      assert eventually(fn ->
+               has_element?(view, ".cp-grading-summary", "Awaiting results for the latest push.")
+             end)
+
       refute has_element?(view, ".cp-grading-success")
       refute has_element?(view, ".cp-grading-total")
     end
@@ -112,7 +116,7 @@ defmodule GradePushWeb.GradingResultsLiveTest do
       })
 
     for view <- [student_view, teacher_view] do
-      assert has_element?(view, ".cp-grading-warning", "cannot be verified")
+      assert eventually(fn -> has_element?(view, ".cp-grading-warning", "cannot be verified") end)
       assert has_element?(view, ".cp-grading-status", "Not verified")
       refute has_element?(view, ".cp-grading-total")
     end
