@@ -21,6 +21,8 @@ defmodule GradePushWeb.Router do
     live "/classrooms", TeacherLive, :index
     live "/teacher/settings", TeacherLive, :settings
     live "/signed-out", TeacherLive, :signed_out
+    live "/admin/institution", AdminLive, :institution
+    live "/admin/platform", AdminLive, :platform
     live "/classrooms/:slug", TeacherLive, :show
     live "/classrooms/:slug/assignments/new", TeacherLive, :new_assignment
     live "/classrooms/:slug/assignments/:assignment/edit", TeacherLive, :edit_assignment

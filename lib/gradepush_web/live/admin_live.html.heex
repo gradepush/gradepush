@@ -1,0 +1,352 @@
+<div class="class-preview">
+  <div class="cp-shell" inert={@modal != nil}>
+    <a class="skip-link" href="#admin-content">{gettext("Skip to content")}</a>
+    <WorkspaceLayout.header
+      user={@user}
+      institution={@state.name}
+      action={@live_action}
+      context={@live_action}
+      contexts={[:teaching, :institution, :platform]}
+      locale={@locale}
+      language_urls={Map.new(~w(en fr), &{&1, language_url(@live_action, @section, &1)})}
+    />
+    <main id="admin-content" class="cp-main cp-admin" tabindex="-1">
+      <div class="cp-heading cp-admin-heading">
+        <div>
+          <p class="cp-context">{gettext("Administration")}</p><h1>
+            {if @live_action == :institution, do: @state.name, else: gettext("Platform")}
+          </h1><p class="cp-lead">
+            {if @live_action == :institution,
+              do: gettext("Manage your teaching team and classroom assignments."),
+              else: gettext("Configuration and operation of your GradePush instance.")}
+          </p>
+        </div>
+      </div>
+      <%= if @live_action == :institution do %>
+        <dl class="cp-institution-summary" aria-label={gettext("Institution overview")}>
+          <div>
+            <dt>{gettext("Teachers")}</dt><dd>{length(@state.teachers)}</dd>
+          </div>
+          <div>
+            <dt>{gettext("Classrooms")}</dt><dd>{length(@state.classrooms)}</dd>
+          </div>
+          <div>
+            <dt>{gettext("Students")}</dt><dd>{@state.students}</dd>
+          </div>
+        </dl>
+        <nav class="cp-tabs cp-admin-tabs" aria-label={gettext("Institution sections")}>
+          <.link
+            :for={
+              {key, title, icon} <- [
+                {"teachers", gettext("Teachers"), "hero-user-group"},
+                {"classrooms", gettext("Classrooms"), "hero-rectangle-stack"},
+                {"history", gettext("History"), "hero-clock"},
+                {"settings", gettext("Settings"), "hero-cog-6-tooth"}
+              ]
+            }
+            patch={base(@live_action) <> "?section=" <> key}
+            class={if @section == key, do: "is-active"}
+            aria-current={if @section == key, do: "page"}
+          ><.icon name={icon} class="size-4" />{title}</.link>
+        </nav>
+      <% else %>
+        <nav class="cp-tabs cp-admin-tabs" aria-label={gettext("Platform sections")}>
+          <.link
+            :for={
+              {key, title, icon} <- [
+                {"configuration", gettext("Configuration"), "hero-adjustments-horizontal"},
+                {"services", gettext("Services"), "hero-server-stack"},
+                {"history", gettext("History"), "hero-clock"}
+              ]
+            }
+            patch={base(@live_action) <> "?section=" <> key}
+            class={if @section == key, do: "is-active"}
+            aria-current={if @section == key, do: "page"}
+          ><.icon name={icon} class="size-4" />{title}</.link>
+        </nav>
+      <% end %>
+      <p :if={@notice} class="cp-notice" role="status">{@notice}</p>
+      <p :if={@error && !@modal} class="cp-error" role="alert">{@error}</p>
+      <div class="cp-admin-content">
+        <%= cond do %>
+          <% @live_action == :platform -> %>
+            <AdminComponents.platform section={@section} user={@user} platform={@platform} />
+          <% @section == "teachers" -> %>
+            <div class="cp-toolbar">
+              <form id="admin-search" phx-change="search" role="search">
+                <label class="cp-search"><.icon name="hero-magnifying-glass" class="size-4" /><span class="sr-only">{gettext(
+                  "Search teachers"
+                )}</span><input
+                  type="search"
+                  name="query"
+                  value={@query}
+                  placeholder={gettext("Search teachers")}
+                  phx-debounce="150"
+                /></label>
+              </form>
+              <button class="cp-button cp-primary" phx-click={open_modal("invite")}><.icon
+                name="hero-plus"
+                class="size-4"
+              />{gettext("Invite a teacher")}</button>
+            </div>
+            <div :if={visible(@state.teachers, @query) != []} class="cp-admin-table-wrap">
+              <table class="cp-admin-table">
+                <caption class="sr-only">{gettext("Institution teachers")}</caption><thead>
+                  <tr>
+                    <th scope="col">{gettext("Teacher")}</th><th scope="col">
+                      {gettext("Institution role")}
+                    </th><th scope="col">{gettext("Classrooms")}</th><th scope="col">
+                      <span class="sr-only">{gettext("Actions")}</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    :for={teacher <- visible(@state.teachers, @query)}
+                    id={"admin-teacher-#{teacher.id}"}
+                  >
+                    <th scope="row">
+                      <div class="cp-admin-person">
+                        <span class="cp-small-avatar">{teacher.initials}</span><div>
+                          <strong>{teacher.name}<span
+                            :if={teacher.id == @actor_id}
+                            class="cp-admin-you"
+                          >{gettext("You")}</span></strong><span>@{teacher.handle}</span>
+                        </div>
+                      </div>
+                    </th>
+                    <td data-label={gettext("Institution role")}>
+                      <span class={if teacher.admin?, do: "cp-admin-tag", else: "cp-admin-role"}>{if teacher.admin?,
+                        do: gettext("Administrator"),
+                        else: gettext("Teacher")}</span>
+                    </td>
+                    <td data-label={gettext("Classrooms")}>
+                      {Administration.class_count(@state, teacher.id)}
+                    </td>
+                    <td class="cp-admin-row-action">
+                      <button
+                        class="cp-button cp-compact-button"
+                        phx-click={open_modal("member", teacher.id)}
+                        aria-label={gettext("Manage %{name}", name: teacher.name)}
+                      >{gettext("Manage")}<.icon name="hero-chevron-right" class="size-3" /></button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div :if={visible(@state.teachers, @query) == []} class="cp-empty">
+              <.icon name="hero-user-group" class="size-8" /><h3>
+                {gettext("No matching teachers")}
+              </h3><p>{gettext("Try another name or GitHub username.")}</p>
+            </div>
+          <% @section == "classrooms" -> %>
+            <div class="cp-admin-section-heading">
+              <div>
+                <h2>{gettext("All classrooms")}</h2><p>
+                  {gettext("Assign teachers without accessing assignments or student work.")}
+                </p>
+              </div>
+            </div>
+            <div class="cp-admin-table-wrap">
+              <table class="cp-admin-table cp-admin-classes">
+                <caption class="sr-only">{gettext("Institution classrooms")}</caption><thead>
+                  <tr>
+                    <th scope="col">{gettext("Classroom")}</th><th scope="col">
+                      {gettext("Teachers")}
+                    </th><th scope="col">{gettext("Students")}</th><th scope="col">
+                      <span class="sr-only">{gettext("Actions")}</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr :for={classroom <- @state.classrooms} id={"admin-class-#{classroom.id}"}>
+                    <th scope="row">
+                      <strong>{local(classroom.title, @locale)}</strong><span class="cp-admin-secondary">{classroom.code}</span>
+                    </th>
+                    <td data-label={gettext("Teachers")}>
+                      <div class="cp-admin-teacher-names">
+                        <span :for={id <- classroom.teachers}>{Administration.teacher(@state, id).name}</span>
+                      </div>
+                    </td>
+                    <td data-label={gettext("Students")}>{classroom.students}</td>
+                    <td class="cp-admin-row-action">
+                      <button
+                        class="cp-button cp-compact-button"
+                        phx-click={open_modal("staff", classroom.id)}
+                        aria-label={
+                          gettext("Assign teachers to %{classroom}",
+                            classroom: local(classroom.title, @locale)
+                          )
+                        }
+                      ><.icon name="hero-user-plus" class="size-4" />{gettext("Assign")}</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          <% @section == "history" -> %>
+            <AdminComponents.history events={@state.history} />
+          <% @section == "settings" -> %>
+            <section class="cp-admin-panel">
+              <div class="cp-admin-panel-heading">
+                <.icon name="hero-building-library" class="size-5" /><div>
+                  <h2>{gettext("Institution identity")}</h2><p>
+                    {gettext("This name is visible to everyone in your institution.")}
+                  </p>
+                </div>
+              </div>
+              <form
+                id="institution-form"
+                class="cp-form cp-admin-settings-form"
+                phx-submit="save_institution"
+              >
+                <label>{gettext("Institution name")}<input
+                  name="institution[name]"
+                  required
+                  maxlength="100"
+                  value={@state.name}
+                /></label><div class="cp-modal-actions">
+                  <button class="cp-button cp-primary" phx-disable-with={gettext("Saving…")}>{gettext(
+                    "Save changes"
+                  )}</button>
+                </div>
+              </form>
+            </section>
+        <% end %>
+      </div>
+    </main>
+    <WorkspaceLayout.footer context={@live_action} />
+  </div>
+  <div
+    :if={@modal}
+    id="admin-modal"
+    class="cp-modal-backdrop"
+    phx-window-keydown="close"
+    phx-key="Escape"
+    phx-remove={JS.pop_focus()}
+  >
+    <.focus_wrap
+      id="admin-dialog"
+      class="cp-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-modal-title"
+      phx-mounted={JS.focus(to: "#admin-modal-close")}
+    >
+      <div class="cp-modal-heading">
+        <h2 id="admin-modal-title">{modal_title(@modal)}</h2><button
+          class="cp-remove"
+          phx-click="close"
+          id="admin-modal-close"
+          aria-label={gettext("Close")}
+        ><.icon name="hero-x-mark" class="size-5" /></button>
+      </div>
+      <p :if={@error} class="cp-error" role="alert">{@error}</p>
+      <%= case @modal do %>
+        <% {"invite", _} -> %>
+          <p>
+            {gettext(
+              "Share this link with a colleague to let them join the institution as a teacher."
+            )}
+          </p>
+          <ClassroomComponents.invitation_link
+            id="teacher-invitation"
+            label={gettext("Teacher invitation link")}
+            url="https://gradepush.example/join/teacher/institution-demo"
+            status={@copy_status}
+          />
+          <p class="cp-preview-note">
+            {gettext("Example link only. Invitations are not active in this preview.")}
+          </p>
+          <div class="cp-modal-actions">
+            <button class="cp-button" phx-click="close">{gettext("Close")}</button>
+          </div>
+        <% {"member", id} -> %>
+          <% member = Administration.teacher(@state, id) %>
+          <div class="cp-admin-modal-person">
+            <span class="cp-avatar">{member.initials}</span><div>
+              <strong>{member.name}</strong><p>@{member.handle}</p>
+            </div>
+          </div>
+          <form id="member-form" class="cp-form" phx-submit="save_role">
+            <label>{gettext("Institution role")}<select
+              name="member[role]"
+              disabled={id == @actor_id}
+            ><option value="teacher" selected={!member.admin?}>{gettext("Teacher")}</option><option
+              value="admin"
+              selected={member.admin?}
+            >
+              {gettext("Administrator")}
+            </option></select></label><p class="cp-field-help">
+              {gettext(
+                "Administrators manage the institution, without access to classroom content."
+              )}
+            </p>
+            <div :if={id != @actor_id} class="cp-modal-actions">
+              <button type="button" class="cp-button" phx-click="close">{gettext("Cancel")}</button><button class="cp-button cp-primary">{gettext(
+                "Save changes"
+              )}</button>
+            </div>
+          </form>
+          <div :if={id != @actor_id} class="cp-admin-remove-member">
+            <button class="cp-text-button cp-remove-test" phx-click="confirm_remove">{gettext(
+              "Remove from institution"
+            )}</button>
+          </div>
+          <p :if={id == @actor_id} class="cp-preview-note">
+            {gettext("Ask another administrator to change your role.")}
+          </p>
+        <% {"remove", id} -> %>
+          <p id="member-removal-question" phx-mounted={JS.focus(to: "#cancel-member-removal")}>
+            {gettext("Remove %{name} from the institution?",
+              name: Administration.teacher(@state, id).name
+            )}
+          </p>
+          <p class="cp-removal-detail">
+            {gettext("Their GitHub repositories and access will be kept.")}
+          </p>
+          <p :if={Administration.class_count(@state, id) > 0} class="cp-error">
+            {gettext("Reassign this teacher’s classrooms before removing them.")}
+          </p>
+          <div class="cp-modal-actions">
+            <button id="cancel-member-removal" class="cp-button" phx-click="close">{gettext(
+              "Cancel"
+            )}</button><button
+              class="cp-button cp-danger"
+              phx-click="remove_member"
+              disabled={Administration.class_count(@state, id) > 0}
+            >{gettext("Remove")}</button>
+          </div>
+        <% {"staff", id} -> %>
+          <% classroom = Administration.classroom(@state, id) %>
+          <p class="cp-admin-modal-class">
+            {local(classroom.title, @locale)}<span>{classroom.code}</span>
+          </p>
+          <form id="staff-form" class="cp-form" phx-submit="save_staff">
+            <label>{gettext("Teacher to assign")}<select name="staff[teacher]" required><option value="">
+              {gettext("Choose a teacher")}
+            </option><option
+              :for={teacher <- Administration.candidates(@state, classroom, @actor_id)}
+              value={teacher.id}
+            >
+              {teacher.name}
+            </option></select></label>
+            <label>{gettext("Staffing action")}<select name="staff[replace]"><option value="">
+              {gettext("Add alongside current teachers")}
+            </option><option :for={id <- classroom.teachers} value={id}>
+              {gettext("Replace %{name}", name: Administration.teacher(@state, id).name)}
+            </option></select></label>
+            <p class="cp-field-help">
+              {gettext("You cannot assign yourself. A classroom teacher can invite you.")}
+            </p>
+            <div class="cp-modal-actions">
+              <button type="button" class="cp-button" phx-click="close">{gettext("Cancel")}</button><button
+                class="cp-button cp-primary"
+                phx-disable-with={gettext("Saving…")}
+              >{gettext("Confirm assignment")}</button>
+            </div>
+          </form>
+      <% end %>
+    </.focus_wrap>
+  </div>
+</div>

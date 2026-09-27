@@ -3,6 +3,29 @@ defmodule GradePushWeb.WorkspaceHeaderTest do
 
   import Phoenix.LiveViewTest
 
+  test "the context selector lists only the workspaces supplied to the header" do
+    assigns = %{
+      user: %{name: "Teacher", handle: "teacher", initials: "TE"},
+      institution: "College",
+      action: :index,
+      locale: "en",
+      language_urls: %{"fr" => "/?locale=fr", "en" => "/?locale=en"}
+    }
+
+    html = render_component(&GradePushWeb.WorkspaceLayout.header/1, assigns)
+    refute html =~ "context-menu"
+    refute html =~ "/admin/"
+
+    html =
+      render_component(
+        &GradePushWeb.WorkspaceLayout.header/1,
+        Map.put(assigns, :contexts, [:teaching, :institution])
+      )
+
+    assert html =~ "/admin/institution"
+    refute html =~ "/admin/platform"
+  end
+
   test "teacher navigation opens settings and the connection preview", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms/programming?locale=fr")
     assert has_element?(view, ".cp-navigation a[aria-current='page']", "Classes")
