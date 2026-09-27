@@ -70,6 +70,7 @@ defmodule GradePush.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
+      {:mdex, "~> 0.13.5"},
       {:oban, "~> 2.24"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:bandit, "~> 1.12"}
