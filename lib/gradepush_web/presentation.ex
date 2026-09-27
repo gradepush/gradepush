@@ -29,6 +29,13 @@ defmodule GradePushWeb.Presentation do
 
   def text(value), do: %{en: value || "", fr: value || ""}
 
+  def points(%Decimal{} = value),
+    do: value |> Decimal.round(0, :half_up) |> Decimal.to_string(:normal)
+
+  def points(value) when is_float(value), do: value |> Decimal.from_float() |> points()
+  def points(value) when is_integer(value), do: Integer.to_string(value)
+  def points(value) when is_binary(value), do: value |> Decimal.new() |> points()
+
   def classroom_term(%{semester: semester, academic_year: year})
       when semester in ["winter", "summer", "fall"] and is_binary(year) and year != "",
       do: "#{semester_label(semester)} #{year}"

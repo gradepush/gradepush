@@ -4,6 +4,7 @@ defmodule GradePushWeb.AssignmentComponents do
 
   alias GradePushWeb.ClassroomComponents
   alias GradePushWeb.Markdown
+  alias GradePushWeb.Presentation
 
   attr :assignment, :map, required: true
   attr :classroom, :map, required: true
@@ -241,7 +242,9 @@ defmodule GradePushWeb.AssignmentComponents do
                 />
               </td>
               <td :if={@assignment.tests?} class="cp-tests-cell" data-label={gettext("Test score")}>
-                <span :if={row.score != nil} class="cp-test-score">{row.score}<span> / {@total_points}</span></span>
+                <span :if={row.score != nil} class="cp-test-score">{Presentation.points(row.score)}<span> / {Presentation.points(
+                  @total_points
+                )}</span></span>
                 <span
                   :if={Map.get(row, :grade_untrusted?, false)}
                   class="cp-late-note"

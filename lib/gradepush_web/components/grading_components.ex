@@ -2,6 +2,8 @@ defmodule GradePushWeb.GradingComponents do
   @moduledoc false
   use GradePushWeb, :html
 
+  import GradePushWeb.Presentation, only: [points: 1]
+
   attr :id, :string, required: true
   attr :tests, :list, required: true
   attr :subject, :any, default: nil
@@ -85,9 +87,6 @@ defmodule GradePushWeb.GradingComponents do
 
   defp waiting_message(_, nil), do: gettext("No results yet. Push your work to run the tests.")
   defp waiting_message(_, _), do: gettext("Awaiting results for the latest push.")
-
-  defp points(%Decimal{} = value), do: value |> Decimal.normalize() |> Decimal.to_string(:normal)
-  defp points(value), do: to_string(value)
 
   defp actions_url(%{html_url: "https://github.com/" <> _ = url}, _), do: url
 

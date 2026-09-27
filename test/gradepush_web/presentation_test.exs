@@ -3,6 +3,20 @@ defmodule GradePushWeb.PresentationTest do
 
   alias GradePushWeb.Presentation
 
+  test "points round to the nearest whole number without trailing decimals" do
+    for {value, expected} <- [
+          {Decimal.new("100.00"), "100"},
+          {Decimal.new("12.49"), "12"},
+          {Decimal.new("12.50"), "13"},
+          {Decimal.new("0.00"), "0"},
+          {"99.99", "100"},
+          {0, "0"},
+          {12.5, "13"}
+        ] do
+      assert Presentation.points(value) == expected
+    end
+  end
+
   test "classroom groups preserve distinct year labels and sort numeric years first" do
     groups =
       Presentation.classroom_groups([

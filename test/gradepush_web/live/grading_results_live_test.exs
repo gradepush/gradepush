@@ -81,6 +81,9 @@ defmodule GradePushWeb.GradingResultsLiveTest do
 
     record_grade(c, first_sha, 1)
 
+    assert eventually(fn -> has_element?(teacher_view, ".cp-test-score", "25 / 100") end)
+    refute has_element?(teacher_view, ".cp-test-score", "25.00")
+
     for {view, id} <- [
           {student_view, "student-test-results"},
           {teacher_view, "submission-test-results"}
