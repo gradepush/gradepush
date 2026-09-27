@@ -186,7 +186,9 @@ defmodule GradePushWeb.WorkspaceLayout do
     ~H"""
     <footer class="cp-footer">
       <div class="cp-footer-inner">
-        <.link {workspace_link(@context, "/classrooms")} class="cp-footer-brand">GradePush</.link>
+        <.link {workspace_link(@context, "/classrooms")} class="cp-footer-brand">
+          <img src={~p"/images/logo.svg"} width="120" alt="GradePush" />
+        </.link>
         <nav class="cp-footer-links" aria-label={gettext("Useful links")}>
           <a
             :for={
