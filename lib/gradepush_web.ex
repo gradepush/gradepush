@@ -80,6 +80,7 @@ defmodule GradePushWeb do
 
       import Phoenix.HTML
       import GradePushWeb.CoreComponents
+      import GradePushWeb.NavigationComponents
 
       alias GradePushWeb.Layouts
       alias Phoenix.LiveView.JS

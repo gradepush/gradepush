@@ -26,46 +26,57 @@
             <p :if={@error} role="alert" class="cp-error">{@error}</p>
             <.form for={@profile} id="accept-invitation-form" phx-submit="accept" class="cp-form">
               <%= if @kind != "teacher" do %>
-                <label>{gettext("Name")}<input
-                  name="profile[name]"
-                  value={@profile[:name].value}
-                  required
-                  maxlength="160"
-                  autocomplete="name"
-                /></label>
-                <label>{gettext("Student ID")}<input
-                  name="profile[student_id]"
-                  value={@profile[:student_id].value}
-                  required
-                  maxlength="80"
-                  autocomplete="off"
-                /></label>
+                <.field>
+                  {gettext("Name")}<.input
+                    name="profile[name]"
+                    value={@profile[:name].value}
+                    required
+                    maxlength="160"
+                    autocomplete="name"
+                  />
+                </.field>
+                <.field>
+                  {gettext("Student ID")}<.input
+                    name="profile[student_id]"
+                    value={@profile[:student_id].value}
+                    required
+                    maxlength="80"
+                    autocomplete="off"
+                  />
+                </.field>
                 <%= if team_assignment?(@invitation) do %>
-                  <label>{gettext("Join a team")}<select name="profile[team_id]"><option value="">
-                    {gettext("Create a new team")}
-                  </option><option
-                    :for={team <- Map.get(@invitation, :team_options, [])}
-                    value={team.id}
-                  >
-                    {team.name}
-                  </option></select></label>
-                  <label>{gettext("New team name")}<input
-                    name="profile[team_name]"
-                    maxlength="120"
-                  /></label>
+                  <.field>
+                    {gettext("Join a team")}
+                    <.input type="select" name="profile[team_id]">
+                      <option value="">
+                        {gettext("Create a new team")}
+                      </option><option
+                        :for={team <- Map.get(@invitation, :team_options, [])}
+                        value={team.id}
+                      >
+                        {team.name}
+                      </option>
+                    </.input>
+                  </.field>
+                  <.field>
+                    {gettext("New team name")}<.input
+                      name="profile[team_name]"
+                      maxlength="120"
+                    />
+                  </.field>
                 <% end %>
               <% end %>
               <div class="cp-modal-actions">
-                <button class="cp-button cp-primary" phx-disable-with={gettext("Joining…")}>{if @kind ==
-                                                                                                  "assignment",
-                                                                                                do:
-                                                                                                  gettext(
-                                                                                                    "Accept assignment"
-                                                                                                  ),
-                                                                                                else:
-                                                                                                  gettext(
-                                                                                                    "Join"
-                                                                                                  )}</button>
+                <.button type="submit" variant="primary" phx-disable-with={gettext("Joining…")}>{if @kind ==
+                                                                                                      "assignment",
+                                                                                                    do:
+                                                                                                      gettext(
+                                                                                                        "Accept assignment"
+                                                                                                      ),
+                                                                                                    else:
+                                                                                                      gettext(
+                                                                                                        "Join"
+                                                                                                      )}</.button>
               </div>
             </.form>
           </div>
@@ -83,7 +94,7 @@
             {gettext(
               "This invitation has expired or is no longer available. Ask your teacher for a new link."
             )}
-          </p><.link navigate="/" class="cp-button">{gettext("My classrooms")}</.link>
+          </p><.button navigate="/">{gettext("My classrooms")}</.button>
         </div>
       <% end %>
     </main>

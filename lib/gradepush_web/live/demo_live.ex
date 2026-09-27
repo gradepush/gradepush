@@ -39,16 +39,16 @@ defmodule GradePushWeb.DemoLive do
             </div>
             <div class="cp-demo-roles">
               <form action="/demo/sign-in" method="post">
-                <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-                <input type="hidden" name="role" value="teacher" />
-                <input type="hidden" name="locale" value={@locale} />
-                <button type="submit" class="cp-button cp-primary">{gettext("Continue as a teacher")}</button>
+                <.input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+                <.input type="hidden" name="role" value="teacher" />
+                <.input type="hidden" name="locale" value={@locale} />
+                <.button type="submit" variant="primary">{gettext("Continue as a teacher")}</.button>
               </form>
               <form action="/demo/sign-in" method="post">
-                <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-                <input type="hidden" name="role" value="student" />
-                <input type="hidden" name="locale" value={@locale} />
-                <button type="submit" class="cp-button">{gettext("Continue as a student")}</button>
+                <.input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+                <.input type="hidden" name="role" value="student" />
+                <.input type="hidden" name="locale" value={@locale} />
+                <.button type="submit">{gettext("Continue as a student")}</.button>
               </form>
             </div>
             <p :if={Phoenix.Flash.get(@flash, :error)} class="cp-error" role="alert">

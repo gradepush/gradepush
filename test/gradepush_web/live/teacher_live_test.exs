@@ -168,7 +168,7 @@ defmodule GradePushWeb.TeacherLiveTest do
     assert has_element?(view, ".cp-teacher-list", "Alex Nguyen")
     view |> element("#teacher-remove-AN") |> render_click()
     assert has_element?(view, ".cp-teacher-list", "Alex Nguyen")
-    view |> element("#teacher-removal-confirmation .cp-danger") |> render_click()
+    view |> element("#teacher-removal-confirmation button", "Remove") |> render_click()
     refute has_element?(view, ".cp-teacher-list", "Alex Nguyen")
   end
 
@@ -197,7 +197,7 @@ defmodule GradePushWeb.TeacherLiveTest do
     view |> element(".cp-teachers-link") |> render_click()
     refute has_element?(view, "#teacher-removal-confirmation")
     view |> element("#teacher-remove-CB") |> render_click()
-    view |> element("#teacher-removal-confirmation .cp-danger") |> render_click()
+    view |> element("#teacher-removal-confirmation button", "Remove") |> render_click()
     refute has_element?(view, ".cp-teacher-list", "Camille Bergeron")
     assert has_element?(view, "#class-dialog")
     render_patch(view, "/classrooms/web-development")

@@ -27,7 +27,7 @@ defmodule GradePushWeb.SignInLive do
           <div class="cp-empty">
             <h1>{gettext("Sign in with GitHub")}</h1>
             <p>{gettext("Sign in with GitHub to return to your classrooms.")}</p>
-            <a href="/auth/github" class="cp-button cp-primary">{gettext("Continue on GitHub")}</a>
+            <.button href="/auth/github" variant="primary">{gettext("Continue on GitHub")}</.button>
             <p :if={Phoenix.Flash.get(@flash, :error)} class="cp-error" role="alert">
               {Phoenix.Flash.get(@flash, :error)}
             </p>

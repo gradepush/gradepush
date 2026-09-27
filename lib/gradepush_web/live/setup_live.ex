@@ -103,9 +103,9 @@ defmodule GradePushWeb.SetupLive do
 
             <div :if={@configured?} class="cp-admin-settings-form">
               <p>{gettext("This GradePush installation is already configured.")}</p>
-              <a href="/auth/sign-in" class="cp-button cp-primary" style="margin-top: 16px">
+              <.button href="/auth/sign-in" variant="primary" class="mt-[16px]">
                 {gettext("Sign in with GitHub")}
-              </a>
+              </.button>
             </div>
 
             <form
@@ -120,9 +120,9 @@ defmodule GradePushWeb.SetupLive do
               class="cp-admin-settings-form cp-form cp-setup-form"
             >
               <div :if={is_nil(@manifest_action)} class="cp-setup-fields">
-                <label for={@form[:institution_name].id}>
+                <.field for={@form[:institution_name].id}>
                   {gettext("Institution name")}
-                  <input
+                  <.input
                     id={@form[:institution_name].id}
                     name={@form[:institution_name].name}
                     value={@form[:institution_name].value}
@@ -130,10 +130,10 @@ defmodule GradePushWeb.SetupLive do
                     maxlength="100"
                     required
                   />
-                </label>
-                <label for={@form[:setup_token].id}>
+                </.field>
+                <.field for={@form[:setup_token].id}>
                   {gettext("One-time setup token")}
-                  <input
+                  <.input
                     id={@form[:setup_token].id}
                     name={@form[:setup_token].name}
                     value={@form[:setup_token].value}
@@ -146,13 +146,13 @@ defmodule GradePushWeb.SetupLive do
                     {gettext("Generate a private setup link with this command:")}
                     <code>docker compose exec app gradepush-setup</code>
                   </span>
-                </label>
-                <button type="submit" class="cp-button cp-primary">
+                </.field>
+                <.button type="submit" variant="primary">
                   {gettext("Create GitHub App")}
-                </button>
+                </.button>
               </div>
 
-              <input :if={@manifest_action} type="hidden" name="manifest" value={@manifest_json} />
+              <.input :if={@manifest_action} type="hidden" name="manifest" value={@manifest_json} />
               <div :if={@manifest_action} class="cp-setup-progress" role="status" aria-live="polite">
                 <.icon name="hero-arrow-path" class="size-4 animate-spin" />
                 <span>{gettext("Opening GitHub...")}</span>

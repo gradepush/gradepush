@@ -86,10 +86,10 @@ defmodule GradePushWeb.AccountComponents do
               phx-submit="share_organization"
               class="cp-organization-share"
             >
-              <input type="hidden" name="connection_id" value={organization.id} />
-              <label>
+              <.input type="hidden" name="connection_id" value={organization.id} />
+              <.field>
                 <span class="sr-only">{gettext("Choose a teacher to share with")}</span>
-                <select name="teacher_id" required>
+                <.input type="select" name="teacher_id" required>
                   <option value="">{gettext("Share with a teacher")}</option>
                   <option
                     :for={teacher <- shareable_teachers(organization, @sharing_teachers)}
@@ -97,18 +97,17 @@ defmodule GradePushWeb.AccountComponents do
                   >
                     {teacher.name}
                   </option>
-                </select>
-              </label>
-              <button class="cp-button">{gettext("Share")}</button>
+                </.input>
+              </.field>
+              <.button type="submit">{gettext("Share")}</.button>
             </form>
           </div>
           <div class="cp-settings-actions">
-            <button
-              class="cp-button"
-              phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "connect_organization"})}
-            >
+            <.button phx-click={
+              JS.push_focus() |> JS.push("open", value: %{kind: "connect_organization"})
+            }>
               <.icon name="hero-plus" class="size-4" />{gettext("Connect an organization")}
-            </button>
+            </.button>
           </div>
         </div>
       </section>
@@ -124,18 +123,14 @@ defmodule GradePushWeb.AccountComponents do
       <span class="cp-sign-in-icon"><.icon name="hero-academic-cap" class="size-8" /></span>
       <h1>{gettext("See you soon")}</h1>
       <p>{gettext("Sign in with GitHub to return to your classrooms.")}</p>
-      <.link :if={@preview} patch="/classrooms" class="cp-button cp-primary">{gettext(
-        "Sign in with GitHub"
-      )}<.icon
+      <.button :if={@preview} patch="/classrooms" variant="primary">{gettext("Sign in with GitHub")}<.icon
         name="hero-arrow-right"
         class="size-4"
-      /></.link>
-      <.link :if={!@preview} href="/auth/github" class="cp-button cp-primary">{gettext(
-        "Sign in with GitHub"
-      )}<.icon
+      /></.button>
+      <.button :if={!@preview} href="/auth/github" variant="primary">{gettext("Sign in with GitHub")}<.icon
         name="hero-arrow-right"
         class="size-4"
-      /></.link>
+      /></.button>
       <p :if={@preview} class="cp-preview-note">
         {gettext("Sign-in and sign-out are simulated in this preview.")}
       </p>

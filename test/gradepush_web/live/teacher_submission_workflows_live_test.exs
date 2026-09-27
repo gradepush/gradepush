@@ -117,10 +117,14 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
 
     assert has_element?(
              view,
-             "#submission-#{student.login} .cp-extension-button[title='Extend deadline'][aria-label='Revise deadline for Test Student']"
+             "#submission-#{student.login} button[title='Extend deadline'][aria-label='Revise deadline for Test Student']"
            )
 
-    view |> element("#submission-#{student.login} .cp-extension-button") |> render_click()
+    view
+    |> element(
+      "#submission-#{student.login} button[aria-label='Revise deadline for Test Student']"
+    )
+    |> render_click()
 
     view
     |> form("#deadline-extension-form", extension: %{deadline: "2026-10-16T16:30"})
@@ -132,10 +136,15 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
 
     assert has_element?(
              view,
-             "#submission-#{student.login} .cp-extension-button[title='Change deadline']"
+             "#submission-#{student.login} button[title='Change deadline']"
            )
 
-    view |> element("#submission-#{student.login} .cp-extension-button") |> render_click()
+    view
+    |> element(
+      "#submission-#{student.login} button[aria-label='Revise deadline for Test Student']"
+    )
+    |> render_click()
+
     view |> element("button.cp-clear-extension") |> render_click()
 
     assert Repo.get!(Subject, subject.id).extension_until == nil
@@ -143,7 +152,7 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
 
     assert has_element?(
              view,
-             "#submission-#{student.login} .cp-extension-button[title='Extend deadline']"
+             "#submission-#{student.login} button[title='Extend deadline']"
            )
   end
 

@@ -54,30 +54,25 @@ defmodule GradePushWeb.WorkspaceLayout do
         <.link {workspace_link(@context, "/classrooms")} class="cp-logo">
           <img src={~p"/images/logo.svg"} width="140" alt="GradePush" />
         </.link>
-        <details
+        <.dropdown
           :if={@action != :signed_out and length(@contexts) > 1}
           id="context-menu"
-          name="header-menu"
-          class="cp-disclosure cp-context-switcher"
-          phx-hook="HeaderDisclosure"
+          kind="context"
+          label={gettext("Switch workspace")}
         >
-          <summary class="cp-context-trigger" aria-label={gettext("Switch workspace")}>
-            <.icon name={context_icon(@context)} class="size-4" />
-            <span>{context_label(@context)}</span>
-            <.icon name="hero-chevron-down" class="size-3" />
-          </summary>
-          <div class="cp-dropdown cp-context-menu">
-            <.link
-              :for={context <- @contexts}
-              {context_link(@context, context)}
-              aria-current={if context == @context, do: "true"}
-            >
-              <.icon name={context_icon(context)} class="size-4" />
-              {context_label(context)}
-              <.icon :if={context == @context} name="hero-check" class="size-4 cp-context-check" />
-            </.link>
-          </div>
-        </details>
+          <:trigger>
+            <.icon name={context_icon(@context)} class="size-4" /><span>{context_label(@context)}</span>
+          </:trigger>
+          <.dropdown_link
+            :for={context <- @contexts}
+            {context_link(@context, context)}
+            aria-current={if context == @context, do: "true"}
+          >
+            <.icon name={context_icon(context)} class="size-4" />
+            {context_label(context)}
+            <.icon :if={context == @context} name="hero-check" class="size-4 cp-context-check" />
+          </.dropdown_link>
+        </.dropdown>
         <nav
           :if={@action != :signed_out and @context == :teaching}
           class="cp-navigation"
@@ -106,46 +101,31 @@ defmodule GradePushWeb.WorkspaceLayout do
           >
             <.icon name="hero-globe-alt" class="size-4" />{String.upcase(@target_locale)}
           </.link>
-          <details
-            :if={@action != :signed_out}
-            id="profile-menu"
-            name="header-menu"
-            class="cp-disclosure"
-            phx-hook="HeaderDisclosure"
-          >
-            <summary
-              class="cp-profile-button"
-              aria-label={gettext("Account menu")}
-              title={gettext("Account menu")}
-            >
+          <.dropdown :if={@action != :signed_out} id="profile-menu" label={gettext("Account menu")}>
+            <:trigger><.avatar user={@user} /></:trigger>
+            <div class="cp-profile-identity">
               <.avatar user={@user} />
-              <.icon name="hero-chevron-down" class="size-3" />
-            </summary>
-            <div class="cp-dropdown cp-profile-menu">
-              <div class="cp-profile-identity">
-                <.avatar user={@user} />
-                <div><strong>{@user.name}</strong><span>@{@user.handle}</span></div>
-              </div>
-              <div class={["cp-profile-institution", @show_settings && "cp-profile-divider"]}>
-                <.icon name="hero-building-library" class="size-4" />
-                <span>{@institution}</span>
-              </div>
-              <.link :if={@show_settings} {workspace_link(@context, "/teacher/settings")}><.icon
-                name="hero-cog-6-tooth"
-                class="size-4"
-              />{gettext("Settings")}</.link>
-              <div class={@show_settings && "cp-sign-out-group"}>
-                <.link :if={@preview} {workspace_link(@context, "/signed-out")}><.icon
-                  name="hero-arrow-right-start-on-rectangle"
-                  class="size-4"
-                />{gettext("Sign out")}</.link>
-                <.link :if={!@preview} href="/auth/logout" method="delete"><.icon
-                  name="hero-arrow-right-start-on-rectangle"
-                  class="size-4"
-                />{gettext("Sign out")}</.link>
-              </div>
+              <div><strong>{@user.name}</strong><span>@{@user.handle}</span></div>
             </div>
-          </details>
+            <div class={["cp-profile-institution", @show_settings && "cp-profile-divider"]}>
+              <.icon name="hero-building-library" class="size-4" />
+              <span>{@institution}</span>
+            </div>
+            <.dropdown_link :if={@show_settings} {workspace_link(@context, "/teacher/settings")}><.icon
+              name="hero-cog-6-tooth"
+              class="size-4"
+            />{gettext("Settings")}</.dropdown_link>
+            <div class={@show_settings && "cp-sign-out-group"}>
+              <.dropdown_link :if={@preview} {workspace_link(@context, "/signed-out")}><.icon
+                name="hero-arrow-right-start-on-rectangle"
+                class="size-4"
+              />{gettext("Sign out")}</.dropdown_link>
+              <.dropdown_link :if={!@preview} href="/auth/logout" method="delete"><.icon
+                name="hero-arrow-right-start-on-rectangle"
+                class="size-4"
+              />{gettext("Sign out")}</.dropdown_link>
+            </div>
+          </.dropdown>
         </div>
       </div>
     </header>

@@ -40,10 +40,9 @@
           </ClassroomComponents.grouped_classes>
         <% is_nil(@classroom) or (@live_action == :assignment and is_nil(@assignment)) -> %>
           <div class="cp-empty">
-            <h1>{gettext("This page is not available.")}</h1><.link
-              navigate="/student/classrooms"
-              class="cp-button"
-            >{gettext("My classrooms")}</.link>
+            <h1>{gettext("This page is not available.")}</h1><.button navigate="/student/classrooms">{gettext(
+              "My classrooms"
+            )}</.button>
           </div>
         <% @live_action == :show -> %>
           <ClassroomComponents.breadcrumbs items={[
@@ -76,9 +75,9 @@
           <div :if={@assignments == []} class="cp-empty">
             <p>{gettext("No assignments yet")}</p>
           </div>
-          <div
+          <.data_list
             :if={@assignments != []}
-            class="cp-data-list cp-assignment-list cp-student-assignment-list"
+            class="cp-assignment-list cp-student-assignment-list"
           >
             <div class="cp-assignment-labels">
               <span>{gettext("Assignment")}</span><span>{gettext("Deadline")}</span><span>{gettext(
@@ -109,7 +108,7 @@
                 )}
               </div>
             </.link>
-          </div>
+          </.data_list>
         <% true -> %>
           <ClassroomComponents.breadcrumbs items={[
             {gettext("Classrooms"), "/student/classrooms"},
@@ -127,15 +126,15 @@
                   )}
                 </p>
               </div>
-              <a
+              <.button
                 :if={repository_url(@repository)}
                 href={repository_url(@repository)}
-                class="cp-button cp-primary"
+                variant="primary"
                 target="_blank"
                 rel="noopener noreferrer"
               ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
                 "Open repository"
-              )}</a>
+              )}</.button>
             </div>
             <div class="cp-assignment-facts">
               <span><.icon name="hero-user-group" class="size-4" />{if @assignment.kind == "team",

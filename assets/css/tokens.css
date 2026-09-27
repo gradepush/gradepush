@@ -1,0 +1,20 @@
+@theme {
+  --color-brand: #2052f2;
+  --color-brand-hover: #1a43cc;
+  --color-ink: #1c2435;
+  --color-muted: #536176;
+  --color-control: #8591a3;
+  --color-line: #e0e6f0;
+  --color-surface-heading: #fbfcff;
+  --color-danger: #b4313d;
+  --color-danger-hover: #952331;
+  --shadow-button: 0 3px 0 #123ad418, 0 5px 15px #2052f215;
+}
+
+:root {
+  --blue: var(--color-brand);
+  --ink: var(--color-ink);
+  --line: var(--color-line);
+  --surface-heading: var(--color-surface-heading);
+  --cp-muted: var(--color-muted);
+}

@@ -41,20 +41,24 @@ defmodule GradePushWeb.AssignmentComponents do
           </h1>
         </div>
         <div class="cp-assignment-actions">
-          <a
+          <.button
             :if={!@preview}
-            class="cp-button"
+            compact_on_mobile
             href={"/classrooms/#{@classroom.slug}/assignments/#{@assignment.key}/export.csv"}
             download
-          ><.icon name="hero-arrow-down-tray" class="size-4" />{gettext("Export CSV")}</a>
-          <.link
-            class="cp-button"
+          ><.icon name="hero-arrow-down-tray" class="size-4" />{gettext("Export CSV")}</.button>
+          <.button
+            compact_on_mobile
             patch={"/classrooms/#{@classroom.slug}/assignments/#{@assignment.key}/edit"}
-          ><.icon name="hero-pencil-square" class="size-4" />{gettext("Edit assignment")}</.link>
-          <button
-            class="cp-button cp-primary"
+          ><.icon
+            name="hero-pencil-square"
+            class="size-4"
+          />{gettext("Edit assignment")}</.button>
+          <.button
+            compact_on_mobile
+            variant="primary"
             phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "assignment_invite"})}
-          ><.icon name="hero-link" class="size-4" />{gettext("Share assignment")}</button>
+          ><.icon name="hero-link" class="size-4" />{gettext("Share assignment")}</.button>
         </div>
       </div>
       <div class="cp-assignment-facts">
@@ -124,20 +128,21 @@ defmodule GradePushWeb.AssignmentComponents do
         </p>
       </div>
     </details>
-    <nav class="cp-tabs cp-assignment-tabs" aria-label={gettext("Assignment sections")}>
-      <.link
+    <.tabs label={gettext("Assignment sections")} class="cp-assignment-tabs">
+      <.tab
         patch={"/classrooms/#{@classroom.slug}/assignments/#{@assignment.key}"}
-        aria-current={if @tab == "submissions", do: "page"}
-        class={if @tab == "submissions", do: "is-active"}
-      ><.icon name="hero-inbox-arrow-down" class="size-4" />{gettext("Submissions")}</.link>
-      <.link
+        active={@tab == "submissions"}
+      >
+        <.icon name="hero-inbox-arrow-down" class="size-4" />{gettext("Submissions")}
+      </.tab>
+      <.tab
         patch={"/classrooms/#{@classroom.slug}/assignments/#{@assignment.key}?view=tests"}
-        aria-current={if @tab == "tests", do: "page"}
-        class={if @tab == "tests", do: "is-active"}
-      ><.icon name="hero-beaker" class="size-4" />{gettext("Tests")}<span class="cp-tab-count">{length(
-        @tests
-      )}</span></.link>
-    </nav>
+        active={@tab == "tests"}
+        count={length(@tests)}
+      >
+        <.icon name="hero-beaker" class="size-4" />{gettext("Tests")}
+      </.tab>
+    </.tabs>
     <section
       :if={@tab == "submissions"}
       aria-labelledby="assignment-submissions-title"
@@ -150,15 +155,14 @@ defmodule GradePushWeb.AssignmentComponents do
           accepted: @accepted,
           total: @total
         )}</span>
-        <button
-          class="cp-button"
-          phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "clone_all"})}
-        ><.icon name="hero-command-line" class="size-4" />{gettext("Clone all locally")}</button>
-        <button
+        <.button phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "clone_all"})}><.icon
+          name="hero-command-line"
+          class="size-4"
+        />{gettext("Clone all locally")}</.button>
+        <.button
           :if={teacher_managed_teams?(@assignment, @preview)}
-          class="cp-button"
           phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "teams"})}
-        ><.icon name="hero-user-group" class="size-4" />{gettext("Manage teams")}</button>
+        ><.icon name="hero-user-group" class="size-4" />{gettext("Manage teams")}</.button>
       </div>
       <form
         id="submission-search"
@@ -166,30 +170,36 @@ defmodule GradePushWeb.AssignmentComponents do
         phx-change="filter_submissions"
         role="search"
       >
-        <label class="cp-search"><.icon name="hero-magnifying-glass" class="size-4" /><span class="sr-only">{gettext(
-          "Search by name or student ID"
-        )}</span><input
+        <.search_input
+          id="submission-query"
+          label={gettext("Search by name or student ID")}
           name="query"
-          type="search"
           placeholder={gettext("Search by name or student ID")}
           value={@query}
           phx-debounce="150"
-        /></label>
-        <label class="cp-status-filter"><span class="sr-only">{gettext("Filter by progress")}</span><select name="status"><option
-          value="all"
-          selected={@filter == "all"}
-        >
-          {gettext("All progress")}
-        </option><option
-          :for={status <- [:pushed, :late, :no_push, :not_accepted]}
-          :if={!@assignment.group? or status != :not_accepted}
-          value={status}
-          selected={@filter == to_string(status)}
-        >
-          {status_label(status)}
-        </option></select></label>
+        />
+        <.field class="cp-status-filter">
+          <span class="sr-only">{gettext("Filter by progress")}</span><.input
+            type="select"
+            name="status"
+          >
+            <option
+              value="all"
+              selected={@filter == "all"}
+            >
+              {gettext("All progress")}
+            </option><option
+              :for={status <- [:pushed, :late, :no_push, :not_accepted]}
+              :if={!@assignment.group? or status != :not_accepted}
+              value={status}
+              selected={@filter == to_string(status)}
+            >
+              {status_label(status)}
+            </option>
+          </.input>
+        </.field>
       </form>
-      <div :if={@rows != []} class="cp-data-list cp-submission-table-wrap">
+      <.data_list :if={@rows != []} class="cp-submission-table-wrap">
         <table class="cp-submission-table">
           <caption class="sr-only">
             {gettext("Repositories and progress for this assignment")}
@@ -254,42 +264,44 @@ defmodule GradePushWeb.AssignmentComponents do
                   :if={row.score == nil and not Map.get(row, :grade_untrusted?, false)}
                   label={gettext("Not run")}
                 />
-                <button
+                <.button
                   :if={!@preview and Map.get(row, :subject_id)}
-                  class="cp-profile-link cp-results-link"
+                  variant="link"
+                  class="cp-results-link"
                   phx-click={
                     JS.push_focus()
                     |> JS.push("open", value: %{kind: "test_results", subject_id: row.subject_id})
                   }
                   aria-label={gettext("View test results for %{name}", name: row.name)}
-                >{gettext("View results")}</button>
+                >{gettext("View results")}</.button>
               </td>
               <td class="cp-submission-actions-cell">
                 <div class="cp-submission-actions">
-                  <a
+                  <.button
                     :if={!@preview and row.repository_url}
-                    class="cp-button cp-repository-button"
+                    size="small"
                     href={row.repository_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={gettext("Open repository %{repository}", repository: row.repository)}
                   ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
                     "Repository"
-                  )}</a><button
+                  )}</.button><.button
                     :if={@preview and row.repository}
-                    class="cp-button cp-repository-button"
+                    type="submit"
+                    size="small"
                     disabled
                     title={gettext("Repository links are unavailable in this preview.")}
                     aria-label={gettext("Open repository %{repository}", repository: row.repository)}
                   ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
                     "Repository"
-                  )}</button>
-                  <button
+                  )}</.button>
+                  <.button
                     :if={
                       not @preview and not is_nil(Map.get(row, :subject_id)) and
                         not is_nil(@assignment.deadline_at)
                     }
-                    class="cp-extension-button"
+                    variant="ghost"
                     phx-click={
                       JS.push_focus()
                       |> JS.push("open",
@@ -302,7 +314,7 @@ defmodule GradePushWeb.AssignmentComponents do
                         else: gettext("Extend deadline")
                     }
                     aria-label={gettext("Revise deadline for %{name}", name: row.name)}
-                  ><.icon name="hero-calendar-days" class="size-4" /></button>
+                  ><.icon name="hero-calendar-days" class="size-4" /></.button>
                 </div>
                 <p :if={Map.get(row, :repository_state) == "pending"} class="cp-field-help">
                   {gettext("Repository is being created.")}
@@ -312,12 +324,11 @@ defmodule GradePushWeb.AssignmentComponents do
                   class="cp-repository-error"
                 >
                   <p>{Map.get(row, :repository_error)}</p>
-                  <button
-                    class="cp-button"
+                  <.button
                     phx-click="retry_repository"
                     phx-value-subject_id={row.subject_id}
                     aria-label={gettext("Retry repository setup for %{name}", name: row.name)}
-                  ><.icon name="hero-arrow-path" class="size-4" />{gettext("Retry setup")}</button>
+                  ><.icon name="hero-arrow-path" class="size-4" />{gettext("Retry setup")}</.button>
                 </div>
                 <p :if={Map.get(row, :extension_label)} class="cp-late-note">
                   {gettext("Deadline extended to %{date}",
@@ -328,7 +339,7 @@ defmodule GradePushWeb.AssignmentComponents do
             </tr>
           </tbody>
         </table>
-      </div>
+      </.data_list>
       <div :if={@rows == []} class="cp-empty">
         <.icon name="hero-user-group" class="size-8" /><h3>
           {if @assignment.group? and @assignment.submitted == 0,

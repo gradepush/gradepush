@@ -93,23 +93,23 @@ defmodule GradePushWeb.ClassroomComponents do
   def invitation_link(assigns) do
     ~H"""
     <div class="cp-link-field">
-      <label for={@id <> "-input"}>{@label}</label><div class="cp-copy-field">
-        <input
+      <.field for={@id <> "-input"}>{@label}</.field><div class="cp-copy-field">
+        <.input
           id={@id <> "-input"}
           readonly
           value={@url}
           disabled={@disabled}
           placeholder={if @disabled, do: gettext("Unavailable in demo mode")}
-        /><button
+        /><.button
           type="button"
           id={@id <> "-copy"}
           phx-hook="CopyInvitation"
           data-copy={@url}
           disabled={@disabled}
-          class="cp-copy-button"
+          variant="copy"
           aria-label={gettext("Copy invitation link")}
           title={gettext("Copy invitation link")}
-        ><.icon name="hero-document-duplicate" class="size-5" /></button>
+        ><.icon name="hero-document-duplicate" class="size-5" /></.button>
       </div><span class="cp-copy-status" role="status">{@status}</span>
     </div>
     """

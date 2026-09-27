@@ -1,5 +1,5 @@
 .cp-data-list {
-  --cp-list-border: #e0e6f0;
+  --cp-list-border: var(--color-line);
   background: white;
   border: 1px solid var(--cp-list-border);
   border-radius: 12px;

@@ -43,13 +43,13 @@ defmodule GradePushWeb.AssignmentEditor do
         <section class="cp-form-section cp-form-basics" aria-label={gettext("Assignment details")}>
           <.input field={@form[:title]} label={gettext("Title")} required maxlength="120" />
           <div class="cp-markdown-heading">
-            <label for={@form[:instructions].id}>{gettext("Instructions (Markdown)")}</label>
-            <button
+            <.field for={@form[:instructions].id}>{gettext("Instructions (Markdown)")}</.field>
+            <.button
               type="button"
-              class="cp-text-button"
+              variant="text"
               phx-click="toggle_instructions_preview"
               aria-pressed={to_string(@preview)}
-            >{if @preview, do: gettext("Write"), else: gettext("Preview")}</button>
+            >{if @preview, do: gettext("Write"), else: gettext("Preview")}</.button>
           </div>
           <div
             :if={@preview}
@@ -221,29 +221,29 @@ defmodule GradePushWeb.AssignmentEditor do
                   <p :if={test[:type].value == "io"} class="cp-field-help">
                     {gettext("The output must match exactly, including whitespace.")}
                   </p>
-                  <button
+                  <.button
                     type="button"
-                    class="cp-text-button cp-remove-test"
+                    variant="text-danger"
                     phx-click="remove_assignment_test"
                     phx-value-index={test.index}
-                  ><.icon name="hero-trash" class="size-4" />{gettext("Remove test")}</button>
+                  ><.icon name="hero-trash" class="size-4" />{gettext("Remove test")}</.button>
                 </fieldset>
               </.inputs_for>
               <div class="cp-test-editor-footer">
-                <button type="button" class="cp-button" phx-click="add_assignment_test"><.icon
+                <.button type="button" phx-click="add_assignment_test"><.icon
                   name="hero-plus"
                   class="size-4"
-                />{gettext("Add test")}</button>
+                />{gettext("Add test")}</.button>
                 <span>{gettext("%{points} points total", points: total(@form))}</span>
               </div>
             </div>
           </fieldset>
         </section>
         <div class="cp-editor-actions">
-          <.link patch={back_path(@classroom, @assignment)} class="cp-button">{gettext("Cancel")}</.link>
-          <button type="submit" class="cp-button cp-primary" phx-disable-with={gettext("Saving…")}>{if @assignment,
+          <.button patch={back_path(@classroom, @assignment)}>{gettext("Cancel")}</.button>
+          <.button type="submit" variant="primary" phx-disable-with={gettext("Saving…")}>{if @assignment,
             do: gettext("Save changes"),
-            else: gettext("Create assignment")}</button>
+            else: gettext("Create assignment")}</.button>
         </div>
       </.form>
     </div>
