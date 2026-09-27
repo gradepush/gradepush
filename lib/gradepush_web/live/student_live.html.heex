@@ -76,33 +76,36 @@
           <div :if={@assignments == []} class="cp-empty">
             <p>{gettext("No assignments yet")}</p>
           </div>
-          <div :if={@assignments != []} class="cp-admin-table-wrap">
-            <table class="cp-admin-table cp-learning-assignments">
-              <caption class="sr-only">{gettext("Assignments")}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">{gettext("Assignment")}</th><th scope="col">
-                    {gettext("Deadline")}
-                  </th>
-                  <th scope="col">{gettext("Latest push")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={entry <- @assignments}>
-                  <th scope="row">
-                    <.link
-                      patch={assignment_path(@classroom, entry.assignment)}
-                      class="cp-assignment-title"
-                    >{entry.assignment.title}<.icon name="hero-chevron-right" class="size-4" /></.link>
-                    <span :if={!entry.subject} class="cp-assignment-hint">{gettext("Not accepted")}</span>
-                  </th>
-                  <td data-label={gettext("Deadline")}>
-                    {due(deadline(entry.assignment, entry.subject))}
-                  </td>
-                  <td data-label={gettext("Latest push")}>{push_time(entry.latest_push)}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div :if={@assignments != []} class="cp-assignment-list cp-student-assignment-list">
+            <div class="cp-assignment-labels">
+              <span>{gettext("Assignment")}</span><span>{gettext("Deadline")}</span><span>{gettext(
+                "Latest push"
+              )}</span>
+            </div>
+            <.link
+              :for={entry <- @assignments}
+              patch={assignment_path(@classroom, entry.assignment)}
+              class="cp-assignment"
+            >
+              <div class="cp-assignment-name">
+                <span class="cp-file-icon"><.icon name="hero-document-text" class="size-5" /></span>
+                <div>
+                  <h3>{entry.assignment.title}</h3><p :if={!entry.subject}>
+                    {gettext("Not accepted")}
+                  </p>
+                </div>
+              </div>
+              <div class="cp-due">
+                <span class="cp-mobile-label">{gettext("Deadline")}</span>{due(
+                  deadline(entry.assignment, entry.subject)
+                )}
+              </div>
+              <div class="cp-due">
+                <span class="cp-mobile-label">{gettext("Latest push")}</span>{push_time(
+                  entry.latest_push
+                )}
+              </div>
+            </.link>
           </div>
         <% true -> %>
           <ClassroomComponents.breadcrumbs items={[

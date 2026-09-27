@@ -173,13 +173,13 @@ defmodule GradePushWeb.StudentLive do
   end
 
   defp due(nil), do: gettext("No deadline")
-  defp due(datetime), do: GradePush.Time.format_datetime(datetime)
+  defp due(datetime), do: Presentation.datetime(datetime)
 
   defp deadline_label(nil), do: gettext("No deadline")
   defp deadline_label(datetime), do: gettext("Due %{date}", date: due(datetime))
 
   defp push_time(nil), do: "—"
-  defp push_time(push), do: GradePush.Time.format_datetime(push.observed_at)
+  defp push_time(push), do: Presentation.datetime(push.observed_at)
 
   defp team_members(team) do
     team.members

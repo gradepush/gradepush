@@ -177,13 +177,6 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 .cp-student-main .cp-class-meta > span { overflow-wrap: anywhere; min-width: 0; }
 .cp-student-main .cp-class-meta > span > .size-4 { flex-shrink: 0; }
 .cp-list-count { font-size: 13px; color: var(--cp-muted); }
-.cp-assignment-title { display: flex; gap: 10px; align-items: center; justify-content: space-between; min-height: 44px; overflow-wrap: anywhere; }
-.cp-assignment-title:hover { text-decoration: underline; text-underline-offset: 3px; }
-.cp-assignment-title > span { flex-shrink: 0; color: var(--cp-muted); }
-.cp-assignment-hint { display: block; font-size: 12px; font-weight: 400; color: var(--cp-muted); }
-.cp-learning-assignments { table-layout: fixed; }
-.cp-learning-assignments th:first-child { width: 46%; }
-.cp-learning-assignments td { overflow-wrap: anywhere; }
 .cp-deadline { display: flex; align-items: center; gap: 8px; }
 .cp-deadline > span { flex-shrink: 0; }
 .cp-student-instructions { padding: 22px; line-height: 1.75; overflow-wrap: anywhere; }
@@ -193,8 +186,6 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 .cp-assignment-facts > .cp-student-team { flex-wrap: wrap; gap: 4px 10px; }
 .cp-student-team strong { font-weight: 550; }
 @media (max-width: 760px) {
-  .cp-learning-assignments tbody th:first-child { width: auto; }
-  .cp-learning-assignments tbody tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .cp-student-instructions, .cp-student-notice { padding: 18px; }
 }
 .cp-test-editor { border: 1px solid var(--line); border-radius: 9px; padding: 18px; margin: 20px 0; min-width: 0; }
@@ -217,6 +208,8 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
 .cp-assignment-labels, .cp-student-labels { color: #303c50; font-size: 12px; font-weight: 600; background: var(--cp-list-heading); }
 .cp-assignment-list, .cp-student-list { background: white; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .cp-assignment { border-top: 1px solid var(--line); padding-top: 23px; padding-bottom: 23px; }
+.cp-student-assignment-list :is(.cp-assignment, .cp-assignment-labels) { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); }
+.cp-student-assignment-list .cp-due { overflow-wrap: anywhere; }
 .cp-assignment-name { display: flex; gap: 14px; align-items: center; min-width: 0; }
 .cp-file-icon { color: #77849a; display: inline-flex; }
 .cp-assignment h3 { font-size: 14px; font-weight: 550; margin: 0 0 4px; overflow-wrap: anywhere; }
@@ -298,6 +291,7 @@ button [class*="hero-"], a [class*="hero-"] { flex-shrink: 0; }
   .cp-class-meta { gap: 8px; align-items: flex-start; flex-direction: column; margin-bottom: 22px; }
   .cp-assignment-labels { display: none; }
   .cp-assignment { grid-template-columns: 1fr auto; gap: 16px 8px; padding: 20px 16px; }
+  .cp-student-assignment-list .cp-assignment { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .cp-assignment:first-of-type { border-top: 0; }
   .cp-assignment-name { grid-column: 1 / -1; }
   .cp-mobile-label { display: block; font-size: 11px; color: var(--cp-muted); margin-bottom: 3px; }
@@ -366,9 +360,22 @@ a.cp-assignment:focus-visible { outline-offset: -3px; }
 .cp-managed-teams ul { list-style: none; padding: 0; margin: 0 0 12px; }
 .cp-managed-teams li { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .cp-team-member-form { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
-.cp-extension-button { margin-top: 8px; }
+.cp-extension-button { display: flex; width: fit-content; margin: 8px 0 0 auto; min-height: 36px; font-size: 12px; cursor: pointer; }
+.cp-extension-button:hover { color: var(--ink); text-decoration: underline; }
+.cp-extension-summary { margin-bottom: 22px; line-height: 1.5; color: var(--cp-muted); font-size: 13px; }
+.cp-extension-summary p { margin: 0; }
+.cp-extension-summary .cp-extension-owner { color: var(--ink); font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.cp-extension-reset { border-top: 1px solid var(--line); padding-top: 16px; }
+.cp-clone-steps { font-size: 14px; line-height: 1.5; }
+.cp-clone-steps ol { padding-left: 20px; margin: 22px 0; }
+.cp-clone-steps li + li { margin-top: 22px; }
+.cp-clone-steps h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.cp-clone-steps p { color: var(--cp-muted); margin: 6px 0; }
+.cp-clone-steps a { text-decoration: underline; text-underline-offset: 3px; }
+.cp-clone-steps code { font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.cp-clone-steps pre { background: var(--cp-list-heading); border: 1px solid var(--line); padding: 12px; border-radius: 6px; margin-top: 10px; }
 .cp-repository-error p { margin: 3px 0 6px; color: #a32a38; font-size: 12px; line-height: 1.5; }
-.cp-clear-extension { margin-top: 18px; }
+.cp-clear-extension { text-align: left; line-height: 1.5; }
 .cp-empty h3 { font-size: 17px; font-weight: 600; color: var(--ink); }
 @media (max-width: 1000px) and (min-width: 761px) {
   .cp-submission-table th, .cp-submission-table td { padding-left: 10px; padding-right: 10px; }

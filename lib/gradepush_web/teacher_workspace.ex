@@ -88,7 +88,7 @@ defmodule GradePushWeb.TeacherWorkspace do
       group?: assignment.kind == "team",
       team_mode: assignment.team_mode,
       team_size: assignment.team_size,
-      due: Presentation.text(Time.format_datetime(deadline)),
+      due: Presentation.datetime_text(deadline),
       deadline_at: deadline,
       deadline_local: Time.format_local(deadline),
       cutoff: assignment.cutoff_enabled,
@@ -271,7 +271,7 @@ defmodule GradePushWeb.TeacherWorkspace do
   defp push_time(push), do: Map.get(push, :observed_at) || Map.get(push, :pushed_at)
 
   defp local_date(nil), do: nil
-  defp local_date(datetime), do: Presentation.text(Time.format_datetime(datetime))
+  defp local_date(datetime), do: Presentation.datetime_text(datetime)
 
   defp repository_name(nil), do: nil
   defp repository_name(%{state: state}) when state != "ready", do: nil

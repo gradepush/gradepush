@@ -552,7 +552,7 @@ defmodule GradePushWeb.TeacherLive do
   end
 
   def handle_event("open", %{"kind" => kind} = params, socket)
-      when kind in ~w(create edit invite teachers remove assignment_invite connect_organization teams deadline_extension test_results) do
+      when kind in ~w(create edit invite teachers remove assignment_invite clone_all connect_organization teams deadline_extension test_results) do
     if modal_resource_available?(kind, socket.assigns),
       do: open_modal(socket, kind, params),
       else: {:noreply, socket}
@@ -838,7 +838,7 @@ defmodule GradePushWeb.TeacherLive do
         copy_status: nil
       )
 
-    if socket.assigns.preview? do
+    if preview_modal?(socket.assigns, kind) do
       {:noreply, socket}
     else
       case kind do
@@ -866,6 +866,9 @@ defmodule GradePushWeb.TeacherLive do
       end
     end
   end
+
+  defp preview_modal?(assigns, kind),
+    do: assigns.preview? or (kind == "assignment_invite" and GradePush.Demo.enabled?())
 
   defp create_invitation(socket, context, function, %{id: resource_id}) do
     case apply(context, function, [socket.assigns.current_user, resource_id]) do
@@ -1481,7 +1484,7 @@ defmodule GradePushWeb.TeacherLive do
        when kind in ["edit", "invite", "teachers", "remove"],
        do: not is_nil(assigns.classroom)
 
-  defp modal_resource_available?("assignment_invite", assigns),
+  defp modal_resource_available?(kind, assigns) when kind in ["assignment_invite", "clone_all"],
     do: not is_nil(assigns.assignment)
 
   defp modal_resource_available?("teams", assigns),
@@ -1503,6 +1506,7 @@ defmodule GradePushWeb.TeacherLive do
   defp modal_title({"teachers", _}), do: gettext("Manage teachers")
   defp modal_title({"remove", _}), do: gettext("Remove student?")
   defp modal_title({"assignment_invite", _}), do: gettext("Share assignment")
+  defp modal_title({"clone_all", _}), do: gettext("Clone all locally")
   defp modal_title({"connect_organization", _}), do: gettext("Connect an organization")
   defp modal_title({"teams", _}), do: gettext("Manage teams")
   defp modal_title({"test_results", _}), do: gettext("Automatic test results")

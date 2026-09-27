@@ -50,8 +50,6 @@ defmodule GradePushWeb.AssignmentComponents do
         <button
           class="cp-button cp-primary"
           phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "assignment_invite"})}
-          disabled={GradePush.Demo.enabled?()}
-          title={if GradePush.Demo.enabled?(), do: gettext("Invitations are disabled in demo mode.")}
         ><.icon name="hero-link" class="size-4" />{gettext("Share assignment")}</button>
       </div>
     </div>
@@ -126,6 +124,10 @@ defmodule GradePushWeb.AssignmentComponents do
           accepted: @accepted,
           total: @total
         )}</span>
+        <button
+          class="cp-button"
+          phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "clone_all"})}
+        ><.icon name="hero-command-line" class="size-4" />{gettext("Clone all locally")}</button>
         <button
           :if={teacher_managed_teams?(@assignment, @preview)}
           class="cp-button"
@@ -279,7 +281,7 @@ defmodule GradePushWeb.AssignmentComponents do
                     not @preview and not is_nil(Map.get(row, :subject_id)) and
                       not is_nil(@assignment.deadline_at)
                   }
-                  class="cp-button cp-extension-button"
+                  class="cp-repo-link cp-extension-button"
                   phx-click={
                     JS.push_focus()
                     |> JS.push("open",
@@ -369,7 +371,9 @@ defmodule GradePushWeb.AssignmentComponents do
         %{x: 3 + index * 8, y: y, count: count, date: Enum.at(assigns.dates, index)}
       end)
 
-    summary = Enum.map_join(samples, "; ", &"#{Calendar.strftime(&1.date, "%d/%m")}: #{&1.count}")
+    summary =
+      Enum.map_join(samples, "; ", &"#{GradePushWeb.Presentation.date(&1.date)}: #{&1.count}")
+
     label = if assigns.preview, do: daily_commits(summary), else: daily_pushes(summary)
     empty_label = if assigns.preview, do: gettext("No commits"), else: gettext("No pushes")
 
@@ -392,7 +396,7 @@ defmodule GradePushWeb.AssignmentComponents do
     ><title>{@summary}</title><path d="M3 30H107" class="cp-sparkline-base" /><polyline points={
       @points
     } /><circle :for={sample <- @samples} :if={sample.count > 0} cx={sample.x} cy={sample.y} r="2">
-      <title>{Calendar.strftime(sample.date, "%d/%m")}: {sample.count}</title>
+      <title>{GradePushWeb.Presentation.date(sample.date)}: {sample.count}</title>
     </circle></svg>
     <.dash :if={@counts == []} label={@empty_label} />
     """

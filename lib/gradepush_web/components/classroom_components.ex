@@ -85,16 +85,24 @@ defmodule GradePushWeb.ClassroomComponents do
   attr :label, :string, required: true
   attr :url, :string, required: true
   attr :status, :string, default: nil
+  attr :disabled, :boolean, default: false
 
   def invitation_link(assigns) do
     ~H"""
     <div class="cp-link-field">
       <label for={@id <> "-input"}>{@label}</label><div class="cp-copy-field">
-        <input id={@id <> "-input"} readonly value={@url} /><button
+        <input
+          id={@id <> "-input"}
+          readonly
+          value={@url}
+          disabled={@disabled}
+          placeholder={if @disabled, do: gettext("Unavailable in demo mode")}
+        /><button
           type="button"
           id={@id <> "-copy"}
           phx-hook="CopyInvitation"
           data-copy={@url}
+          disabled={@disabled}
           class="cp-copy-button"
           aria-label={gettext("Copy invitation link")}
           title={gettext("Copy invitation link")}

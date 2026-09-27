@@ -84,6 +84,49 @@ defmodule GradePushWeb.Presentation do
       if(operator?, do: [:platform], else: [])
   end
 
-  def datetime(nil), do: "—"
-  def datetime(value), do: GradePush.Time.format_datetime(value)
+  def datetime(value, locale \\ Gettext.get_locale(GradePushWeb.Gettext))
+  def datetime(nil, _locale), do: "—"
+
+  def datetime(value, locale) do
+    local =
+      case value do
+        %DateTime{} -> DateTime.shift_zone!(value, GradePush.Time.timezone())
+        %NaiveDateTime{} -> value
+      end
+
+    time = Calendar.strftime(local, "%H:%M")
+
+    case locale do
+      "fr" -> "#{date(local, locale)} à #{time}"
+      _ -> "#{date(local, locale)} at #{time}"
+    end
+  end
+
+  def date(value, locale \\ Gettext.get_locale(GradePushWeb.Gettext)) do
+    months =
+      Gettext.with_locale(GradePushWeb.Gettext, locale, fn ->
+        [
+          gettext("January"),
+          gettext("February"),
+          gettext("March"),
+          gettext("April"),
+          gettext("May"),
+          gettext("June"),
+          gettext("July"),
+          gettext("August"),
+          gettext("September"),
+          gettext("October"),
+          gettext("November"),
+          gettext("December")
+        ]
+      end)
+
+    month = Enum.at(months, value.month - 1)
+
+    if locale == "fr",
+      do: "#{value.day} #{month} #{value.year}",
+      else: "#{month} #{value.day}, #{value.year}"
+  end
+
+  def datetime_text(value), do: %{en: datetime(value, "en"), fr: datetime(value, "fr")}
 end

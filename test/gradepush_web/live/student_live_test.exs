@@ -5,7 +5,7 @@ defmodule GradePushWeb.StudentLiveTest do
   import GradePush.AccountsFixtures
   import GradePush.TeachingFixtures
 
-  alias GradePush.{Accounts, Assignments, Classrooms, Submissions, Time}
+  alias GradePush.{Accounts, Assignments, Classrooms, Submissions}
 
   setup do
     %{user: teacher} = bootstrap_fixture()
@@ -204,21 +204,21 @@ defmodule GradePushWeb.StudentLiveTest do
     extension = ~U[2026-10-03 18:00:00Z]
 
     assert {:ok, _} = Submissions.set_extension(teacher, assignment.id, subject.id, extension)
-    assert render(list) =~ Time.format_datetime(extension)
-    assert render(detail) =~ Time.format_datetime(extension)
-    refute render(detail) =~ Time.format_datetime(assignment.deadline_at)
+    assert render(list) =~ GradePushWeb.Presentation.datetime(extension)
+    assert render(detail) =~ GradePushWeb.Presentation.datetime(extension)
+    refute render(detail) =~ GradePushWeb.Presentation.datetime(assignment.deadline_at)
 
     later_deadline = ~U[2026-10-05 18:00:00.000000Z]
 
     assert {:ok, assignment} =
              Assignments.update_assignment(teacher, assignment.id, %{deadline_at: later_deadline})
 
-    assert render(list) =~ Time.format_datetime(later_deadline)
-    assert render(detail) =~ Time.format_datetime(later_deadline)
-    refute render(detail) =~ Time.format_datetime(extension)
+    assert render(list) =~ GradePushWeb.Presentation.datetime(later_deadline)
+    assert render(detail) =~ GradePushWeb.Presentation.datetime(later_deadline)
+    refute render(detail) =~ GradePushWeb.Presentation.datetime(extension)
 
     assert {:ok, _} = Submissions.set_extension(teacher, assignment.id, subject.id, nil)
-    assert render(detail) =~ Time.format_datetime(assignment.deadline_at)
+    assert render(detail) =~ GradePushWeb.Presentation.datetime(assignment.deadline_at)
   end
 
   test "an unenrolled user cannot read classroom details and invalid invitations reveal no title",

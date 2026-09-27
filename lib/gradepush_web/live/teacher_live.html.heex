@@ -408,6 +408,41 @@
                                                                                                                                                )}</button>
             </div>
           </form>
+        <% modal?(@modal, "clone_all") -> %>
+          <div class="cp-clone-steps">
+            <p>
+              {gettext(
+                "Download every student repository for this assignment into a local folder."
+              )}
+            </p>
+            <ol>
+              <li>
+                <h3>{gettext("Install GitHub CLI")}</h3><p>
+                  <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">{gettext(
+                    "Get GitHub CLI"
+                  )}</a>
+                </p><code>gh auth login</code>
+              </li>
+              <li>
+                <h3>{gettext("Install the GradePush extension")}</h3><p>
+                  {gettext(
+                    "The extension is not available yet. Installation instructions will appear here."
+                  )}
+                </p>
+              </li>
+              <li>
+                <h3>{gettext("Clone the assignment repositories")}</h3><p>
+                  {local(@classroom.title, @locale)} · {local(@assignment.title, @locale)}
+                </p><pre aria-label={gettext("Command preview")}><code>gh gradepush clone --assignment {@assignment.key} --classroom {@classroom.slug}</code></pre>
+              </li>
+            </ol>
+            <p class="cp-preview-note">
+              {gettext("Preview only. Bulk cloning and this command are not available yet.")}
+            </p>
+          </div>
+          <div class="cp-modal-actions">
+            <button class="cp-button" phx-click="close">{gettext("Close")}</button>
+          </div>
         <% modal?(@modal, "assignment_invite") -> %>
           <p>
             {gettext(
@@ -415,15 +450,27 @@
             )}
           </p>
           <ClassroomComponents.invitation_link
-            :if={@invitation_url || @preview?}
+            :if={@invitation_url || @preview? || GradePush.Demo.enabled?()}
             id="assignment-invitation"
+            disabled={GradePush.Demo.enabled?()}
             label={gettext("Assignment invitation link")}
             url={
-              @invitation_url || "https://gradepush.example/join/assignment/#{@assignment.key}"
+              if GradePush.Demo.enabled?(),
+                do: "",
+                else:
+                  @invitation_url ||
+                    "https://gradepush.example/join/assignment/#{@assignment.key}"
             }
             status={@copy_status}
           />
-          <p :if={@preview?} id="assignment-invitation-note" class="cp-preview-note">
+          <p :if={GradePush.Demo.enabled?()} class="cp-field-help">
+            {gettext("Invitations are disabled in demo mode.")}
+          </p>
+          <p
+            :if={@preview? && !GradePush.Demo.enabled?()}
+            id="assignment-invitation-note"
+            class="cp-preview-note"
+          >
             {gettext("Example link only. Invitations are not active in this preview.")}
           </p>
           <div class="cp-modal-actions">
@@ -641,40 +688,49 @@
             <button class="cp-button" phx-click="close">{gettext("Done")}</button>
           </div>
         <% modal?(@modal, "deadline_extension") -> %>
-          <p>
-            {gettext(
-              "Choose a deadline later than the assignment deadline. Clear the extension to use the original deadline."
-            )}
-          </p>
-          <p class="cp-field-help">
-            {gettext("Assignment deadline: %{date}", date: local(@assignment.due, @locale))}
-          </p>
-          <form
-            id="deadline-extension-form"
-            phx-change="validate_extension"
-            phx-submit="save_extension"
-            class="cp-form"
-          >
-            <label>
-              {gettext("Revised deadline")}
-              <input
-                type="datetime-local"
-                name="extension[deadline]"
-                min={@assignment.deadline_local}
-                value={@extension_params["deadline"]}
-                required
-              />
-            </label>
-            <div class="cp-modal-actions">
-              <button type="button" class="cp-button" phx-click="close">{gettext("Cancel")}</button>
-              <button class="cp-button cp-primary">{gettext("Save deadline")}</button>
+          <% subject = Enum.find(@assignment_subjects, &(&1.id == elem(@modal, 1))) %>
+          <%= if subject do %>
+            <div class="cp-extension-summary">
+              <p class="cp-extension-owner">
+                {if subject.team,
+                  do: subject.team.name,
+                  else: subject.user.student_name || subject.user.name || subject.user.login}
+              </p>
+              <p>
+                {gettext("Assignment deadline: %{date}", date: local(@assignment.due, @locale))}
+              </p>
             </div>
-          </form>
-          <button
-            :if={extension_set?(assigns)}
-            class="cp-profile-link cp-clear-extension"
-            phx-click="clear_extension"
-          >{gettext("Clear extension and use the assignment deadline")}</button>
+            <form
+              id="deadline-extension-form"
+              phx-change="validate_extension"
+              phx-submit="save_extension"
+              class="cp-form"
+            >
+              <label>
+                {gettext("Revised deadline")}
+                <input
+                  type="datetime-local"
+                  name="extension[deadline]"
+                  min={@assignment.deadline_local}
+                  value={@extension_params["deadline"]}
+                  required
+                />
+              </label>
+              <div class="cp-modal-actions">
+                <button type="button" class="cp-button" phx-click="close">{gettext("Cancel")}</button>
+                <button class="cp-button cp-primary">{gettext("Save deadline")}</button>
+              </div>
+              <div :if={extension_set?(assigns)} class="cp-extension-reset">
+                <button
+                  type="button"
+                  class="cp-profile-link cp-clear-extension"
+                  phx-click="clear_extension"
+                >{gettext("Clear extension and use the assignment deadline")}</button>
+              </div>
+            </form>
+          <% else %>
+            <p>{gettext("This submission is no longer available.")}</p>
+          <% end %>
       <% end %>
     </.focus_wrap>
   </div>

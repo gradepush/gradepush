@@ -25,10 +25,4 @@ defmodule GradePush.Time do
   def format_local(value) do
     value |> DateTime.shift_zone!(timezone()) |> Calendar.strftime("%Y-%m-%dT%H:%M")
   end
-
-  def format_datetime(nil), do: "—"
-
-  def format_datetime(value) do
-    value |> DateTime.shift_zone!(timezone()) |> Calendar.strftime("%Y-%m-%d %H:%M %Z")
-  end
 end

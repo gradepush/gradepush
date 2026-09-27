@@ -193,7 +193,7 @@ defmodule GradePushWeb.Preview.Administration do
       actor: teacher(state, actor_id).name,
       action: action,
       target: target,
-      time: Calendar.strftime(DateTime.utc_now(), "%Y-%m-%d %H:%M UTC")
+      time: GradePushWeb.Presentation.datetime(DateTime.utc_now())
     }
 
     %{state | history: [event | state.history]}

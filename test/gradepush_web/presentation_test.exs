@@ -19,4 +19,11 @@ defmodule GradePushWeb.PresentationTest do
              "No semester"
            ]
   end
+
+  test "human dates use the requested locale and the configured local timezone" do
+    assert Presentation.datetime(~U[2026-09-18 17:31:00Z], "fr") == "18 septembre 2026 à 13:31"
+    assert Presentation.datetime(~U[2026-09-18 17:31:00Z], "en") == "September 18, 2026 at 13:31"
+    assert Presentation.datetime(~U[2026-01-01 02:00:00Z], "fr") == "31 décembre 2025 à 21:00"
+    assert Presentation.datetime(nil, "fr") == "—"
+  end
 end

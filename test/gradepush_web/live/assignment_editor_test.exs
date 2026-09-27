@@ -36,7 +36,7 @@ defmodule GradePushWeb.AssignmentEditorTest do
     refute has_element?(view, "input[name='assignment[cutoff]'][type=checkbox][disabled]")
     view |> form("#assignment-form", assignment: %{cutoff: "true"}) |> render_submit()
     assert_patch(view, path)
-    assert has_element?(view, ".cp-assignment-facts", "2026-10-15")
+    assert has_element?(view, ".cp-assignment-facts", "October 15, 2026 at 16:30")
     render_patch(view, "/classrooms/programming")
     assert has_element?(view, ".cp-assignment", "Sorting algorithms")
     render_patch(view, path)

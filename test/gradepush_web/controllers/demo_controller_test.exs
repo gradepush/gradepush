@@ -14,6 +14,29 @@ defmodule GradePushWeb.DemoControllerTest do
     :ok
   end
 
+  test "sharing opens the demo dialog without creating a usable invitation", %{conn: conn} do
+    teacher = GradePush.Repo.get_by!(Accounts.User, login: "demo-teacher")
+
+    {:ok, view, _} =
+      conn |> log_in_user(teacher) |> live("/classrooms/programming/assignments/cli")
+
+    before_count = GradePush.Repo.aggregate(GradePush.Assignments.Invitation, :count)
+    view |> element("button", "Share assignment") |> render_click()
+    assert has_element?(view, "#assignment-invitation-input[disabled][value='']")
+    assert has_element?(view, "#assignment-invitation-copy[disabled]")
+    assert GradePush.Repo.aggregate(GradePush.Assignments.Invitation, :count) == before_count
+    view |> element(".cp-modal-actions button", "Close") |> render_click()
+    view |> element("button", "Clone all locally") |> render_click()
+
+    assert has_element?(
+             view,
+             "[role='dialog']",
+             "Bulk cloning and this command are not available yet"
+           )
+
+    assert has_element?(view, "[role='dialog'] code", "gh gradepush clone --assignment cli")
+  end
+
   test "the demo page signs in the selected role through a revocable session", %{conn: conn} do
     {:ok, view, html} = live(conn, "/demo")
     assert html =~ "Continue as a teacher"

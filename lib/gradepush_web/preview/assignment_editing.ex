@@ -49,10 +49,7 @@ defmodule GradePushWeb.Preview.AssignmentEditing do
       classroom: classroom.slug,
       title: both(draft.title),
       instructions: both(draft.instructions || ""),
-      due:
-        both(
-          if draft.deadline, do: Calendar.strftime(draft.deadline, "%Y-%m-%d · %H:%M"), else: ""
-        ),
+      due: GradePushWeb.Presentation.datetime_text(draft.deadline),
       status: if(draft.deadline, do: :open, else: :draft),
       kind:
         if(draft.kind == "team",

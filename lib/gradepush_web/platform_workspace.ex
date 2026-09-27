@@ -3,7 +3,7 @@ defmodule GradePushWeb.PlatformWorkspace do
   use Gettext, backend: GradePushWeb.Gettext
 
   alias GradePush.{Accounts, Operations, Time}
-  alias GradePushWeb.{AdminWorkspace, Endpoint}
+  alias GradePushWeb.{AdminWorkspace, Endpoint, Presentation}
 
   def load(actor) do
     with {:ok, snapshot} <- Operations.snapshot(actor),
@@ -36,5 +36,5 @@ defmodule GradePushWeb.PlatformWorkspace do
   defp webhook_status(nil), do: gettext("No webhook received yet")
 
   defp webhook_status(datetime),
-    do: gettext("Last delivery: %{time}", time: Time.format_datetime(datetime))
+    do: gettext("Last delivery: %{time}", time: Presentation.datetime(datetime))
 end
