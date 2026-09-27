@@ -32,52 +32,77 @@ defmodule GradePushWeb.AssignmentComponents do
       {local(@classroom.title, @locale), "/classrooms/#{@classroom.slug}"},
       {local(@assignment.title, @locale), nil}
     ]} />
-    <div class="cp-heading cp-assignment-heading">
-      <div>
-        <p class="cp-context">{gettext("Assignment")}</p><h1>{local(@assignment.title, @locale)}</h1>
+    <div class="cp-assignment-overview">
+      <div class="cp-heading cp-assignment-heading">
+        <div>
+          <p class="cp-context">{gettext("Assignment")}</p><h1>
+            {local(@assignment.title, @locale)}
+          </h1>
+        </div>
+        <div class="cp-assignment-actions">
+          <a
+            :if={!@preview}
+            class="cp-button"
+            href={"/classrooms/#{@classroom.slug}/assignments/#{@assignment.key}/export.csv"}
+            download
+          ><.icon name="hero-arrow-down-tray" class="size-4" />{gettext("Export CSV")}</a>
+          <.link
+            class="cp-button"
+            patch={"/classrooms/#{@classroom.slug}/assignments/#{@assignment.key}/edit"}
+          ><.icon name="hero-pencil-square" class="size-4" />{gettext("Edit assignment")}</.link>
+          <button
+            class="cp-button cp-primary"
+            phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "assignment_invite"})}
+          ><.icon name="hero-link" class="size-4" />{gettext("Share assignment")}</button>
+        </div>
       </div>
-      <div class="cp-assignment-actions">
-        <a
-          :if={!@preview}
-          class="cp-button"
-          href={"/classrooms/#{@classroom.slug}/assignments/#{@assignment.key}/export.csv"}
-          download
-        ><.icon name="hero-arrow-down-tray" class="size-4" />{gettext("Export CSV")}</a>
-        <.link
-          class="cp-button"
-          patch={"/classrooms/#{@classroom.slug}/assignments/#{@assignment.key}/edit"}
-        ><.icon name="hero-pencil-square" class="size-4" />{gettext("Edit assignment")}</.link>
-        <button
-          class="cp-button cp-primary"
-          phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "assignment_invite"})}
-        ><.icon name="hero-link" class="size-4" />{gettext("Share assignment")}</button>
+      <div class="cp-assignment-facts">
+        <span><.icon
+          name={if @assignment.group?, do: "hero-user-group", else: "hero-user"}
+          class="size-4"
+        />{local(@assignment.kind, @locale)}</span>
+        <span><.icon name="hero-calendar-days" class="size-4" />{if not has_deadline?(
+                                                                      @assignment,
+                                                                      @preview
+                                                                    ),
+                                                                    do: gettext("No deadline"),
+                                                                    else:
+                                                                      gettext("Due %{date}",
+                                                                        date:
+                                                                          local(
+                                                                            @assignment.due,
+                                                                            @locale
+                                                                          )
+                                                                      )}</span>
+        <span :if={@assignment.tests?}><.icon name="hero-check-circle" class="size-4" />{gettext(
+          "%{count} automatic tests",
+          count: length(@tests)
+        )}</span>
+        <span :if={@assignment[:cutoff]}><.icon name="hero-lock-closed" class="size-4" />{gettext(
+          "Pushes close at the deadline"
+        )}</span>
       </div>
-    </div>
-    <div class="cp-assignment-facts">
-      <span><.icon
-        name={if @assignment.group?, do: "hero-user-group", else: "hero-user"}
-        class="size-4"
-      />{local(@assignment.kind, @locale)}</span>
-      <span><.icon name="hero-calendar-days" class="size-4" />{if not has_deadline?(
-                                                                    @assignment,
-                                                                    @preview
-                                                                  ),
-                                                                  do: gettext("No deadline"),
-                                                                  else:
-                                                                    gettext("Due %{date}",
-                                                                      date:
-                                                                        local(
-                                                                          @assignment.due,
-                                                                          @locale
-                                                                        )
-                                                                    )}</span>
-      <span :if={@assignment.tests?}><.icon name="hero-check-circle" class="size-4" />{gettext(
-        "%{count} automatic tests",
-        count: length(@tests)
-      )}</span>
-      <span :if={@assignment[:cutoff]}><.icon name="hero-lock-closed" class="size-4" />{gettext(
-        "Pushes close at the deadline"
-      )}</span>
+      <div class="cp-acceptance-overview">
+        <svg viewBox="0 0 64 64" aria-hidden="true" class="cp-acceptance-ring">
+          <circle cx="32" cy="32" r="27" class="cp-ring-track" />
+          <circle
+            cx="32"
+            cy="32"
+            r="27"
+            class="cp-ring-progress"
+            pathLength="100"
+            stroke-dasharray={"#{if @total > 0, do: min(100, @accepted / @total * 100), else: 0} 100"}
+          />
+        </svg>
+        <div>
+          <strong>{@accepted}<span> / {@total}</span></strong><p>
+            {gettext("%{accepted} of %{total} students have accepted",
+              accepted: @accepted,
+              total: @total
+            )}
+          </p>
+        </div>
+      </div>
     </div>
     <details class="cp-instructions" id={"instructions-#{@assignment.key}"}>
       <summary>
@@ -176,8 +201,12 @@ defmodule GradePushWeb.AssignmentComponents do
                 {gettext("Last push")}
               </th><th scope="col">{gettext("Activity")}</th><th :if={@assignment.tests?} scope="col">
                 {gettext("Test score")}
-              </th><th scope="col">
-                {gettext("Repository")}
+              </th><th
+                :if={has_deadline?(@assignment, @preview)}
+                scope="col"
+                class="cp-deadline-heading"
+              >
+                {gettext("Deadline")}
               </th>
             </tr>
           </thead>
@@ -206,6 +235,44 @@ defmodule GradePushWeb.AssignmentComponents do
                   label={gettext("No pushes")}
                 />
                 <span :if={row.status == :late} class="cp-late-note">{gettext("Late")}</span>
+                <div
+                  :if={row.repository || Map.get(row, :repository_state) in ["pending", "failed"]}
+                  class="cp-push-repository"
+                >
+                  <a
+                    :if={!@preview and row.repository_url}
+                    class="cp-repo-link"
+                    href={row.repository_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={gettext("Open repository %{repository}", repository: row.repository)}
+                  ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
+                    "Repository"
+                  )}</a><button
+                    :if={@preview and row.repository}
+                    class="cp-repo-link"
+                    disabled
+                    title={gettext("Repository links are unavailable in this preview.")}
+                    aria-label={gettext("Open repository %{repository}", repository: row.repository)}
+                  ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext(
+                    "Repository"
+                  )}</button>
+                  <p :if={Map.get(row, :repository_state) == "pending"} class="cp-field-help">
+                    {gettext("Repository is being created.")}
+                  </p>
+                  <div
+                    :if={!@preview and Map.get(row, :repository_state) == "failed"}
+                    class="cp-repository-error"
+                  >
+                    <p>{Map.get(row, :repository_error)}</p>
+                    <button
+                      class="cp-button"
+                      phx-click="retry_repository"
+                      phx-value-subject_id={row.subject_id}
+                      aria-label={gettext("Retry repository setup for %{name}", name: row.name)}
+                    ><.icon name="hero-arrow-path" class="size-4" />{gettext("Retry setup")}</button>
+                  </div>
+                </div>
               </td>
               <td class="cp-activity-cell" data-label={gettext("Activity")}>
                 <.activity
@@ -236,41 +303,7 @@ defmodule GradePushWeb.AssignmentComponents do
                   aria-label={gettext("View test results for %{name}", name: row.name)}
                 >{gettext("View results")}</button>
               </td>
-              <td class="cp-repository-cell">
-                <a
-                  :if={!@preview and row.repository_url}
-                  class="cp-repo-link"
-                  href={row.repository_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={gettext("Open repository %{repository}", repository: row.repository)}
-                ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext("Repository")}</a><button
-                  :if={@preview and row.repository}
-                  class="cp-repo-link"
-                  disabled
-                  title={gettext("Repository links are unavailable in this preview.")}
-                  aria-label={gettext("Open repository %{repository}", repository: row.repository)}
-                ><.icon name="hero-arrow-top-right-on-square" class="size-4" />{gettext("Repository")}</button><.dash
-                  :if={
-                    !row.repository and Map.get(row, :repository_state) not in ["pending", "failed"]
-                  }
-                  label={gettext("No repository")}
-                />
-                <p :if={Map.get(row, :repository_state) == "pending"} class="cp-field-help">
-                  {gettext("Repository is being created.")}
-                </p>
-                <div
-                  :if={!@preview and Map.get(row, :repository_state) == "failed"}
-                  class="cp-repository-error"
-                >
-                  <p>{Map.get(row, :repository_error)}</p>
-                  <button
-                    class="cp-button"
-                    phx-click="retry_repository"
-                    phx-value-subject_id={row.subject_id}
-                    aria-label={gettext("Retry repository setup for %{name}", name: row.name)}
-                  ><.icon name="hero-arrow-path" class="size-4" />{gettext("Retry setup")}</button>
-                </div>
+              <td :if={has_deadline?(@assignment, @preview)} class="cp-deadline-cell">
                 <p :if={Map.get(row, :extension_label)} class="cp-late-note">
                   {gettext("Deadline extended to %{date}",
                     date: local(Map.get(row, :extension_label), @locale)

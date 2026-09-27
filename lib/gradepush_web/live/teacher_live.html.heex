@@ -1,4 +1,4 @@
-<div class="class-preview">
+<div class={["class-preview", @live_action in [:index, :assignment] && "cp-teacher-workspace"]}>
   <div class="cp-shell" inert={@modal != nil}>
     <a class="skip-link" href="#class-content">{gettext("Skip to content")}</a>
     <WorkspaceLayout.header
