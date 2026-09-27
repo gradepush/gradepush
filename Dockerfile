@@ -49,7 +49,7 @@ USER 10001:10001
 
 EXPOSE 4000
 VOLUME ["/var/lib/gradepush"]
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD curl --fail --silent "http://127.0.0.1:$PORT/health" > /dev/null || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD curl --fail --silent "http://127.0.0.1:$PORT/health/ready" > /dev/null || exit 1
 
 ENTRYPOINT ["/usr/local/bin/gradepush-entrypoint"]
 CMD ["/app/bin/gradepush", "start"]

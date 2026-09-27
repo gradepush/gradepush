@@ -12,6 +12,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-gradepush}
       DB_NAME: ${DB_NAME:-gradepush}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-}
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-}
+      UI_PREVIEW: ${UI_PREVIEW:-false}
+      DEMO_MODE: ${DEMO_MODE:-false}
       PHX_HOST: ${PHX_HOST:-localhost}
       PHX_SCHEME: ${PHX_SCHEME:-http}
       PHX_URL_PORT: ${PHX_URL_PORT:-${HOST_PORT:-4000}}

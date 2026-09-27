@@ -37,6 +37,13 @@ defmodule GradePush.MixProject do
       File.cp!(file, Path.join(release.path, file))
     end
 
+    for file <- Path.wildcard("deps/*/{LICENSE*,COPYING*,NOTICE*}"), File.regular?(file) do
+      dependency = file |> Path.dirname() |> Path.basename()
+      destination = Path.join([release.path, "third_party_licenses", dependency])
+      File.mkdir_p!(destination)
+      File.cp!(file, Path.join(destination, Path.basename(file)))
+    end
+
     release
   end
 
