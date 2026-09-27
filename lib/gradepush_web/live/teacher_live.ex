@@ -9,6 +9,7 @@ defmodule GradePushWeb.TeacherLive do
   alias GradePushWeb.AssignmentEditor
   alias GradePushWeb.ClassroomComponents
   alias GradePushWeb.Forms.AssignmentDraft
+  alias GradePushWeb.GradingComponents
   alias GradePushWeb.Presentation
   alias GradePushWeb.Preview.AssignmentEditing
   alias GradePushWeb.Preview.Assignments, as: PreviewAssignments
@@ -369,6 +370,9 @@ defmodule GradePushWeb.TeacherLive do
   def handle_info({_event, _id}, %{assigns: %{live_action: action}} = socket)
       when action in [:new_assignment, :edit_assignment], do: {:noreply, socket}
 
+  def handle_info({_event, _id}, %{assigns: %{modal: {"test_results", _}}} = socket),
+    do: reload_real_workspace(socket, nil)
+
   def handle_info({_event, _id}, %{assigns: %{modal: modal}} = socket) when not is_nil(modal),
     do: {:noreply, socket}
 
@@ -548,7 +552,7 @@ defmodule GradePushWeb.TeacherLive do
   end
 
   def handle_event("open", %{"kind" => kind} = params, socket)
-      when kind in ~w(create edit invite teachers remove assignment_invite connect_organization teams deadline_extension) do
+      when kind in ~w(create edit invite teachers remove assignment_invite connect_organization teams deadline_extension test_results) do
     if modal_resource_available?(kind, socket.assigns),
       do: open_modal(socket, kind, params),
       else: {:noreply, socket}
@@ -783,15 +787,17 @@ defmodule GradePushWeb.TeacherLive do
     classroom_teachers = if kind == "teachers", do: available_teachers(socket.assigns), else: []
 
     subject =
-      if kind == "deadline_extension" do
+      if kind in ~w(deadline_extension test_results) do
         with {:ok, subject_id} <- parse_id_result(params["subject_id"]),
              %{id: ^subject_id} = subject <-
                Enum.find(socket.assigns.assignment_subjects, &(&1.id == subject_id)) do
           subject
+        else
+          _ -> nil
         end
       end
 
-    if kind == "deadline_extension" and is_nil(subject) do
+    if kind in ~w(deadline_extension test_results) and is_nil(subject) do
       {:noreply, socket}
     else
       do_open_modal(socket, kind, handle, classroom_teachers, subject)
@@ -799,7 +805,7 @@ defmodule GradePushWeb.TeacherLive do
   end
 
   defp do_open_modal(socket, kind, handle, classroom_teachers, subject) do
-    modal_handle = if kind == "deadline_extension", do: subject.id, else: handle
+    modal_handle = if subject, do: subject.id, else: handle
 
     socket =
       assign(socket,
@@ -1116,7 +1122,9 @@ defmodule GradePushWeb.TeacherLive do
     do: AssignmentDraft.changeset(%AssignmentDraft{}, params, templates)
 
   defp reload_real_workspace(socket, notice) do
-    modal = if modal?(socket.assigns.modal, "teams"), do: socket.assigns.modal
+    modal =
+      if modal?(socket.assigns.modal, "teams") or modal?(socket.assigns.modal, "test_results"),
+        do: socket.assigns.modal
 
     {:noreply, socket} =
       handle_real_params(socket.assigns.route_params, socket.assigns.path, socket)
@@ -1458,6 +1466,9 @@ defmodule GradePushWeb.TeacherLive do
   defp modal_resource_available?("teams", assigns),
     do: teacher_team_assignment?(assigns)
 
+  defp modal_resource_available?("test_results", assigns),
+    do: not assigns.preview? and match?(%{autograding_enabled: true}, assigns.assignment_record)
+
   defp modal_resource_available?("deadline_extension", assigns),
     do:
       not assigns.preview? and not is_nil(assigns.assignment_record) and
@@ -1473,6 +1484,7 @@ defmodule GradePushWeb.TeacherLive do
   defp modal_title({"assignment_invite", _}), do: gettext("Share assignment")
   defp modal_title({"connect_organization", _}), do: gettext("Connect an organization")
   defp modal_title({"teams", _}), do: gettext("Manage teams")
+  defp modal_title({"test_results", _}), do: gettext("Automatic test results")
   defp modal_title({"deadline_extension", _}), do: gettext("Revise submission deadline")
 
   defp editing_value(assigns, key) do

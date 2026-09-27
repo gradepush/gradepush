@@ -3,7 +3,14 @@ defmodule GradePushWeb.StudentLive do
   use GradePushWeb, :live_view
 
   alias GradePush.{Accounts, Assignments, Classrooms, Submissions}
-  alias GradePushWeb.{ClassroomComponents, Markdown, Presentation, WorkspaceLayout}
+
+  alias GradePushWeb.{
+    ClassroomComponents,
+    GradingComponents,
+    Markdown,
+    Presentation,
+    WorkspaceLayout
+  }
 
   @impl true
   def mount(_params, _session, %{assigns: %{current_user: nil}} = socket),
@@ -72,6 +79,7 @@ defmodule GradePushWeb.StudentLive do
              :repository_changed,
              :push_recorded,
              :grade_recorded,
+             :grade_untrusted,
              :extension_changed
            ],
       do: refresh(socket)

@@ -305,7 +305,7 @@
   >
     <.focus_wrap
       id="class-dialog"
-      class="cp-modal"
+      class={["cp-modal", modal?(@modal, "test_results") && "cp-results-modal"]}
       role="dialog"
       aria-modal="true"
       aria-labelledby="class-modal-title"
@@ -321,6 +321,22 @@
       <p :if={@error} class="cp-error" role="alert">{@error}</p>
       <p :if={@notice} class="cp-notice" role="status">{@notice}</p>
       <%= cond do %>
+        <% modal?(@modal, "test_results") -> %>
+          <% subject = Enum.find(@assignment_subjects, &(&1.id == elem(@modal, 1))) %>
+          <%= if subject do %>
+            <p class="cp-grading-owner">
+              {if subject.team,
+                do: subject.team.name,
+                else: subject.user.student_name || subject.user.name || subject.user.login}
+            </p>
+            <GradingComponents.results
+              id="submission-test-results"
+              tests={@assignment_record.tests}
+              subject={subject}
+            />
+          <% else %>
+            <p>{gettext("This submission is no longer available.")}</p>
+          <% end %>
         <% modal?(@modal, "create") or modal?(@modal, "edit") -> %>
           <form phx-submit="save_class" id="class-form" class="cp-form">
             <label>{gettext("Classroom name")}<input

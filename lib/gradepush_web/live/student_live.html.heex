@@ -147,14 +147,11 @@
             <div class="cp-admin-panel-heading">
               <h2>{gettext("Automatic tests")}</h2>
             </div>
-            <ul class="cp-test-list cp-test-list-embedded">
-              <li :for={test <- @assignment.tests}>
-                <div>
-                  <h3>{test.name}</h3><p>{test.description}</p>
-                </div>
-                <span>{test.points} {gettext("points")}</span>
-              </li>
-            </ul>
+            <GradingComponents.results
+              id="student-test-results"
+              tests={@assignment.tests}
+              subject={@subject}
+            />
           </section>
       <% end %>
     </main>

@@ -549,3 +549,23 @@ select:not([multiple]):not([size]) {
 .cp-demo-roles { display: flex; flex-wrap: wrap; gap: 12px; padding: 24px; }
 .cp-demo-roles form { flex: 1 1 220px; }
 .cp-demo-roles button { width: 100%; }
+
+.cp-grading-summary { padding: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--cp-muted); }
+.cp-grading-summary > p:first-child { flex-basis: 100%; }
+.cp-grading-total strong { margin-left: 8px; font-size: 18px; color: var(--ink); }
+.cp-grading-commit { display: flex; gap: 8px; align-items: center; }
+.cp-grading-commit code { color: var(--ink); }
+.cp-grading-description { min-width: 0; overflow-wrap: anywhere; }
+.cp-grading-outcome { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--cp-muted); }
+.cp-grading-status { font-weight: 600; color: var(--ink); }
+.cp-grading-success { color: #167044; }
+.cp-grading-failure, .cp-grading-warning { color: #a52a2a; }
+.cp-results-link { display: block; margin-top: 6px; font-size: 12px; cursor: pointer; }
+.cp-results-modal { width: 640px; }
+.cp-grading-owner { font-weight: 600; margin-bottom: 16px; }
+.cp-results-modal .cp-grading { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+@media (max-width: 640px) {
+  .cp-grading-summary { padding: 18px; gap: 12px; }
+  .cp-grading .cp-test-list li { flex-wrap: wrap; }
+  .cp-grading-outcome { flex-direction: row; align-items: center; gap: 12px; }
+}

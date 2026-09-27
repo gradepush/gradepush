@@ -224,6 +224,15 @@ defmodule GradePushWeb.AssignmentComponents do
                   :if={row.score == nil and not Map.get(row, :grade_untrusted?, false)}
                   label={gettext("Not run")}
                 />
+                <button
+                  :if={!@preview and Map.get(row, :subject_id)}
+                  class="cp-profile-link cp-results-link"
+                  phx-click={
+                    JS.push_focus()
+                    |> JS.push("open", value: %{kind: "test_results", subject_id: row.subject_id})
+                  }
+                  aria-label={gettext("View test results for %{name}", name: row.name)}
+                >{gettext("View results")}</button>
               </td>
               <td class="cp-repository-cell">
                 <a
