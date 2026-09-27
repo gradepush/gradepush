@@ -35,3 +35,68 @@ msgstr "Langue"
 #, elixir-autogen, elixir-format
 msgid "close"
 msgstr "Fermer"
+
+#: lib/gradepush_web/preview/assignment_content.ex:24
+#, elixir-autogen, elixir-format
+msgid "Build a command-line parser that accepts a file path and a help flag. Show a useful error for invalid input."
+msgstr "Créez un analyseur de ligne de commande qui accepte un chemin de fichier et une option d’aide. Affichez un message utile si la saisie est invalide."
+
+#: lib/gradepush_web/preview/assignment_content.ex:42
+#, elixir-autogen, elixir-format
+msgid "Build a portfolio with an introduction, a project gallery, and a contact page. Make it usable on mobile and with a keyboard."
+msgstr "Créez un portfolio avec une présentation, une galerie de projets et une page de contact. Il doit être utilisable sur mobile et au clavier."
+
+#: lib/gradepush_web/preview/assignment_content.ex:48
+#, elixir-autogen, elixir-format
+msgid "In pairs, implement a linked list with insertion, deletion, and search. Document the complexity of each operation."
+msgstr "En équipe de deux, implémentez une liste chaînée avec insertion, suppression et recherche. Documentez la complexité de chaque opération."
+
+#: lib/gradepush_web/preview/assignment_content.ex:36
+#, elixir-autogen, elixir-format
+msgid "In pairs, split the provided program into small functions and write tests for each function."
+msgstr "En équipe de deux, divisez le programme fourni en petites fonctions et écrivez des tests pour chacune."
+
+#: lib/gradepush_web/preview/assignment_content.ex:30
+#, elixir-autogen, elixir-format
+msgid "Read a list of temperatures, calculate the average, and display the minimum and maximum. Handle an empty list."
+msgstr "Lisez une liste de températures, calculez la moyenne et affichez le minimum et le maximum. Prévoyez le cas d’une liste vide."
+
+#: lib/gradepush_web/preview/assignment_content.ex:20
+#, elixir-autogen, elixir-format
+msgid "A file path containing spaces is preserved as a single argument."
+msgstr "Un chemin de fichier contenant des espaces est conservé comme un seul argument."
+
+#: lib/gradepush_web/preview/assignment_content.ex:17
+#, elixir-autogen, elixir-format
+msgid "An unsupported option is rejected with an error message."
+msgstr "Une option inconnue est refusée avec un message d’erreur."
+
+#: lib/gradepush_web/preview/assignment_content.ex:5
+#, elixir-autogen, elixir-format
+msgid "Help flag"
+msgstr "Option d’aide"
+
+#: lib/gradepush_web/preview/assignment_content.ex:6
+#, elixir-autogen, elixir-format
+msgid "Missing argument"
+msgstr "Argument manquant"
+
+#: lib/gradepush_web/preview/assignment_content.ex:8
+#, elixir-autogen, elixir-format
+msgid "Quoted file path"
+msgstr "Chemin entre guillemets"
+
+#: lib/gradepush_web/preview/assignment_content.ex:14
+#, elixir-autogen, elixir-format
+msgid "Running without a file path displays an error and returns exit code 2."
+msgstr "L’exécution sans chemin de fichier affiche une erreur et retourne le code de sortie 2."
+
+#: lib/gradepush_web/preview/assignment_content.ex:11
+#, elixir-autogen, elixir-format
+msgid "The --help flag displays usage instructions and exits successfully."
+msgstr "L’option --help affiche les instructions d’utilisation et termine sans erreur."
+
+#: lib/gradepush_web/preview/assignment_content.ex:7
+#, elixir-autogen, elixir-format
+msgid "Unknown option"
+msgstr "Option inconnue"
