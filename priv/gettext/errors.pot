@@ -107,3 +107,8 @@ msgstr ""
 
 msgid "must be equal to %{number}"
 msgstr ""
+
+#: lib/gradepush_web/forms/assignment_draft.ex:74
+#, elixir-autogen, elixir-format
+msgid "add at least one test"
+msgstr ""
