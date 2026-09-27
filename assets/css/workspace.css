@@ -38,7 +38,7 @@
 .cp-workspace .cp-student-overview .cp-assignment-facts { padding-top: 20px; border-top: 1px solid var(--line); margin-top: 24px; }
 .cp-workspace .cp-admin-overview .cp-heading { margin-bottom: 0; }
 .cp-workspace .cp-admin-overview .cp-institution-summary { border-top: 1px solid var(--line); margin: 24px 0 0; padding-top: 22px; gap: 40px; }
-.cp-workspace .cp-admin-panel-heading { background: #fbfcff; }
+.cp-workspace :is(.cp-admin-panel-heading, .cp-instructions summary) { background: var(--surface-heading); }
 .cp-workspace .cp-admin-panel-heading > :is(.hero-server-stack, .hero-key, .hero-building-library) { color: var(--blue); }
 .cp-workspace .cp-assignment-heading { display: contents; }
 .cp-workspace .cp-assignment-heading > div:first-child { grid-column: 1; grid-row: 1; }
@@ -55,6 +55,8 @@
 .cp-workspace .cp-acceptance-overview strong > span { font-size: 16px; letter-spacing: 0; color: #61708a; font-weight: 450; }
 .cp-workspace .cp-acceptance-overview p { margin: 7px 0 0; color: #536176; font-size: 11px; line-height: 1.5; white-space: nowrap; }
 .cp-workspace .cp-instructions { border-radius: 10px; background: #fff; border-color: #dfe5f0; }
+.cp-workspace .cp-instructions summary { border-radius: 9px; }
+.cp-workspace .cp-instructions[open] summary { border-radius: 9px 9px 0 0; }
 .cp-workspace .cp-tabs { margin-top: 28px; }
 .cp-workspace .cp-tabs a { border-radius: 8px 8px 0 0; }
 .cp-workspace .cp-submissions-heading { margin-top: 24px; margin-bottom: 18px; }

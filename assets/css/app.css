@@ -20,6 +20,7 @@
   --ink: #1c2435;
   --line: #e5e9f0;
   --control-border: #8591a3;
+  --surface-heading: #fbfcff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
   color: var(--ink);

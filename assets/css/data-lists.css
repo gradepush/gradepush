@@ -8,7 +8,7 @@
 }
 
 .cp-data-list :is(thead, .cp-assignment-labels, .cp-student-labels) {
-  background: white;
+  background: var(--surface-heading);
   color: #303c50;
   border-bottom: 1px solid #d4deed;
   font-size: 12px;
