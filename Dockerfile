@@ -1,21 +1,28 @@
 ARG ELIXIR_IMAGE=hexpm/elixir:1.20.4-erlang-29.1.1-alpine-3.24.2@sha256:ad851f40ce103dcb4ad56f23877d99473ef5c013e09b9e57921ffe877ac6d6a9
 ARG RUNTIME_IMAGE=alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
-FROM ${ELIXIR_IMAGE} AS development
+FROM ${RUNTIME_IMAGE} AS local-https
 
-ARG LOCAL_UID=1000
-ARG LOCAL_GID=1000
+RUN apk add --no-cache openssl
+COPY --chmod=755 deploy/local-https.sh /usr/local/bin/local-https
+ENTRYPOINT ["/usr/local/bin/local-https"]
+
+FROM ${ELIXIR_IMAGE} AS development
 
 ENV HOME=/opt/gradepush
 WORKDIR /app
 
-RUN apk add --no-cache bash build-base ca-certificates coreutils curl diffutils git inotify-tools openssl \
+RUN apk add --no-cache bash build-base ca-certificates coreutils curl diffutils git inotify-tools openssl su-exec \
     && mkdir -p /opt/gradepush /app/deps /app/_build \
-    && chown -R ${LOCAL_UID}:${LOCAL_GID} /opt/gradepush /app
+    && chown -R 1000:1000 /opt/gradepush /app
 
-USER ${LOCAL_UID}:${LOCAL_GID}
+USER 1000:1000
 RUN mix local.hex --force && mix local.rebar --force
 
+COPY --chown=1000:1000 . .
+USER root
+COPY --chmod=755 deploy/development-entrypoint.sh /usr/local/bin/gradepush-development
+ENTRYPOINT ["/usr/local/bin/gradepush-development"]
 CMD ["sh", "-c", "mix setup && exec mix phx.server"]
 
 FROM ${ELIXIR_IMAGE} AS build

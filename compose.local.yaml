@@ -1,27 +1,21 @@
 services:
+  local-https:
+    extends:
+      file: compose.certs.yaml
+      service: local-https
+
   app:
+    depends_on:
+      local-https:
+        condition: service_completed_successfully
     environment:
       PHX_SCHEME: https
       TLS_CERTFILE: /app/local-certs/localhost.pem
       TLS_KEYFILE: /app/local-certs/localhost-key.pem
     volumes:
-      - type: bind
-        source: ./priv/cert/ca.pem
-        target: /app/local-certs/ca.pem
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ./priv/cert/localhost.pem
-        target: /app/local-certs/localhost.pem
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ./priv/cert/localhost-key.pem
-        target: /app/local-certs/localhost-key.pem
-        read_only: true
-        bind:
-          create_host_path: false
+      - local_certs:/app/local-certs:ro
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent --cacert /app/local-certs/ca.pem https://localhost:$$PORT/health/ready > /dev/null"]
+
+volumes:
+  local_certs:

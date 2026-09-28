@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- Docker with Compose v2.24.4 or newer, `curl`, and OpenSSL.
-- For self-hosting: a public domain pointing to the server, with ports **80** and **443** open.
+- Docker with Compose v2.32 or newer (Linux containers on Windows).
+- For self-hosting: `curl`, OpenSSL, and a public domain pointing to the server, with ports **80** and **443** open.
 
 ## Self-host with Docker
 
@@ -53,36 +53,36 @@ Uses the published image with PostgreSQL and Caddy. No repository clone or build
    cd gradepush
    ```
 
-2. On macOS or Linux, start with sample data:
+2. Start with sample data:
 
    ```sh
-   DEMO_MODE=true HOST_PORT=4001 PHX_URL_PORT=4001 scripts/local-compose --env-file .env.example -p gradepush-demo up -d --build --wait
+   docker compose --env-file .env.example -p gradepush-demo -f compose.yaml -f compose.local.yaml -f compose.demo.yaml up -d --build --wait
    ```
 
-3. Open [https://localhost:4001/demo](https://localhost:4001/demo) and choose a role.
+3. Open [https://localhost:4000/demo](https://localhost:4000/demo) and choose a role.
 
-Local HTTPS is automatic. Your OS may ask for your password to trust the certificate.
+Local certificates are generated inside Docker. Your browser may show a certificate warning.
 
 ## Develop with Docker
 
-1. On macOS or Linux, run from a clone of this repository:
+1. From a clone of this repository, start the development environment:
 
    ```sh
-   scripts/dev
+   docker compose -p gradepush-development -f compose.development.yaml up --build --watch
    ```
 
-2. Open [https://localhost:4000](https://localhost:4000). Edit the code locally; the app reloads automatically. `DEMO_MODE=true` is optional and enables sample data. GitHub setup requires a public HTTPS address, such as a tunnel.
+2. Open [https://localhost:4000](https://localhost:4000). Edit the code locally; the app reloads automatically. GitHub setup requires a public HTTPS address, such as a tunnel.
 3. Run checks:
 
    ```sh
-   scripts/dev exec -e DEMO_MODE=false app mix precommit
-   scripts/dev exec app scripts/test-release-env
+   docker compose -p gradepush-development -f compose.development.yaml exec --user 1000 app mix precommit
+   docker compose -p gradepush-development -f compose.development.yaml exec --user 1000 app sh scripts/test-release-env
    ```
 
 4. Stop the development environment:
 
    ```sh
-   scripts/dev down
+   docker compose -p gradepush-development -f compose.development.yaml down
    ```
 
 [License](LICENSE) · [Contributing](CONTRIBUTING.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)

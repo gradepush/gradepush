@@ -27,6 +27,11 @@
 !rel/env.sh.eex
 !rel/entrypoint.sh
 !rel/setup.sh
+!deploy/local-https.sh
+!deploy/development-entrypoint.sh
+!test/**/*.ex
+!test/**/*.exs
+!scripts/test-release-env
 
 # Exclude local files even inside an allowed source directory.
 **/.*
@@ -73,3 +78,4 @@ priv/static/assets/**
 priv/static/uploads/**
 priv/static/cache_manifest.json
 priv/static/**/*-????????????????????????????????.*
+!.formatter.exs

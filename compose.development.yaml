@@ -1,13 +1,17 @@
 services:
+  local-https:
+    extends:
+      file: compose.certs.yaml
+      service: local-https
+
   app:
     build:
       context: .
       target: development
-      args:
-        LOCAL_UID: ${LOCAL_UID:-1000}
-        LOCAL_GID: ${LOCAL_GID:-1000}
     init: true
     depends_on:
+      local-https:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     environment:
@@ -25,27 +29,26 @@ services:
     ports:
       - "127.0.0.1:${DEV_PORT:-4000}:${DEV_PORT:-4000}"
     volumes:
-      - .:/app
       - dev_deps:/app/deps
       - dev_build:/app/_build
-      - type: bind
-        source: ./priv/cert/ca.pem
-        target: /certs/ca.pem
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ./priv/cert/localhost.pem
-        target: /certs/localhost.pem
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ./priv/cert/localhost-key.pem
-        target: /certs/localhost-key.pem
-        read_only: true
-        bind:
-          create_host_path: false
+      - local_certs:/certs:ro
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          initial_sync: true
+          ignore:
+            - config/
+            - mix.exs
+            - mix.lock
+        - action: sync+restart
+          path: config
+          target: /app/config
+        - action: rebuild
+          path: mix.exs
+        - action: rebuild
+          path: mix.lock
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent --cacert /certs/ca.pem https://localhost:$$PORT/health/ready >/dev/null"]
       interval: 5s
@@ -67,3 +70,4 @@ volumes:
   dev_deps:
   dev_build:
   postgres_data:
+  local_certs:

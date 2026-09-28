@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+
+GRADEPUSH_CERT_DIR=$(mktemp -d)
+export GRADEPUSH_CERT_DIR
+trap 'rm -rf "$GRADEPUSH_CERT_DIR"' EXIT HUP INT TERM
+cd "$GRADEPUSH_CERT_DIR"
+
+local-https
+openssl verify -CAfile ca.pem -verify_hostname localhost localhost.pem
+openssl verify -CAfile ca.pem -verify_ip 127.0.0.1 localhost.pem
+openssl verify -CAfile ca.pem -verify_ip ::1 localhost.pem
+test "$(stat -c %a ca-key.pem)" = 600
+
+ca_hash=$(sha256sum ca.pem)
+leaf_hash=$(sha256sum localhost.pem)
+local-https
+test "$ca_hash" = "$(sha256sum ca.pem)"
+test "$leaf_hash" = "$(sha256sum localhost.pem)"
+
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out localhost-key.pem 2>/dev/null
+local-https
+test "$ca_hash" = "$(sha256sum ca.pem)"
+test "$leaf_hash" != "$(sha256sum localhost.pem)"
+openssl verify -CAfile ca.pem localhost.pem
+
+printf 'invalid certificate\n' > ca.pem
+local-https
+test "$ca_hash" != "$(sha256sum ca.pem)"
+openssl verify -CAfile ca.pem localhost.pem
+echo 'Local HTTPS generation, reuse, and repair checks passed.'

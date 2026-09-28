@@ -30,6 +30,12 @@ priv/static/fonts/font.woff2
 rel/env.sh.eex
 rel/entrypoint.sh
 rel/setup.sh
+deploy/local-https.sh
+deploy/development-entrypoint.sh
+.formatter.exs
+test/fixture.ex
+test/test_helper.exs
+scripts/test-release-env
 PATHS
 
 cat > "$scratch/blocked" <<'PATHS'
@@ -49,7 +55,6 @@ unknown-directory/file.ex
 deps/package/source.ex
 _build/prod/release.tar
 backups/database.dump
-test/fixture.ex
 priv/cert/localhost-key.pem
 priv/data/secret.json
 priv/static/uploads/avatar.png

@@ -15,6 +15,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  development:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Start development with Docker only
+        run: docker compose -p gradepush-development -f compose.development.yaml up -d --build --wait --wait-timeout 600
+
+      - name: Check development HTTPS and file synchronization
+        run: |
+          docker compose -p gradepush-development -f compose.development.yaml cp app:/certs/ca.pem /tmp/gradepush-ca.pem
+          curl --fail --silent --cacert /tmp/gradepush-ca.pem https://localhost:4000/setup > /dev/null
+          docker compose -p gradepush-development -f compose.development.yaml watch --no-up > /tmp/gradepush-watch.log 2>&1 &
+          watch_pid=$!
+          trap 'kill "$watch_pid" 2>/dev/null || true' EXIT
+          sleep 5
+          printf '<svg xmlns="http://www.w3.org/2000/svg"><title>watch-check</title></svg>\n' > priv/static/images/watch-check.svg
+          for _attempt in $(seq 1 20); do
+            if curl --fail --silent --cacert /tmp/gradepush-ca.pem https://localhost:4000/images/watch-check.svg | grep -q watch-check; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/gradepush-watch.log
+          exit 1
+
+      - name: Collect development logs after failure
+        if: failure()
+        run: docker compose -p gradepush-development -f compose.development.yaml logs --no-color --tail 100
+
+      - name: Stop development services
+        if: always()
+        run: docker compose -p gradepush-development -f compose.development.yaml down --volumes --remove-orphans
+
   verify:
     runs-on: ubuntu-latest
     services:
@@ -98,7 +133,10 @@ jobs:
 
       - name: Smoke-test the Compose release
         run: |
-          scripts/local-compose up --build -d --wait --wait-timeout 120
+          docker compose -f compose.yaml -f compose.local.yaml up --build -d --wait --wait-timeout 120
+          mkdir -p priv/cert
+          docker compose -f compose.yaml -f compose.local.yaml cp app:/app/local-certs/ca.pem priv/cert/ca.pem
+          docker compose -f compose.yaml -f compose.local.yaml run --rm -T --no-deps --entrypoint sh local-https < scripts/test-local-https
           docker compose exec -T app test -s /app/LICENSE
           docker compose exec -T app test -s /app/THIRD_PARTY_NOTICES.md
           test "$(docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT rolsuper FROM pg_roles WHERE rolname = current_user"')" = f
