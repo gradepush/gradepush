@@ -612,7 +612,11 @@ defmodule GradePush.Accounts do
       updated =
         institution
         |> Institution.changeset(%{name: name})
-        |> Repo.update!()
+        |> Repo.update()
+        |> case do
+          {:ok, updated} -> updated
+          {:error, changeset} -> Repo.rollback(changeset)
+        end
 
       :ok =
         record_audit(

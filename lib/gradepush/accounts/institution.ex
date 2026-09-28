@@ -24,14 +24,14 @@ defmodule GradePush.Accounts.Institution do
 
     Enum.reduce(@footer_fields, changeset, fn field, changeset ->
       changeset
-      |> update_change(field, &trim_url/1)
+      |> update_change(field, &trim_optional/1)
       |> validate_length(field, max: 2_048)
       |> validate_change(field, &validate_footer_url/2)
     end)
   end
 
-  defp trim_url(nil), do: nil
-  defp trim_url(value), do: String.trim(value)
+  defp trim_optional(nil), do: nil
+  defp trim_optional(value), do: String.trim(value)
 
   defp validate_footer_url(field, value) do
     if valid_footer_url?(value, field), do: [], else: [{field, "is invalid"}]
@@ -59,7 +59,7 @@ defmodule GradePush.Accounts.Institution do
   def changeset(institution, attrs) do
     institution
     |> cast(attrs, [:name, :time_zone])
-    |> update_change(:name, &String.trim/1)
+    |> update_change(:name, &trim_optional/1)
     |> validate_required([:name, :time_zone])
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:time_zone, min: 1, max: 100)
