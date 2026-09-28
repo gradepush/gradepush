@@ -150,8 +150,7 @@ defmodule GradePushWeb.AssignmentComponents do
         <h2>{gettext("Assignment instructions")}</h2><.icon name="hero-chevron-down" class="size-4" />
       </summary>
       <div class={[
-        "pt-[20px] pb-[24px] max-w-[760px] text-[#56647b] leading-[1.8] markdown px-[24px] [&_h3]:text-[14px]",
-        "[&_h3]:font-semibold [&_h3]:text-ink [&_h3]:mt-[16px] [&>h3:first-child]:mt-0 [&_h3]:mb-[8px] [&_h3]:mx-0",
+        "pt-[20px] pb-[24px] max-w-[760px] text-[#56647b] leading-[1.8] markdown px-[24px]",
         "[&_ol]:list-decimal [&_ol]:pl-[20px] [&_ol]:mb-[16px] max-[760px]:text-[13px] max-[760px]:p-[18px]"
       ]}>
         {Markdown.render(@instructions, 2)}
@@ -423,14 +422,17 @@ defmodule GradePushWeb.AssignmentComponents do
                     aria-label={gettext("Retry repository setup for %{name}", name: row.name)}
                   ><.icon name="hero-arrow-path" class="size-4" />{gettext("Retry setup")}</.button>
                 </div>
-                <p
+                <div
                   :if={Map.get(row, :extension_label)}
-                  class="block text-warning text-[11px] mt-[3px]"
+                  data-ui="deadline-extension"
+                  class="ml-auto mt-[10px] flex w-fit max-w-[240px] items-start gap-[8px] rounded-[6px] bg-surface-heading px-[10px] py-[8px] text-left text-[12px] leading-[1.5]"
                 >
-                  {gettext("Deadline extended to %{date}",
-                    date: local(Map.get(row, :extension_label), @locale)
-                  )}
-                </p>
+                  <.icon name="hero-calendar-days" class="mt-[2px] size-4 shrink-0 text-muted" />
+                  <div class="min-w-0">
+                    <p class="font-semibold text-heading">{gettext("Extended deadline")}</p>
+                    <p class="text-muted">{local(Map.get(row, :extension_label), @locale)}</p>
+                  </div>
+                </div>
               </td>
             </tr>
           </tbody>

@@ -17,7 +17,6 @@ defmodule GradePushWeb.SetupLive do
        locale: locale,
        setup_browser_nonce: session["setup_browser_nonce"],
        configured?: configured?,
-       https_ready?: URI.parse(GradePushWeb.Endpoint.url()).scheme == "https",
        form: setup_form(),
        trigger_action?: false,
        manifest_action: nil,
@@ -93,16 +92,6 @@ defmodule GradePushWeb.SetupLive do
                 </p>
               </div>
             </.panel_heading>
-
-            <p
-              :if={not @https_ready?}
-              class="border-t border-t-line text-muted text-[12px] py-[16px] px-[22px]"
-              role="note"
-            >
-              {gettext(
-                "GitHub needs a public HTTPS address for app callbacks and webhooks. Expose this server through HTTPS before setup."
-              )}
-            </p>
 
             <div
               :if={@configured?}

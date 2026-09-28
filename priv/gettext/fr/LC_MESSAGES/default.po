@@ -1717,11 +1717,6 @@ msgstr "La configuration de l’application GitHub n’a pas pu être terminée.
 msgid "GitHub did not return an app setup code. Start setup again."
 msgstr "GitHub n’a pas retourné de code de configuration. Recommencez la configuration."
 
-#: lib/gradepush_web/live/setup_live.ex:99
-#, elixir-autogen, elixir-format
-msgid "GitHub needs a public HTTPS address for app callbacks and webhooks. Expose this server through HTTPS before setup."
-msgstr "GitHub exige une adresse HTTPS publique pour les retours de l’application et les webhooks. Rendez ce serveur accessible en HTTPS avant la configuration."
-
 #: lib/gradepush_web/live/teacher_live.ex:1042
 #, elixir-autogen, elixir-format
 msgid "GitHub organization connected."
@@ -2153,11 +2148,6 @@ msgstr "Impossible de modifier cette échéance. Réessayez."
 #, elixir-autogen, elixir-format
 msgid "Create team"
 msgstr "Créer une équipe"
-
-#: lib/gradepush_web/components/assignment_components.ex:323
-#, elixir-autogen, elixir-format
-msgid "Deadline extended to %{date}"
-msgstr "Échéance prolongée au %{date}"
 
 #: lib/gradepush_web/live/teacher_live.html.heex:704
 #, elixir-autogen, elixir-format
@@ -2726,3 +2716,7 @@ msgstr "Indiquez son nom sur GitHub, pas son URL. Vous devez avoir les droits n�
 #, elixir-autogen, elixir-format
 msgid "Choose an App owner and enter a valid GitHub organization name if needed."
 msgstr "Choisissez un propriétaire et indiquez un nom d’organisation GitHub valide au besoin."
+
+#, elixir-autogen, elixir-format
+msgid "Extended deadline"
+msgstr "Échéance prolongée"

@@ -132,7 +132,12 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
 
     persisted = Repo.get!(Subject, subject.id)
     assert DateTime.compare(persisted.extension_until, ~U[2026-10-16 20:30:00Z]) == :eq
-    assert has_element?(view, "#submission-#{student.login}", "Deadline extended to")
+
+    assert has_element?(
+             view,
+             "#submission-#{student.login} [data-ui='deadline-extension']",
+             "Extended deadline"
+           )
 
     assert has_element?(
              view,
@@ -148,7 +153,7 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
     view |> element("button[data-ui~='clear-extension']") |> render_click()
 
     assert Repo.get!(Subject, subject.id).extension_until == nil
-    refute has_element?(view, "#submission-#{student.login}", "Deadline extended to")
+    refute has_element?(view, "#submission-#{student.login} [data-ui='deadline-extension']")
 
     assert has_element?(
              view,

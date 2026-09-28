@@ -1717,11 +1717,6 @@ msgstr "GitHub App setup could not be completed. Start setup again."
 msgid "GitHub did not return an app setup code. Start setup again."
 msgstr "GitHub did not return an app setup code. Start setup again."
 
-#: lib/gradepush_web/live/setup_live.ex:99
-#, elixir-autogen, elixir-format
-msgid "GitHub needs a public HTTPS address for app callbacks and webhooks. Expose this server through HTTPS before setup."
-msgstr "GitHub needs a public HTTPS address for app callbacks and webhooks. Expose this server through HTTPS before setup."
-
 #: lib/gradepush_web/live/teacher_live.ex:1042
 #, elixir-autogen, elixir-format
 msgid "GitHub organization connected."
@@ -2153,11 +2148,6 @@ msgstr "Could not update this submission deadline. Try again."
 #, elixir-autogen, elixir-format
 msgid "Create team"
 msgstr "Create team"
-
-#: lib/gradepush_web/components/assignment_components.ex:323
-#, elixir-autogen, elixir-format
-msgid "Deadline extended to %{date}"
-msgstr "Deadline extended to %{date}"
 
 #: lib/gradepush_web/live/teacher_live.html.heex:704
 #, elixir-autogen, elixir-format
@@ -2726,3 +2716,7 @@ msgstr "Use its GitHub name, not its URL. You need permission to create an App i
 #, elixir-autogen, elixir-format
 msgid "Choose an App owner and enter a valid GitHub organization name if needed."
 msgstr "Choose an App owner and enter a valid GitHub organization name if needed."
+
+#, elixir-autogen, elixir-format
+msgid "Extended deadline"
+msgstr "Extended deadline"
