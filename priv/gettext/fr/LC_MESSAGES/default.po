@@ -2706,3 +2706,23 @@ msgstr "Utilisez des liens HTTPS. Pour l’assistance, vous pouvez aussi saisir 
 #, elixir-autogen, elixir-format
 msgid "Useful links"
 msgstr "Liens utiles"
+
+#, elixir-autogen, elixir-format
+msgid "GitHub App owner"
+msgstr "Propriétaire de la GitHub App"
+
+#, elixir-autogen, elixir-format
+msgid "My personal GitHub account"
+msgstr "Mon compte GitHub personnel"
+
+#, elixir-autogen, elixir-format
+msgid "GitHub organization name"
+msgstr "Nom de l’organisation GitHub"
+
+#, elixir-autogen, elixir-format
+msgid "Use its GitHub name, not its URL. You need permission to create an App in this organization."
+msgstr "Indiquez son nom sur GitHub, pas son URL. Vous devez avoir les droits nécessaires pour y créer une App."
+
+#, elixir-autogen, elixir-format
+msgid "Choose an App owner and enter a valid GitHub organization name if needed."
+msgstr "Choisissez un propriétaire et indiquez un nom d’organisation GitHub valide au besoin."

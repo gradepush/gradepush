@@ -93,6 +93,71 @@ defmodule GradePushWeb.SetupLiveTest do
     assert html =~ "docker compose exec app gradepush-setup"
   end
 
+  test "organization setup submits only the manifest to the selected organization", %{conn: conn} do
+    token = setup_token()
+    {:ok, view, _} = live(conn, "/setup")
+
+    view
+    |> form("#setup-form",
+      setup: %{owner_type: "organization", institution_name: "Test College", setup_token: token}
+    )
+    |> render_change()
+
+    assert has_element?(view, "input[name='setup[organization]'][required]")
+    assert has_element?(view, "input[name='setup[institution_name]'][value='Test College']")
+    assert has_element?(view, "input[name='setup[setup_token]'][value='#{token}']")
+
+    view
+    |> form("#setup-form",
+      setup: %{
+        institution_name: "Test College",
+        setup_token: token,
+        owner_type: "organization",
+        organization: "my-college"
+      }
+    )
+    |> render_submit()
+
+    outgoing = follow_trigger_action(form(view, "#setup-form"), conn)
+    assert outgoing.request_path == "/organizations/my-college/settings/apps/new"
+    assert Map.keys(outgoing.body_params) == ["manifest"]
+    refute outgoing.body_params["manifest"] =~ token
+  end
+
+  test "invalid organization preserves owner inputs, clears the token and allows switching back",
+       %{
+         conn: conn
+       } do
+    token = setup_token()
+    {:ok, view, _} = live(conn, "/setup")
+
+    render_submit(view, "begin_setup", %{
+      "setup" => %{
+        "institution_name" => "Test College",
+        "setup_token" => token,
+        "owner_type" => "organization",
+        "organization" => "https://github.com/my-college"
+      }
+    })
+
+    assert has_element?(view, "[role=alert]", "valid GitHub organization name")
+    assert has_element?(view, "input[name='setup[institution_name]'][value='Test College']")
+
+    assert has_element?(
+             view,
+             "input[name='setup[organization]'][value='https://github.com/my-college']"
+           )
+
+    assert has_element?(view, "input[name='setup[setup_token]'][value='']")
+    assert Repo.get!(BootstrapCredential, 1).step == :setup
+
+    view
+    |> form("#setup-form", setup: %{owner_type: "personal"})
+    |> render_change()
+
+    refute has_element?(view, "input[name='setup[organization]']")
+  end
+
   defp setup_token do
     capture_log(fn -> assert {:ok, :created} = Installation.initialize_bootstrap() end)
     credential = Repo.get!(BootstrapCredential, 1)

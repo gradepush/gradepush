@@ -18,7 +18,7 @@ defmodule GradePushWeb.SetupLive do
        setup_browser_nonce: session["setup_browser_nonce"],
        configured?: configured?,
        https_ready?: URI.parse(GradePushWeb.Endpoint.url()).scheme == "https",
-       form: to_form(%{"institution_name" => "", "setup_token" => ""}, as: :setup),
+       form: setup_form(),
        trigger_action?: false,
        manifest_action: nil,
        manifest_json: nil,
@@ -39,13 +39,18 @@ defmodule GradePushWeb.SetupLive do
   def handle_params(_params, _uri, socket), do: {:noreply, socket}
 
   @impl true
+  def handle_event("change_setup", %{"setup" => params}, socket) do
+    {:noreply, assign(socket, form: setup_form(params, false), error: nil)}
+  end
+
   def handle_event("begin_setup", %{"setup" => params}, socket) do
     result =
       Installation.begin_setup(
         params["setup_token"],
         params["institution_name"],
         GradePushWeb.Endpoint.url(),
-        socket.assigns.setup_browser_nonce
+        socket.assigns.setup_browser_nonce,
+        app_owner(params)
       )
 
     case result do
@@ -54,10 +59,7 @@ defmodule GradePushWeb.SetupLive do
          assign(socket,
            manifest_action: url,
            manifest_json: manifest,
-           form:
-             to_form(%{"institution_name" => params["institution_name"], "setup_token" => ""},
-               as: :setup
-             ),
+           form: setup_form(params),
            trigger_action?: true,
            error: nil
          )}
@@ -65,10 +67,7 @@ defmodule GradePushWeb.SetupLive do
       {:error, reason} ->
         {:noreply,
          assign(socket,
-           form:
-             to_form(%{"institution_name" => params["institution_name"], "setup_token" => ""},
-               as: :setup
-             ),
+           form: setup_form(params),
            error: setup_error(reason)
          )}
     end
@@ -120,6 +119,7 @@ defmodule GradePushWeb.SetupLive do
               id="setup-form"
               phx-hook="SetupToken"
               phx-submit="begin_setup"
+              phx-change="change_setup"
               phx-trigger-action={if(@trigger_action?, do: "true")}
               action={@manifest_action}
               method="post"
@@ -140,6 +140,34 @@ defmodule GradePushWeb.SetupLive do
                     maxlength="100"
                     required
                   />
+                </.field>
+                <.input
+                  field={@form[:owner_type]}
+                  type="select"
+                  label={gettext("GitHub App owner")}
+                  options={[
+                    {gettext("My personal GitHub account"), "personal"},
+                    {gettext("GitHub organization"), "organization"}
+                  ]}
+                />
+                <.field :if={@form[:owner_type].value == "organization"} for={@form[:organization].id}>
+                  {gettext("GitHub organization name")}
+                  <.input
+                    id={@form[:organization].id}
+                    name={@form[:organization].name}
+                    value={@form[:organization].value}
+                    placeholder="my-college"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    maxlength="39"
+                    aria-describedby="setup-owner-description"
+                    required
+                  />
+                  <.field_hint id="setup-owner-description" class="!m-0 font-normal">
+                    {gettext(
+                      "Use its GitHub name, not its URL. You need permission to create an App in this organization."
+                    )}
+                  </.field_hint>
                 </.field>
                 <.field for={@form[:setup_token].id}>
                   {gettext("One-time setup token")}
@@ -194,6 +222,24 @@ defmodule GradePushWeb.SetupLive do
     </.page>
     """
   end
+
+  defp setup_form(params \\ %{}, clear_token? \\ true) do
+    %{"institution_name" => "", "owner_type" => "personal", "organization" => ""}
+    |> Map.merge(Map.take(params, ~w(institution_name owner_type organization)))
+    |> Map.put("setup_token", if(clear_token?, do: "", else: Map.get(params, "setup_token", "")))
+    |> to_form(as: :setup)
+  end
+
+  defp app_owner(params) do
+    case Map.get(params, "owner_type", "personal") do
+      "personal" -> :personal
+      "organization" -> {:organization, params["organization"]}
+      _ -> :invalid
+    end
+  end
+
+  defp setup_error(:invalid_app_owner),
+    do: gettext("Choose an App owner and enter a valid GitHub organization name if needed.")
 
   defp setup_error(:invalid_setup_token), do: gettext("The setup token is invalid.")
 

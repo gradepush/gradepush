@@ -2706,3 +2706,23 @@ msgstr "Use HTTPS links. Assistance also accepts mailto:email@example.org."
 #, elixir-autogen, elixir-format
 msgid "Useful links"
 msgstr "Useful links"
+
+#, elixir-autogen, elixir-format
+msgid "GitHub App owner"
+msgstr "GitHub App owner"
+
+#, elixir-autogen, elixir-format
+msgid "My personal GitHub account"
+msgstr "My personal GitHub account"
+
+#, elixir-autogen, elixir-format
+msgid "GitHub organization name"
+msgstr "GitHub organization name"
+
+#, elixir-autogen, elixir-format
+msgid "Use its GitHub name, not its URL. You need permission to create an App in this organization."
+msgstr "Use its GitHub name, not its URL. You need permission to create an App in this organization."
+
+#, elixir-autogen, elixir-format
+msgid "Choose an App owner and enter a valid GitHub organization name if needed."
+msgstr "Choose an App owner and enter a valid GitHub organization name if needed."

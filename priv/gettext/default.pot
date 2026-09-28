@@ -2706,3 +2706,23 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Useful links"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "GitHub App owner"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "My personal GitHub account"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "GitHub organization name"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Use its GitHub name, not its URL. You need permission to create an App in this organization."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Choose an App owner and enter a valid GitHub organization name if needed."
+msgstr ""

@@ -49,15 +49,33 @@ defmodule GradePush.Installation do
     end
   end
 
-  def begin_setup(token, institution_name, base_url, browser_nonce)
+  def begin_setup(token, institution_name, base_url, browser_nonce, owner \\ :personal)
+
+  def begin_setup(token, institution_name, base_url, browser_nonce, owner)
       when is_binary(token) and is_binary(institution_name) and is_binary(base_url) and
              is_binary(browser_nonce) do
-    with :ok <- validate_setup_inputs(token, institution_name, base_url, browser_nonce) do
-      start_setup(token, String.trim(institution_name), base_url, browser_nonce)
+    with :ok <- validate_setup_inputs(token, institution_name, base_url, browser_nonce),
+         {:ok, registration_path} <- registration_path(owner),
+         {:ok, result} <-
+           start_setup(token, String.trim(institution_name), base_url, browser_nonce) do
+      {:ok, Map.put(result, :action, manifest_action(result.state, base_url, registration_path))}
     end
   end
 
-  def begin_setup(_token, _name, _base_url, _browser_nonce), do: {:error, :invalid_setup_token}
+  def begin_setup(_token, _name, _base_url, _browser_nonce, _owner),
+    do: {:error, :invalid_setup_token}
+
+  defp registration_path(:personal), do: {:ok, "/settings/apps/new"}
+
+  defp registration_path({:organization, login}) when is_binary(login) do
+    login = String.trim(login)
+
+    if byte_size(login) in 1..39 and Regex.match?(~r/\A[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\z/, login),
+      do: {:ok, "/organizations/#{login}/settings/apps/new"},
+      else: {:error, :invalid_app_owner}
+  end
+
+  defp registration_path(_owner), do: {:error, :invalid_app_owner}
 
   defp validate_setup_inputs(token, institution_name, base_url, browser_nonce) do
     cond do
@@ -125,7 +143,6 @@ defmodule GradePush.Installation do
 
       %{
         state: state,
-        action: manifest_action(state, base_url),
         manifest: manifest_payload(base_url)
       }
     end
@@ -697,10 +714,10 @@ defmodule GradePush.Installation do
     end
   end
 
-  defp manifest_action(state, base_url) do
+  defp manifest_action(state, base_url, registration_path) do
     URI.to_string(%URI{
       URI.parse(web_url())
-      | path: "/settings/apps/new",
+      | path: registration_path,
         query: URI.encode_query(%{state: state})
     })
     |> then(fn url -> %{url: url, manifest: Jason.encode!(manifest_payload(base_url))} end)
