@@ -10,7 +10,7 @@ defmodule GradePush.Installation.BootstrapCredential do
     field :state_expires_at, :utc_datetime_usec
     field :institution_name, :string
     field :pending_app_encrypted, :binary
-    field :step, :string, default: "setup"
+    field :step, Ecto.Enum, values: [:setup, :manifest, :oauth], default: :setup
     timestamps(type: :utc_datetime_usec)
   end
 end

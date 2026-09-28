@@ -148,6 +148,10 @@ defmodule GradePush.Repo.Migrations.CreateIdentity do
              check: "id = 1"
            )
 
+    create constraint(:bootstrap_credentials, :bootstrap_credentials_step_check,
+             check: "step IN ('setup', 'manifest', 'oauth')"
+           )
+
     create table(:installation_modes, primary_key: false) do
       add :id, :integer, primary_key: true
       add :mode, :string, null: false

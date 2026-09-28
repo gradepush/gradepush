@@ -119,7 +119,7 @@ defmodule GradePush.Installation do
         state_expires_at: DateTime.add(now, @setup_state_seconds, :second),
         institution_name: institution_name,
         pending_app_encrypted: nil,
-        step: "manifest"
+        step: :manifest
       })
       |> Repo.update!()
 
@@ -145,7 +145,7 @@ defmodule GradePush.Installation do
   def convert_manifest(state, code, browser_nonce)
       when is_binary(state) and byte_size(state) in 32..128 and is_binary(code) and
              byte_size(code) in 1..2_048 and is_binary(browser_nonce) do
-    with {:ok, _credential} <- setup_state(state, "manifest", browser_nonce),
+    with {:ok, _credential} <- setup_state(state, :manifest, browser_nonce),
          {:ok, manifest} <- GradePush.GitHub.convert_manifest(code),
          {:ok, normalized} <- normalize_manifest(manifest),
          {:ok, encrypted} <- encrypt_pending_app(normalized) do
@@ -168,14 +168,14 @@ defmodule GradePush.Installation do
   defp persist_manifest_conversion(state, browser_nonce, client_id, encrypted, next_state, now) do
     Repo.transaction(fn ->
       credential = lock_bootstrap_credential()
-      ensure_setup_state!(credential, state, "manifest", browser_nonce, now)
+      ensure_setup_state!(credential, state, :manifest, browser_nonce, now)
 
       credential
       |> Ecto.Changeset.change(%{
         state_hash: Crypto.hash(next_state),
         state_expires_at: DateTime.add(now, @setup_state_seconds, :second),
         pending_app_encrypted: encrypted,
-        step: "oauth"
+        step: :oauth
       })
       |> Repo.update!()
 
@@ -419,7 +419,7 @@ defmodule GradePush.Installation do
       state_expires_at: nil,
       institution_name: nil,
       pending_app_encrypted: nil,
-      step: "setup"
+      step: :setup
     }
 
     result =
@@ -471,7 +471,7 @@ defmodule GradePush.Installation do
 
   defp pending_setup(state, browser_nonce) do
     case Repo.get(BootstrapCredential, @bootstrap_id) do
-      %BootstrapCredential{step: "oauth", pending_app_encrypted: encrypted} = credential
+      %BootstrapCredential{step: :oauth, pending_app_encrypted: encrypted} = credential
       when is_binary(encrypted) ->
         decode_pending_setup(credential, encrypted, state, browser_nonce)
 
@@ -481,7 +481,7 @@ defmodule GradePush.Installation do
   end
 
   defp decode_pending_setup(credential, encrypted, state, browser_nonce) do
-    with true <- valid_state?(credential, state, "oauth", browser_nonce, DateTime.utc_now()),
+    with true <- valid_state?(credential, state, :oauth, browser_nonce, DateTime.utc_now()),
          {:ok, json} <- Crypto.decrypt(encrypted, "bootstrap.pending_app"),
          {:ok, app} <- Jason.decode(json) do
       {:ok, %{credential: credential, app: app}}
@@ -501,11 +501,11 @@ defmodule GradePush.Installation do
 
   defp valid_state?(_credential, _state, _step, _browser_nonce, _now), do: false
 
-  defp setup_available_for_browser?(%BootstrapCredential{step: "setup"}, _browser_hash, _now),
+  defp setup_available_for_browser?(%BootstrapCredential{step: :setup}, _browser_hash, _now),
     do: true
 
   defp setup_available_for_browser?(%BootstrapCredential{} = credential, _browser_hash, now) do
-    credential.step in ["manifest", "oauth"] and
+    credential.step in [:manifest, :oauth] and
       is_struct(credential.state_expires_at, DateTime) and
       DateTime.compare(credential.state_expires_at, now) != :gt
   end
@@ -893,7 +893,7 @@ defmodule GradePush.Installation do
       now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
       bootstrap = lock_bootstrap_credential()
 
-      if not valid_state?(bootstrap, state, "oauth", browser_nonce, now),
+      if not valid_state?(bootstrap, state, :oauth, browser_nonce, now),
         do: Repo.rollback(:invalid_setup_state)
 
       if Repo.exists?(from(institution in Institution)), do: Repo.rollback(:already_configured)
