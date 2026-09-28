@@ -58,31 +58,11 @@ defmodule GradePushWeb.CLIComponents do
 
   def command(assigns) do
     ~H"""
-    <div
+    <GradePushWeb.ClipboardComponents.copy_field
       id={@id}
-      phx-hook="CopyCommand"
-      data-copy={@command}
-      data-success={gettext("Copied")}
-      data-error={gettext("Copy failed. Select and copy the command manually.")}
-    >
-      <div class="flex items-center gap-[10px] rounded-[7px] border border-line bg-surface-heading px-[12px] py-[8px]">
-        <pre
-          tabindex="0"
-          role="region"
-          aria-label={@command}
-          class="min-w-0 flex-1 overflow-x-auto rounded-[3px] py-[4px] text-[12px] leading-[20px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-        ><code class="block w-max select-all whitespace-pre">{@command}</code></pre>
-        <.button
-          variant="copy"
-          class="h-[32px] shrink-0"
-          aria-label={gettext("Copy command")}
-          title={gettext("Copy command")}
-        >
-          <.icon name="hero-document-duplicate" class="size-4" />
-        </.button>
-      </div>
-      <span role="status" class="block text-[12px] text-muted empty:hidden mt-[4px]"></span>
-    </div>
+      value={@command}
+      label={gettext("Copy command")}
+    />
     """
   end
 

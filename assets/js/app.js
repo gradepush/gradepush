@@ -5,41 +5,62 @@ import {hooks as colocatedHooks} from "phoenix-colocated/gradepush"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
-const CopyCommand = {
+const CopyToClipboard = {
   mounted() {
     this.button = this.el.querySelector("button")
+    this.label = this.button.getAttribute("aria-label")
+    this.reset = () => {
+      clearTimeout(this.timer)
+      this.el.querySelector("[data-copy-icon]").hidden = false
+      this.el.querySelector("[data-copy-success-icon]").hidden = true
+      this.el.querySelector("[data-copy-error-icon]").hidden = true
+      this.el.querySelector("[data-copy-tooltip]").hidden = true
+      this.el.querySelector('[role="status"]').textContent = ""
+      this.button.setAttribute("aria-label", this.label)
+      this.button.title = this.label
+    }
     this.copy = async () => {
-      const status = this.el.querySelector('[role="status"]')
+      if (this.button.disabled || this.pending) return
+      this.pending = true
+      this.reset()
+      let success = false
       try {
         await navigator.clipboard.writeText(this.el.dataset.copy)
-        status.textContent = this.el.dataset.success
+        success = true
       } catch {
-        const range = document.createRange()
-        range.selectNodeContents(this.el.querySelector("code"))
-        const selection = window.getSelection()
-        selection.removeAllRanges()
-        selection.addRange(range)
-        status.textContent = this.el.dataset.error
+        if (!this.disposed) {
+          const code = this.el.querySelector("code")
+          if (code) {
+            const range = document.createRange()
+            range.selectNodeContents(code)
+            const selection = window.getSelection()
+            selection.removeAllRanges()
+            selection.addRange(range)
+          }
+        }
       }
+      this.pending = false
+      if (this.disposed) return
+      const message = success ? this.el.dataset.success : this.el.dataset.error
+      this.el.querySelector("[data-copy-icon]").hidden = true
+      this.el.querySelector("[data-copy-success-icon]").hidden = !success
+      this.el.querySelector("[data-copy-error-icon]").hidden = success
+      const tooltip = this.el.querySelector("[data-copy-tooltip]")
+      tooltip.textContent = message
+      tooltip.hidden = false
+      this.el.querySelector('[role="status"]').textContent = message
+      this.button.setAttribute("aria-label", message)
+      this.button.removeAttribute("title")
+      this.timer = setTimeout(this.reset, success ? 2000 : 5000)
     }
     this.button.addEventListener("click", this.copy)
   },
-  destroyed() { this.button.removeEventListener("click", this.copy) },
-}
-const CopyInvitation = {
-  mounted() {
-    this.copy = async () => {
-      try {
-        await navigator.clipboard.writeText(this.el.dataset.copy)
-        this.pushEvent("invitation_copied", {ok: true})
-      } catch {
-        this.el.parentElement.querySelector("input")?.select()
-        this.pushEvent("invitation_copied", {ok: false})
-      }
-    }
-    this.el.addEventListener("click", this.copy)
+  updated() { this.reset() },
+  destroyed() {
+    this.disposed = true
+    clearTimeout(this.timer)
+    this.button.removeEventListener("click", this.copy)
   },
-  destroyed() { this.el.removeEventListener("click", this.copy) },
 }
 const HeaderDisclosure = {
   mounted() {
@@ -95,7 +116,7 @@ const SetupToken = {
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, CopyInvitation, CopyCommand, HeaderDisclosure, SetupToken},
+  hooks: {...colocatedHooks, CopyToClipboard, HeaderDisclosure, SetupToken},
 })
 
 topbar.config({barColors: {0: "#2052F2"}, shadowColor: "transparent"})

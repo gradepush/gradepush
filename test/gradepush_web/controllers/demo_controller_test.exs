@@ -22,7 +22,7 @@ defmodule GradePushWeb.DemoControllerTest do
 
     before_count = GradePush.Repo.aggregate(GradePush.Assignments.Invitation, :count)
     view |> element("button", "Share assignment") |> render_click()
-    assert has_element?(view, "#assignment-invitation-input[disabled][value='']")
+    assert has_element?(view, "#assignment-invitation[data-copy='']")
     assert has_element?(view, "#assignment-invitation-copy[disabled]")
     assert GradePush.Repo.aggregate(GradePush.Assignments.Invitation, :count) == before_count
     view |> element("[data-ui~='modal-actions'] button", "Close") |> render_click()

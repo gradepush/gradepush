@@ -497,7 +497,6 @@
                 @invitation_url ||
                   "https://gradepush.example/join/assignment/#{@assignment.key}"
           }
-          status={@copy_status}
         />
         <.field_hint :if={GradePush.Demo.enabled?()}>
           {gettext("Invitations are disabled in demo mode.")}
@@ -523,7 +522,6 @@
           id="invitation"
           label={gettext("Classroom invitation link")}
           url={@invitation_url || "https://gradepush.example/join/classroom/#{@classroom.slug}"}
-          status={@copy_status}
         />
         <p
           :if={@preview?}

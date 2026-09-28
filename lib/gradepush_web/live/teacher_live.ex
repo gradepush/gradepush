@@ -71,7 +71,6 @@ defmodule GradePushWeb.TeacherLive do
        submission_filter: "all",
        assignment_tab: "submissions",
        settings_section: "account",
-       copy_status: nil,
        tab: "assignments",
        query: "",
        modal: nil,
@@ -120,7 +119,6 @@ defmodule GradePushWeb.TeacherLive do
        instructions_preview: false,
        assignment_tab: assignment_tab(params),
        settings_section: settings_section(params),
-       copy_status: nil,
        page_title:
          editor_title(socket.assigns.live_action, classroom, assignment, socket.assigns.locale),
        submission_filter: "all",
@@ -191,7 +189,6 @@ defmodule GradePushWeb.TeacherLive do
         instructions_preview: false,
         assignment_tab: assignment_tab(params),
         settings_section: settings_section(params),
-        copy_status: nil,
         invitation_url: nil,
         available_organizations: [],
         page_title:
@@ -564,15 +561,6 @@ defmodule GradePushWeb.TeacherLive do
       else: {:noreply, socket}
   end
 
-  def handle_event("invitation_copied", %{"ok" => ok}, socket) do
-    status =
-      if ok,
-        do: gettext("Link copied"),
-        else: gettext("Copy failed. Select and copy the link manually.")
-
-    {:noreply, assign(socket, copy_status: status)}
-  end
-
   def handle_event("close", _, socket),
     do:
       {:noreply,
@@ -854,8 +842,7 @@ defmodule GradePushWeb.TeacherLive do
             else: %{}
           ),
         error: nil,
-        notice: nil,
-        copy_status: nil
+        notice: nil
       )
 
     if preview_modal?(socket.assigns, kind) do

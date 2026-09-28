@@ -317,7 +317,7 @@ defmodule GradePushWeb.TeacherLiveTest do
 
     assert has_element?(
              view,
-             "[role='dialog'] input[value='https://gradepush.example/join/assignment/cli']"
+             "#assignment-invitation[data-copy='https://gradepush.example/join/assignment/cli']"
            )
 
     assert has_element?(view, "[role='dialog']", "Invitations are not active")
@@ -351,7 +351,7 @@ defmodule GradePushWeb.TeacherLiveTest do
     assert has_element?(view, "[data-ui~='submission-table']")
   end
 
-  test "tests deep link and copy feedback are localized and non-destructive", %{conn: conn} do
+  test "tests deep link and shared clipboard labels are localized", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms/programming/assignments/loops?view=tests&locale=fr")
     assert has_element?(view, "[data-ui~='empty']", "Aucun test automatique")
     assert has_element?(view, "[data-ui~='language'][href*='view=tests']")
@@ -359,12 +359,16 @@ defmodule GradePushWeb.TeacherLiveTest do
 
     assert has_element?(
              view,
-             "button[phx-hook='CopyInvitation'][data-copy='https://gradepush.example/join/assignment/loops']"
+             "[phx-hook='CopyToClipboard'][data-copy='https://gradepush.example/join/assignment/loops']"
            )
 
-    render_hook(view, "invitation_copied", %{"ok" => true})
-    assert has_element?(view, "[role='status']", "Lien copié")
-    render_hook(view, "invitation_copied", %{"ok" => false})
-    assert has_element?(view, "[role='status']", "manuellement")
+    assert has_element?(view, "#assignment-invitation[data-success='Copié']")
+
+    assert has_element?(
+             view,
+             "#assignment-invitation-copy[aria-label='Copier le lien d’invitation']"
+           )
+
+    assert has_element?(view, "#assignment-invitation [role='status'].sr-only")
   end
 end

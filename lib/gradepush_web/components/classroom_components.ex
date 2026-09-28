@@ -148,33 +148,18 @@ defmodule GradePushWeb.ClassroomComponents do
   attr :id, :string, required: true
   attr :label, :string, required: true
   attr :url, :string, required: true
-  attr :status, :string, default: nil
   attr :disabled, :boolean, default: false
 
   def invitation_link(assigns) do
     ~H"""
     <div class="grid text-[13px] font-[550] mt-[22px] gap-[7px]">
-      <.field for={@id <> "-input"}>{@label}</.field><div class="flex items-stretch gap-[8px]">
-        <.input
-          id={@id <> "-input"}
-          readonly
-          value={@url}
-          disabled={@disabled}
-          placeholder={if @disabled, do: gettext("Unavailable in demo mode")}
-        /><.button
-          type="button"
-          id={@id <> "-copy"}
-          phx-hook="CopyInvitation"
-          data-copy={@url}
-          disabled={@disabled}
-          variant="copy"
-          aria-label={gettext("Copy invitation link")}
-          title={gettext("Copy invitation link")}
-        ><.icon name="hero-document-duplicate" class="size-5" /></.button>
-      </div><span
-        class="text-[#596b80] text-[12px] font-normal min-h-[18px]"
-        role="status"
-      >{@status}</span>
+      <p>{@label}</p>
+      <GradePushWeb.ClipboardComponents.copy_field
+        id={@id}
+        value={@url}
+        label={gettext("Copy invitation link")}
+        disabled={@disabled}
+      />
     </div>
     """
   end

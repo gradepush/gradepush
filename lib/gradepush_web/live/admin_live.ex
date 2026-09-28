@@ -36,8 +36,7 @@ defmodule GradePushWeb.AdminLive do
        notice: nil,
        query: "",
        footer_form:
-         to_form(Accounts.change_footer_links(socket.assigns.footer_links), as: :footer),
-       copy_status: nil
+         to_form(Accounts.change_footer_links(socket.assigns.footer_links), as: :footer)
      )}
   end
 
@@ -88,15 +87,6 @@ defmodule GradePushWeb.AdminLive do
   end
 
   def handle_event("close", _, socket), do: {:noreply, assign(socket, modal: nil, error: nil)}
-
-  def handle_event("invitation_copied", %{"ok" => ok}, socket) do
-    text =
-      if ok,
-        do: gettext("Link copied"),
-        else: gettext("Copy failed. Select and copy the link manually.")
-
-    {:noreply, assign(socket, copy_status: text)}
-  end
 
   def handle_event(
         "save_staff",
@@ -275,8 +265,7 @@ defmodule GradePushWeb.AdminLive do
 
         url = origin <> "/join/teacher/" <> token
 
-        {:noreply,
-         assign(socket, modal: {"invite", nil}, invitation_url: url, error: nil, copy_status: nil)}
+        {:noreply, assign(socket, modal: {"invite", nil}, invitation_url: url, error: nil)}
 
       {:error, _} = error ->
         complete(socket, error)
