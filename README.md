@@ -2,57 +2,71 @@
 
 ## Requirements
 
-- Docker with Compose v2.
-- For local development and the demo: macOS or Linux, `curl`, and OpenSSL.
+- Docker with Compose v2.24.4 or newer, `curl`, and OpenSSL.
+- For local development and the demo: macOS or Linux.
 - For self-hosting: a public domain pointing to the server, with ports **80** and **443** open.
 
-Download or clone [this repository](https://github.com/gradepush/gradepush), then run the commands from its directory.
+## Self-host with Docker
 
-## Try the demo
+Uses the published image with PostgreSQL and Caddy. No repository clone or build is required.
 
-1. Start with sample data:
+1. Download the [standalone Compose file](compose.self-host.yaml) into an empty directory:
+
+   ```sh
+   mkdir gradepush && cd gradepush
+   curl -fsSL https://raw.githubusercontent.com/gradepush/gradepush/main/compose.self-host.yaml -o compose.yaml
+   ```
+
+2. Point your domain to the server's public IP and open ports **80** and **443**. Generate `.env`, replacing `grades.example.org` with your domain, without `https://`:
+
+   ```sh
+   (umask 077; cat > .env <<EOF
+   PHX_HOST=grades.example.org
+   DB_PASSWORD=$(openssl rand -hex 32)
+   SETUP_TOKEN=$(openssl rand -hex 32)
+   EOF
+   )
+   ```
+
+3. Start GradePush:
+
+   ```sh
+   docker compose pull
+   docker compose up -d --wait
+   ```
+
+   Caddy obtains and renews the HTTPS certificate automatically. No Certbot or manual certificate setup is needed. Keep the Docker volumes to preserve your database, application keys, and certificates.
+
+4. Open `https://your-domain/setup` and enter `SETUP_TOKEN` from `.env`, or retrieve your private setup link:
+
+   ```sh
+   docker compose exec app gradepush-setup
+   ```
+
+5. Enter your institution name, create the GitHub App, and sign in with GitHub. Connect an organization in **Settings → Organizations** and create your first classroom.
+
+## Try the demo locally
+
+1. Clone the repository:
+
+   ```sh
+   git clone https://github.com/gradepush/gradepush.git
+   cd gradepush
+   ```
+
+2. Start with sample data:
 
    ```sh
    DEMO_MODE=true HOST_PORT=4001 PHX_URL_PORT=4001 scripts/local-compose --env-file .env.example -p gradepush-demo up -d --build --wait
    ```
 
-2. Open [https://localhost:4001/demo](https://localhost:4001/demo) and choose a role.
+3. Open [https://localhost:4001/demo](https://localhost:4001/demo) and choose a role.
 
 Local HTTPS is automatic. Your OS may ask for your password to trust the certificate.
 
-## Self-host with Docker
-
-1. Prepare the configuration:
-
-   ```sh
-   cp .env.example .env
-   chmod 600 .env
-   openssl rand -hex 32
-   ```
-
-2. Point your domain's DNS record to the server's public IP and open ports **80** and **443**. Edit `.env`: set `PHX_HOST=grades.example.org` (your domain, without `https://`), choose a unique `DB_PASSWORD`, paste the generated value into `SETUP_TOKEN`, and set `GRADEPUSH_IMAGE=ghcr.io/gradepush/gradepush:0.1.0`.
-3. Start GradePush with Caddy for automatic HTTPS:
-
-   ```sh
-   docker compose -f compose.yaml -f compose.https.yaml pull
-   docker compose -f compose.yaml -f compose.https.yaml up -d --no-build --wait
-   ```
-
-   Caddy obtains, installs, and renews the certificate automatically, and redirects HTTP to HTTPS. No Certbot or manual certificate setup is needed. Certificates are kept in the `caddy_data` Docker volume.
-
-4. Open `https://your-domain/setup`. Enter your token and institution name, create the GitHub App, then sign in with GitHub.
-
-   If you left `SETUP_TOKEN` empty, retrieve your private setup link:
-
-   ```sh
-   docker compose -f compose.yaml -f compose.https.yaml exec app gradepush-setup
-   ```
-
-5. Connect a GitHub organization in **Settings → Organizations** and create your first classroom.
-
 ## Develop with Docker
 
-1. Start the development environment:
+1. From a clone of this repository, start the development environment:
 
    ```sh
    scripts/dev

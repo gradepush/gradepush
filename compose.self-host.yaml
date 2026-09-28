@@ -1,0 +1,121 @@
+services:
+  app:
+    image: ${GRADEPUSH_IMAGE:-ghcr.io/gradepush/gradepush:0.1.0}
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-gradepush}
+      DB_PASSWORD: ${DB_PASSWORD:?Set a unique database password}
+      DB_NAME: ${DB_NAME:-gradepush}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-}
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-}
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      PHX_HOST: ${PHX_HOST:?Set your public domain}
+      PHX_SCHEME: https
+      PHX_URL_PORT: 443
+      PORT: 4000
+      POOL_SIZE: ${POOL_SIZE:-10}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=64m
+    volumes:
+      - gradepush_data:/var/lib/gradepush
+
+  db:
+    image: postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650
+    environment:
+      POSTGRES_DB: ${DB_NAME:-gradepush}
+      POSTGRES_USER: ${DB_USER:-gradepush}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set a unique database password}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    configs:
+      - source: postgres_init
+        target: /docker-entrypoint-initdb.d/10-gradepush.sh
+
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      PHX_HOST: ${PHX_HOST:?Set PHX_HOST to the public domain}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    restart: unless-stopped
+
+volumes:
+  gradepush_data:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+configs:
+  caddyfile:
+    content: |
+      {$$PHX_HOST} {
+          reverse_proxy app:4000
+      }
+
+  postgres_init:
+    content: |
+      #!/bin/sh
+      set -eu
+
+      case "$$POSTGRES_USER" in
+        gradepush_operator|gradepush_initializer)
+          echo "DB_USER cannot use a reserved GradePush operator role." >&2
+          exit 1
+          ;;
+      esac
+
+      psql --no-psqlrc --set=ON_ERROR_STOP=1 \
+        --username "$$POSTGRES_USER" --dbname "$$POSTGRES_DB" <<'SQL'
+      CREATE ROLE gradepush_initializer WITH LOGIN SUPERUSER PASSWORD NULL;
+      SQL
+
+      # PostgreSQL's bootstrap role must remain a superuser; retain it for local administration.
+      psql --no-psqlrc --set=ON_ERROR_STOP=1 \
+        --username gradepush_initializer --dbname "$$POSTGRES_DB" \
+        --set=app_user="$$POSTGRES_USER" --set=app_database="$$POSTGRES_DB" \
+        --set=can_create_db="$${POSTGRES_APP_CREATEDB:-false}" <<'SQL'
+      \getenv app_password POSTGRES_PASSWORD
+      ALTER ROLE :"app_user" RENAME TO gradepush_operator;
+      ALTER ROLE gradepush_operator PASSWORD NULL;
+      CREATE ROLE :"app_user" WITH LOGIN PASSWORD :'app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+      ALTER DATABASE :"app_database" OWNER TO :"app_user";
+      \if :can_create_db
+      ALTER ROLE :"app_user" CREATEDB;
+      \endif
+      SQL
+
+      psql --no-psqlrc --set=ON_ERROR_STOP=1 \
+        --username gradepush_operator --dbname "$$POSTGRES_DB" <<'SQL'
+      DROP ROLE gradepush_initializer;
+      SQL

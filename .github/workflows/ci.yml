@@ -67,6 +67,29 @@ jobs:
       - name: Check Docker build context exclusions
         run: scripts/test-docker-context
 
+      - name: Check standalone installation configuration
+        env:
+          PHX_HOST: grades.example.org
+          DB_PASSWORD: compose-validation-only
+        run: |
+          python3 - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          config = json.loads(subprocess.check_output([
+              "docker", "compose", "-f", "compose.self-host.yaml", "config", "--format", "json"
+          ]))
+          for name, source in [("postgres_init", "deploy/postgres-init.sh"), ("caddyfile", "deploy/Caddyfile")]:
+              actual = config["configs"][name]["content"].replace("$$", "$")
+              assert actual == Path(source).read_text().expandtabs(4), f"{name} differs from {source}"
+          for name, service in config["services"].items():
+              assert "build" not in service, f"{name} requires a source build"
+              assert all(volume["type"] == "volume" for volume in service.get("volumes", [])), f"{name} needs local files"
+              if name != "caddy":
+                  assert not service.get("ports"), f"{name} exposes a port"
+          PY
+
       - name: Build production assets
         run: MIX_ENV=prod mix assets.deploy
 
