@@ -41,7 +41,7 @@ defmodule GradePushWeb.NavigationComponents do
     <.link
       class={[
         "-mb-px flex items-center gap-[9px] rounded-t-lg border-b-2 px-[16px] py-[15px] font-[550] hover:border-[#9bb1fa] focus-visible:border-[#9bb1fa] max-[760px]:gap-[6px] max-[760px]:px-[12px] max-[760px]:text-[13px]",
-        @active && "is-active border-brand bg-white text-brand",
+        @active && "is-active border-brand bg-surface-heading text-brand",
         !@active && "border-transparent text-muted"
       ]}
       aria-current={if @active, do: "page"}
