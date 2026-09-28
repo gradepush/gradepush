@@ -1,14 +1,14 @@
 name: Publish image
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: read
 
 concurrency:
-  group: image-${{ github.event.release.tag_name }}
+  group: image-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -36,8 +36,12 @@ jobs:
       - name: Validate version and image name
         id: image
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Use a vMAJOR.MINOR.PATCH release tag." >&2
+            exit 1
+          fi
           version=$(sed -n 's/.*version: "\([^"]*\)".*/\1/p' mix.exs | head -n 1)
           test "$RELEASE_TAG" = "v$version"
           echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
@@ -82,7 +86,7 @@ jobs:
             org.opencontainers.image.title=GradePush
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ github.event.release.tag_name }}
+            org.opencontainers.image.version=${{ github.ref_name }}
             org.opencontainers.image.licenses=AGPL-3.0-only
           provenance: mode=max
           sbom: true
@@ -129,12 +133,11 @@ jobs:
       - name: Publish version manifest
         working-directory: /tmp/digests
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
           tags=(--tag "$image:${RELEASE_TAG#v}" --tag "$image:sha-$GITHUB_SHA")
-          if [ "$PRERELEASE" = false ]; then
+          if [[ "$RELEASE_TAG" != *-* ]]; then
             tags+=(--tag "$image:latest")
           fi
           sources=()
