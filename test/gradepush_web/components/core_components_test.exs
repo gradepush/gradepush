@@ -5,6 +5,19 @@ defmodule GradePushWeb.CoreComponentsTest do
 
   alias GradePushWeb.CoreComponents
 
+  test "avatars without a photo use initials without a broken image" do
+    assigns = %{}
+
+    html =
+      rendered_to_string(~H"""
+      <CoreComponents.user_avatar src={nil}>AB</CoreComponents.user_avatar>
+      """)
+
+    refute html =~ "<img"
+    assert html =~ "data-avatar"
+    assert html =~ ">AB</span>"
+  end
+
   test "buttons preserve action, submit, and navigation semantics" do
     assigns = %{}
 

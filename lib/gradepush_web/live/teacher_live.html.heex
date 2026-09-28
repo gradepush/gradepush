@@ -254,7 +254,9 @@
                 kind="students"
               >
                 <div class="flex items-center min-w-0 gap-[12px] [&_strong]:font-[550] max-[760px]:row-start-1 max-[760px]:col-start-1">
-                  <.user_avatar size="small">{student.initials}</.user_avatar><strong>{student.name}</strong>
+                  <.user_avatar src={Map.get(student, :avatar_url)} size="small">
+                    {student.initials}
+                  </.user_avatar><strong>{student.name}</strong>
                 </div><span class="tabular-nums text-muted max-[760px]:row-start-2 max-[760px]:col-start-1 max-[760px]:pl-[41px] max-[760px]:text-[12px]">{student.identifier}</span><a
                   class={[
                     "text-muted wrap-anywhere underline-offset-[3px] max-[760px]:row-start-3 max-[760px]:col-start-1",
@@ -571,7 +573,9 @@
           ]}
         >
           <li :for={teacher <- @classroom.teachers}>
-            <.user_avatar size="small">{teacher.initials}</.user_avatar><strong>{teacher.name}</strong><span
+            <.user_avatar src={Map.get(teacher, :avatar_url)} size="small">
+              {teacher.initials}
+            </.user_avatar><strong>{teacher.name}</strong><span
               :if={not not_current_teacher?(teacher, assigns)}
               class="ml-auto text-muted text-[12px]"
             >{gettext("You")}</span><.button
@@ -757,7 +761,9 @@
             </div>
             <ul :if={team.members != []}>
               <li :for={student <- team.members}>
-                <.user_avatar size="small">{student.initials}</.user_avatar><strong>{student.name}</strong>
+                <.user_avatar src={Map.get(student, :avatar_url)} size="small">
+                  {student.initials}
+                </.user_avatar><strong>{student.name}</strong>
               </li>
             </ul>
             <form

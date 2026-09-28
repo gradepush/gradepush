@@ -35,6 +35,7 @@ defmodule GradePushWeb.TeacherWorkspace do
       id: user.id,
       name: name,
       initials: Presentation.initials(name),
+      avatar_url: user.avatar_url,
       handle: user.login,
       identifier: user.student_id || "",
       joined_at: Map.get(enrollment, :joined_at) || Map.get(enrollment, :inserted_at)
@@ -63,6 +64,7 @@ defmodule GradePushWeb.TeacherWorkspace do
       id: user.id,
       name: name,
       initials: Presentation.initials(name),
+      avatar_url: user.avatar_url,
       handle: user.login,
       color: "blue"
     }

@@ -147,7 +147,9 @@
                         "flex items-center gap-[12px] [&_strong]:flex [&_strong]:items-center [&_strong]:gap-[8px] [&>div>span]:block",
                         "[&>div>span]:text-muted [&>div>span]:text-[12px] [&>div>span]:mt-[4px]"
                       ]}>
-                        <.user_avatar size="small">{teacher.initials}</.user_avatar><div>
+                        <.user_avatar src={Map.get(teacher, :avatar_url)} size="small">
+                          {teacher.initials}
+                        </.user_avatar><div>
                           <strong>{teacher.name}<span
                             :if={teacher.id == @actor_id}
                             class="text-[11px] font-normal text-muted"
@@ -345,7 +347,9 @@
           "flex items-center pt-0 pb-[24px] px-0 gap-[12px] [&_strong]:text-[14px] [&_strong]:font-[550]",
           "[&_p]:text-muted [&_p]:text-[12px]"
         ]}>
-          <.user_avatar size="default">{member.initials}</.user_avatar><div>
+          <.user_avatar src={Map.get(member, :avatar_url)} size="default">
+            {member.initials}
+          </.user_avatar><div>
             <strong>{member.name}</strong><p>@{member.handle}</p>
           </div>
         </div>

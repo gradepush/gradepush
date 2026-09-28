@@ -99,6 +99,7 @@ defmodule GradePushWeb.ClassroomComponents do
         <div class="flex shrink-0 pr-[3px]" aria-hidden="true">
           <.user_avatar
             :for={teacher <- @teachers}
+            src={Map.get(teacher, :avatar_url)}
             size="small"
             class="-mr-[5px] border-2 border-white"
           >
