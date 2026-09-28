@@ -8,7 +8,8 @@ defmodule GradePush.Application do
       [
         GradePushWeb.Telemetry,
         GradePush.Repo,
-        {Phoenix.PubSub, name: GradePush.PubSub}
+        {Phoenix.PubSub, name: GradePush.PubSub},
+        GradePush.CLI.RateLimiter
       ] ++
         github_children() ++
         instance_children() ++

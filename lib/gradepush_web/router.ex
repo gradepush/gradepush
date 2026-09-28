@@ -61,5 +61,10 @@ defmodule GradePushWeb.Router do
     get "/health", HealthController, :show
     get "/health/ready", HealthController, :ready
     post "/webhooks/github", GitHubWebhookController, :create
+    post "/api/v1/cli/device", CLIController, :device
+    post "/api/v1/cli/token", CLIController, :token
+    get "/api/v1/cli/session", CLIController, :session
+    delete "/api/v1/cli/session", CLIController, :delete_session
+    get "/api/v1/cli/repositories", CLIController, :repositories
   end
 end

@@ -825,7 +825,8 @@ defmodule GradePush.Accounts do
     institution_id = institution_id()
 
     Repo.transaction(fn ->
-      _locked_institution = Repo.one(from(i in Institution, lock: "FOR UPDATE"))
+      _locked_institution = Repo.one(from(i in Institution, lock: "FOR NO KEY UPDATE"))
+      Repo.one!(from(u in User, where: u.id == ^target.id, lock: "FOR UPDATE"))
 
       unless admin?(actor), do: Repo.rollback(:unauthorized)
       unless teacher_or_admin?(target), do: Repo.rollback(:not_found)
@@ -833,6 +834,9 @@ defmodule GradePush.Accounts do
       if admin?(target) and count_role(:admin) <= 1 do
         Repo.rollback(:last_administrator)
       end
+
+      revoked_at = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+      revoke_teacher_cli_access(target.id, revoked_at)
 
       from(membership in InstitutionMembership,
         where:
@@ -855,6 +859,20 @@ defmodule GradePush.Accounts do
 
       :ok
     end)
+  end
+
+  defp revoke_teacher_cli_access(user_id, revoked_at) do
+    from(access_token in GradePush.CLI.AccessToken,
+      where: access_token.user_id == ^user_id and is_nil(access_token.revoked_at)
+    )
+    |> Repo.update_all(set: [revoked_at: revoked_at])
+
+    from(authorization in GradePush.CLI.DeviceAuthorization,
+      where: authorization.user_id == ^user_id and authorization.status == "approved"
+    )
+    |> Repo.update_all(set: [status: "denied", denied_at: revoked_at, updated_at: revoked_at])
+
+    :ok
   end
 
   defp active_invitation(token) do
