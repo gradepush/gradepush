@@ -20,10 +20,10 @@ defmodule GradePushWeb.PresentationTest do
   test "classroom groups preserve distinct year labels and sort numeric years first" do
     groups =
       Presentation.classroom_groups([
-        %{semester: "fall", academic_year: "2026", session: ""},
-        %{semester: "fall", academic_year: "26", session: ""},
-        %{semester: "winter", academic_year: "AY 2026-27", session: ""},
-        %{semester: nil, academic_year: nil, session: ""}
+        %{semester: :fall, academic_year: "2026"},
+        %{semester: :fall, academic_year: "26"},
+        %{semester: :winter, academic_year: "AY 2026-27"},
+        %{semester: nil, academic_year: nil}
       ])
 
     assert Enum.map(groups, & &1.label) == [
@@ -32,6 +32,18 @@ defmodule GradePushWeb.PresentationTest do
              "Winter AY 2026-27",
              "No semester"
            ]
+  end
+
+  test "semester labels follow the interface language" do
+    classroom = %{semester: :fall, academic_year: "26"}
+
+    assert Gettext.with_locale(GradePushWeb.Gettext, "fr", fn ->
+             Presentation.classroom_term(classroom)
+           end) == "Automne 26"
+
+    assert Gettext.with_locale(GradePushWeb.Gettext, "en", fn ->
+             Presentation.classroom_term(classroom)
+           end) == "Fall 26"
   end
 
   test "human dates use the requested locale and the configured local timezone" do

@@ -10,9 +10,8 @@ defmodule GradePush.ClassroomTermTest do
     %{user: teacher} = bootstrap_fixture()
     classroom = classroom_fixture(teacher, %{semester: "summer", academic_year: "2027"})
 
-    assert classroom.semester == "summer"
+    assert classroom.semester == :summer
     assert classroom.academic_year == "2027"
-    assert classroom.session == ""
 
     assert {:ok, updated} =
              Classrooms.update_classroom(teacher, classroom.id, %{
@@ -21,7 +20,7 @@ defmodule GradePush.ClassroomTermTest do
                academic_year: "2028"
              })
 
-    assert updated.semester == "winter"
+    assert updated.semester == :winter
     assert updated.academic_year == "2028"
     assert updated.code == classroom.code
   end
@@ -39,7 +38,6 @@ defmodule GradePush.ClassroomTermTest do
 
     assert is_nil(unassigned.semester)
     assert is_nil(unassigned.academic_year)
-    assert unassigned.session == ""
 
     assert {:error, changeset} =
              Classrooms.create_classroom(teacher, %{
@@ -97,22 +95,41 @@ defmodule GradePush.ClassroomTermTest do
     assert Keyword.has_key?(semester_changeset.errors, :semester)
   end
 
-  test "legacy session text survives updates that omit structured term fields" do
+  test "updates without term fields preserve the selected term" do
     %{user: teacher} = bootstrap_fixture()
-    classroom = classroom_fixture(teacher, %{session: "Cohorte soir 2027–2028"})
-
-    assert is_nil(classroom.semester)
-    assert classroom.session == "Cohorte soir 2027–2028"
+    classroom = classroom_fixture(teacher, %{semester: :fall, academic_year: "26"})
 
     assert {:ok, updated} =
-             Classrooms.update_classroom(teacher, classroom.id, %{
-               title: "Evening cohort",
-               code: classroom.code,
-               description: classroom.description
-             })
+             Classrooms.update_classroom(teacher, classroom.id, %{title: "Evening cohort"})
 
-    assert updated.session == "Cohorte soir 2027–2028"
-    assert is_nil(updated.semester)
-    assert is_nil(updated.academic_year)
+    assert updated.semester == :fall
+    assert updated.academic_year == "26"
+  end
+
+  test "semester identifiers are persisted as integers" do
+    %{user: teacher} = bootstrap_fixture()
+
+    for {semester, id} <- [winter: 1, summer: 2, fall: 3] do
+      classroom = classroom_fixture(teacher, %{semester: semester, academic_year: "26"})
+
+      assert [[^id, "text"]] =
+               Repo.query!(
+                 "SELECT semester, pg_typeof(academic_year)::text FROM classrooms WHERE id = $1",
+                 [classroom.id]
+               ).rows
+    end
+  end
+
+  test "the database rejects invalid identifiers and incomplete terms" do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher)
+
+    for semester <- [0, 4, nil] do
+      assert_raise Postgrex.Error, ~r/classroom_term_check/, fn ->
+        Repo.query!("UPDATE classrooms SET semester = $1 WHERE id = $2", [semester, classroom.id],
+          mode: :savepoint
+        )
+      end
+    end
   end
 end

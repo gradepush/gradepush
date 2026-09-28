@@ -85,21 +85,15 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     assert classroom.github_connection_id == existing.github_connection_id
   end
 
-  test "editing a legacy classroom preserves its term until explicitly replaced", %{conn: conn} do
+  test "an existing classroom term can be cleared", %{conn: conn} do
     %{user: teacher} = bootstrap_fixture()
-    classroom = classroom_fixture(teacher, %{session: "Cohorte soir 2027–2028"})
+    classroom = classroom_fixture(teacher)
     {:ok, view, _} = conn |> log_in_user(teacher) |> live("/classrooms/#{classroom.slug}")
     view |> element("[data-ui~='class-heading'] button") |> render_click()
-    assert has_element?(view, "select[name='class[semester]'] option[value='legacy'][selected]")
-    view |> form("#class-form", class: %{name: "Evening class"}) |> render_submit()
-
-    assert {:ok, %{session: "Cohorte soir 2027–2028"}} =
-             Classrooms.get_classroom(teacher, classroom.slug)
-
-    view |> element("[data-ui~='class-heading'] button") |> render_click()
+    assert has_element?(view, "select[name='class[semester]'] option[value='fall'][selected]")
     view |> form("#class-form", class: %{semester: "", academic_year: ""}) |> render_submit()
 
-    assert {:ok, %{session: "", semester: nil, academic_year: nil}} =
+    assert {:ok, %{semester: nil, academic_year: nil}} =
              Classrooms.get_classroom(teacher, classroom.slug)
   end
 
@@ -120,7 +114,7 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     )
     |> render_submit()
 
-    assert {:ok, %{title: "Algorithms", semester: "winter", academic_year: "26"}} =
+    assert {:ok, %{title: "Algorithms", semester: :winter, academic_year: "26"}} =
              Classrooms.get_classroom(teacher, classroom.slug)
 
     view |> element("a", "New assignment") |> render_click()

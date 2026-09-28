@@ -677,17 +677,16 @@ defmodule GradePushWeb.TeacherLive do
          |> push_event("focus-invalid", %{id: "class-form"})}
 
       {true, name, _} ->
-        if preserve_legacy_term?(socket.assigns, params) or
-             params["semester"] in [nil, ""] == params["academic_year"] in [nil, ""],
-           do: persist_class(socket, params, name),
-           else:
-             {:noreply,
-              socket
-              |> assign(
-                error: gettext("Choose both a semester and a year, or leave both empty."),
-                class_form_errors: [:semester, :academic_year]
-              )
-              |> push_event("focus-invalid", %{id: "class-form"})}
+        if params["semester"] in [nil, ""] == params["academic_year"] in [nil, ""],
+          do: persist_class(socket, params, name),
+          else:
+            {:noreply,
+             socket
+             |> assign(
+               error: gettext("Choose both a semester and a year, or leave both empty."),
+               class_form_errors: [:semester, :academic_year]
+             )
+             |> push_event("focus-invalid", %{id: "class-form"})}
     end
   end
 
@@ -940,11 +939,6 @@ defmodule GradePushWeb.TeacherLive do
       description: params["description"],
       github_connection_id: connection_id
     }
-
-    attrs =
-      if preserve_legacy_term?(socket.assigns, params),
-        do: Map.drop(attrs, [:semester, :academic_year]),
-        else: attrs
 
     result =
       case socket.assigns.modal do
@@ -1314,11 +1308,17 @@ defmodule GradePushWeb.TeacherLive do
   end
 
   defp save_class(socket, params, name) do
+    semester =
+      case Ecto.Enum.cast_value(GradePush.Classrooms.Classroom, :semester, params["semester"]) do
+        {:ok, value} -> value
+        :error -> nil
+      end
+
     changes = %{
       title: %{en: name, fr: name},
       description: %{en: params["description"], fr: params["description"]},
       code: params["code"],
-      semester: params["semester"],
+      semester: semester,
       academic_year: params["academic_year"]
     }
 
@@ -1570,17 +1570,6 @@ defmodule GradePushWeb.TeacherLive do
       value
     end
   end
-
-  defp legacy_term?(assigns) do
-    modal?(assigns.modal, "edit") and
-      assigns.classroom.semester in [nil, ""] and
-      Map.get(assigns.classroom, :session) not in [nil, ""]
-  end
-
-  defp preserve_legacy_term?(assigns, params),
-    do:
-      legacy_term?(assigns) and params["semester"] == "legacy" and
-        params["academic_year"] in [nil, ""]
 
   defp selected_student(classroom, {"remove", handle}),
     do: Enum.find(classroom.members, &(&1.handle == handle))

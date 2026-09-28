@@ -15,7 +15,6 @@ defmodule GradePushWeb.TeacherWorkspace do
       title: Presentation.text(classroom.title),
       description: Presentation.text(classroom.description),
       code: classroom.code || "",
-      session: classroom.session || "",
       semester: classroom.semester,
       academic_year: classroom.academic_year,
       students: Map.get(classroom, :students_count, 0),

@@ -379,16 +379,9 @@
               >
                 <option value="">{gettext("No semester")}</option>
                 <option
-                  :if={legacy_term?(assigns)}
-                  value="legacy"
-                  selected={editing_value(assigns, :semester) in [nil, "legacy"]}
-                >
-                  {@classroom.session}
-                </option>
-                <option
                   :for={{label, value} <- Presentation.semester_options()}
                   value={value}
-                  selected={editing_value(assigns, :semester) == value}
+                  selected={to_string(editing_value(assigns, :semester)) == value}
                 >
                   {label}
                 </option>

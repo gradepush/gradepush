@@ -21,7 +21,7 @@ defmodule GradePushWeb.Preview.Fixtures do
           en: "Build a strong foundation in Python and problem solving.",
           fr: "Développer une base solide en Python et en résolution de problèmes."
         },
-        semester: "fall",
+        semester: :fall,
         academic_year: "2026",
         students: 28,
         assignments: 3,
@@ -39,7 +39,7 @@ defmodule GradePushWeb.Preview.Fixtures do
           en: "Create accessible, responsive experiences for the web.",
           fr: "Créer des expériences Web accessibles et adaptées à tous les écrans."
         },
-        semester: "fall",
+        semester: :fall,
         academic_year: "2026",
         students: 24,
         assignments: 1,
@@ -57,7 +57,7 @@ defmodule GradePushWeb.Preview.Fixtures do
           en: "Understand how data structures shape efficient programs.",
           fr: "Comprendre le rôle des structures de données dans les programmes efficaces."
         },
-        semester: "winter",
+        semester: :winter,
         academic_year: "2027",
         students: 18,
         assignments: 1,

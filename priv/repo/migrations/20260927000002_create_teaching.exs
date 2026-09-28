@@ -40,7 +40,8 @@ defmodule GradePush.Repo.Migrations.CreateTeaching do
       add :title, :string, null: false
       add :code, :string, null: false, default: ""
       add :description, :text, null: false, default: ""
-      add :session, :string, null: false, default: ""
+      add :semester, :integer
+      add :academic_year, :text
       add :archived_at, :utc_datetime_usec
       add :created_by_id, references(:users, on_delete: :restrict), null: false
 
@@ -54,6 +55,11 @@ defmodule GradePush.Repo.Migrations.CreateTeaching do
     create unique_index(:classrooms, [:slug])
     create index(:classrooms, [:created_by_id])
     create index(:classrooms, [:github_connection_id])
+
+    create constraint(:classrooms, :classroom_term_check,
+             check:
+               "(semester IS NULL AND academic_year IS NULL) OR (semester IS NOT NULL AND academic_year IS NOT NULL AND semester IN (1, 2, 3) AND char_length(academic_year) BETWEEN 1 AND 20 AND academic_year ~ '[^[:space:]]')"
+           )
 
     create table(:classroom_teachers, primary_key: false) do
       add :classroom_id, references(:classrooms, on_delete: :delete_all),

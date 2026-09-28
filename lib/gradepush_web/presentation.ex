@@ -3,6 +3,7 @@ defmodule GradePushWeb.Presentation do
   use Gettext, backend: GradePushWeb.Gettext
 
   alias GradePush.Accounts
+  alias GradePush.Classrooms.Classroom
 
   def user(user) do
     name = Map.get(user, :student_name) || user.name
@@ -37,13 +38,14 @@ defmodule GradePushWeb.Presentation do
   def points(value) when is_binary(value), do: value |> Decimal.new() |> points()
 
   def classroom_term(%{semester: semester, academic_year: year})
-      when semester in ["winter", "summer", "fall"] and is_binary(year) and year != "",
+      when semester in [:winter, :summer, :fall] and is_binary(year) and year != "",
       do: "#{semester_label(semester)} #{year}"
 
-  def classroom_term(classroom), do: Map.get(classroom, :session) || ""
+  def classroom_term(_classroom), do: ""
 
   def semester_options,
-    do: Enum.map(~w(winter summer fall), &{semester_label(&1), &1})
+    do:
+      Enum.map(Ecto.Enum.values(Classroom, :semester), &{semester_label(&1), Atom.to_string(&1)})
 
   def classroom_groups(classrooms) do
     classrooms
@@ -56,18 +58,19 @@ defmodule GradePushWeb.Presentation do
   end
 
   defp term_key(%{semester: semester, academic_year: year})
-       when semester in ["winter", "summer", "fall"] and is_binary(year) and year != "",
-       do: {:structured, semester, year}
+       when semester in [:winter, :summer, :fall] and is_binary(year) and year != "",
+       do: {semester, year}
 
-  defp term_key(classroom), do: {:legacy, classroom_term(classroom)}
+  defp term_key(_classroom), do: nil
 
-  defp group_sort_key({:structured, semester, year}) do
+  defp group_sort_key({semester, year}) do
     {year_rank, sortable_year} = sortable_year(year)
-    {year_rank, sortable_year, Enum.find_index(~w(winter summer fall), &(&1 == semester)), year}
+
+    {year_rank, sortable_year, Keyword.fetch!(Ecto.Enum.mappings(Classroom, :semester), semester),
+     year}
   end
 
-  defp group_sort_key({:legacy, ""}), do: {0, 0, 0, ""}
-  defp group_sort_key({:legacy, label}), do: {1, 0, 0, label}
+  defp group_sort_key(nil), do: {0, 0, 0, ""}
 
   defp sortable_year(year) do
     cond do
@@ -77,9 +80,9 @@ defmodule GradePushWeb.Presentation do
     end
   end
 
-  defp semester_label("winter"), do: gettext("Winter")
-  defp semester_label("summer"), do: gettext("Summer")
-  defp semester_label("fall"), do: gettext("Fall")
+  defp semester_label(:winter), do: gettext("Winter")
+  defp semester_label(:summer), do: gettext("Summer")
+  defp semester_label(:fall), do: gettext("Fall")
 
   def contexts(user) do
     roles = Accounts.institution_roles(user)

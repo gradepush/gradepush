@@ -317,7 +317,6 @@ defmodule GradePush.Classrooms do
              :title,
              :code,
              :description,
-             :session,
              :semester,
              :academic_year
            ]),
@@ -862,7 +861,6 @@ defmodule GradePush.Classrooms do
           :slug,
           :title,
           :code,
-          :session,
           :semester,
           :academic_year,
           :archived_at,
@@ -1069,25 +1067,10 @@ defmodule GradePush.Classrooms do
 
   defp normalize_classroom_attrs(attrs, actor) do
     attrs = Map.new(attrs, fn {key, value} -> {normalize_key(key), value} end)
-    structured_term? = Map.has_key?(attrs, :semester) or Map.has_key?(attrs, :academic_year)
 
-    attrs =
-      attrs
-      |> Map.update(:title, nil, &localized_value(&1, actor.locale))
-      |> Map.update(:description, "", &localized_value(&1, actor.locale))
-
-    attrs =
-      if Map.has_key?(attrs, :session) do
-        Map.update!(attrs, :session, &empty_to_string/1)
-      else
-        attrs
-      end
-
-    attrs = if structured_term?, do: Map.put(attrs, :session, ""), else: attrs
-
-    if Map.has_key?(attrs, :semester),
-      do: Map.update!(attrs, :semester, &normalize_semester/1),
-      else: attrs
+    attrs
+    |> Map.update(:title, nil, &localized_value(&1, actor.locale))
+    |> Map.update(:description, "", &localized_value(&1, actor.locale))
   end
 
   defp localized_value(value, _locale) when is_binary(value), do: String.trim(value)
@@ -1098,17 +1081,6 @@ defmodule GradePush.Classrooms do
   end
 
   defp localized_value(_, _), do: ""
-  defp empty_to_string(value) when is_binary(value), do: String.trim(value)
-  defp empty_to_string(_), do: ""
-
-  defp normalize_semester(value) when is_binary(value) do
-    case String.trim(value) do
-      "" -> nil
-      semester -> String.downcase(semester)
-    end
-  end
-
-  defp normalize_semester(_), do: nil
 
   defp broadcast({topic, message}),
     do: Phoenix.PubSub.broadcast(GradePush.PubSub, topic, message)
@@ -1121,7 +1093,6 @@ defmodule GradePush.Classrooms do
       "title" -> :title
       "code" -> :code
       "description" -> :description
-      "session" -> :session
       "semester" -> :semester
       "academic_year" -> :academic_year
       _ -> key

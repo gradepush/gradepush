@@ -10,8 +10,7 @@ defmodule GradePush.Classrooms.Classroom do
     field :title, :string
     field :code, :string, default: ""
     field :description, :string, default: ""
-    field :session, :string, default: ""
-    field :semester, :string
+    field :semester, Ecto.Enum, values: [winter: 1, summer: 2, fall: 3]
     field :academic_year, :string
     field :archived_at, :utc_datetime_usec
     field :students_count, :integer, virtual: true, default: 0
@@ -34,7 +33,6 @@ defmodule GradePush.Classrooms.Classroom do
       :title,
       :code,
       :description,
-      :session,
       :semester,
       :academic_year,
       :github_connection_id
@@ -44,8 +42,6 @@ defmodule GradePush.Classrooms.Classroom do
     |> validate_length(:title, min: 1, max: 160)
     |> validate_length(:code, max: 80)
     |> validate_length(:description, max: 4_000)
-    |> validate_length(:session, max: 120)
-    |> validate_inclusion(:semester, ~w(winter summer fall))
     |> validate_length(:academic_year, max: 20)
     |> validate_change(:academic_year, fn :academic_year, value ->
       if String.trim(value) == "", do: [academic_year: "can't be blank"], else: []

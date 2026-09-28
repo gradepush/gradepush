@@ -315,7 +315,6 @@ defmodule GradePush.Assignments do
              :slug,
              :title,
              :code,
-             :session,
              :semester,
              :academic_year
            ]),
