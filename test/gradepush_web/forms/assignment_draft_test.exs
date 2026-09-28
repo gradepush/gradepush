@@ -42,4 +42,15 @@ defmodule GradePushWeb.Forms.AssignmentDraftTest do
     assert changeset.valid?
     assert Ecto.Changeset.get_field(changeset, :tests) == []
   end
+
+  test "the assignment form rejects a null team size" do
+    changeset =
+      AssignmentDraft.changeset(
+        %AssignmentDraft{},
+        %{title: "Team project", kind: "team", team_size: nil},
+        []
+      )
+
+    assert {"can't be blank", _} = changeset.errors[:team_size]
+  end
 end

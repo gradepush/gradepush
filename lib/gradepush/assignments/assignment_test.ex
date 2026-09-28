@@ -33,7 +33,7 @@ defmodule GradePush.Assignments.AssignmentTest do
       :input,
       :expected
     ])
-    |> validate_required([:name, :type, :points])
+    |> validate_required([:name, :type, :points, :timeout_seconds])
     |> validate_length(:name, min: 1, max: 120)
     |> validate_length(:description, max: 2_000)
     |> validate_inclusion(:type, ~w(command file io))

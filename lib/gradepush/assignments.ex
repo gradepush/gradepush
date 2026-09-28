@@ -854,7 +854,7 @@ defmodule GradePush.Assignments do
   defp validate_tests(attrs) do
     tests = Map.get(attrs, :tests, [])
 
-    if Map.get(attrs, :autograding_enabled, false) and tests == [],
+    if autograding_enabled?(attrs, false) and tests == [],
       do: {:error, :tests_required},
       else: validate_test_changesets(tests)
   end
@@ -865,11 +865,14 @@ defmodule GradePush.Assignments do
     configured_tests =
       tests || Repo.all(from(t in AssignmentTest, where: t.assignment_id == ^assignment.id))
 
-    if Map.get(attrs, :autograding_enabled, assignment.autograding_enabled) and
+    if autograding_enabled?(attrs, assignment.autograding_enabled) and
          configured_tests == [],
        do: {:error, :tests_required},
        else: if(tests, do: validate_test_changesets(tests), else: :ok)
   end
+
+  defp autograding_enabled?(attrs, default),
+    do: Ecto.Type.cast(:boolean, Map.get(attrs, :autograding_enabled, default)) == {:ok, true}
 
   defp preserve_empty_existing_tests(
          %Assignment{autograding_enabled: true},

@@ -48,7 +48,16 @@ defmodule GradePush.Assignments.Assignment do
       :published_at,
       :archived_at
     ])
-    |> validate_required([:title, :kind, :team_mode, :repository_visibility])
+    |> validate_required([
+      :title,
+      :kind,
+      :team_mode,
+      :team_size,
+      :repository_visibility,
+      :repository_name_pattern,
+      :cutoff_enabled,
+      :autograding_enabled
+    ])
     |> validate_length(:title, min: 1, max: 120)
     |> validate_length(:instructions, max: 20_000)
     |> validate_length(:template_repository, max: 255)

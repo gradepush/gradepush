@@ -34,7 +34,7 @@ defmodule GradePushWeb.Forms.AssignmentDraft do
       params,
       ~w(title instructions deadline cutoff template kind team_mode team_size autograding)a
     )
-    |> validate_required([:title, :kind, :team_mode])
+    |> validate_required([:title, :kind, :team_mode, :team_size, :cutoff, :autograding])
     |> validate_length(:title, max: 120)
     |> validate_length(:instructions, max: 20_000)
     |> validate_inclusion(:kind, ~w(individual team))
