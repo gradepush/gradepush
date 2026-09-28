@@ -3,7 +3,6 @@
 ## Requirements
 
 - Docker with Compose v2.24.4 or newer, `curl`, and OpenSSL.
-- For local development and the demo: macOS or Linux.
 - For self-hosting: a public domain pointing to the server, with ports **80** and **443** open.
 
 ## Self-host with Docker
@@ -35,7 +34,7 @@ Uses the published image with PostgreSQL and Caddy. No repository clone or build
    docker compose up -d --wait
    ```
 
-   Caddy obtains and renews the HTTPS certificate automatically. No Certbot or manual certificate setup is needed. Keep the Docker volumes to preserve your database, application keys, and certificates.
+   Caddy manages HTTPS automatically.
 
 4. Open `https://your-domain/setup` and enter `SETUP_TOKEN` from `.env`, or retrieve your private setup link:
 
@@ -54,7 +53,7 @@ Uses the published image with PostgreSQL and Caddy. No repository clone or build
    cd gradepush
    ```
 
-2. Start with sample data:
+2. On macOS or Linux, start with sample data:
 
    ```sh
    DEMO_MODE=true HOST_PORT=4001 PHX_URL_PORT=4001 scripts/local-compose --env-file .env.example -p gradepush-demo up -d --build --wait
@@ -66,7 +65,7 @@ Local HTTPS is automatic. Your OS may ask for your password to trust the certifi
 
 ## Develop with Docker
 
-1. From a clone of this repository, start the development environment:
+1. On macOS or Linux, run from a clone of this repository:
 
    ```sh
    scripts/dev
