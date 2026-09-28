@@ -228,7 +228,14 @@ defmodule GradePushWeb.SurfaceComponents do
 
   def modal_actions(assigns) do
     ~H"""
-    <div data-ui="modal-actions" class={[" mt-[12px] flex justify-end gap-[10px]", @class]} {@rest}>
+    <div
+      data-ui="modal-actions"
+      class={[
+        "mt-[12px] flex flex-wrap justify-end gap-[10px] [&>a]:max-w-full [&>button]:max-w-full max-[480px]:flex-col-reverse",
+        @class
+      ]}
+      {@rest}
+    >
       {render_slot(@inner_block)}
     </div>
     """
@@ -340,6 +347,7 @@ defmodule GradePushWeb.SurfaceComponents do
   end
 
   attr :kind, :string, default: "success", values: ~w(success error)
+  attr :icon, :string, default: nil
   attr :role, :string, default: nil
   attr :class, :any, default: nil
   attr :rest, :global
@@ -355,11 +363,16 @@ defmodule GradePushWeb.SurfaceComponents do
           do: "mb-[16px] bg-error-surface p-[12px] text-error!",
           else: "mt-[20px] rounded-[6px] bg-success-surface px-[16px] py-[12px] text-success-ink"
         ),
+        @icon && "flex items-start gap-[10px] rounded-[8px]",
         @class
       ]}
       {@rest}
     >
-      {render_slot(@inner_block)}
+      <GradePushWeb.CoreComponents.icon :if={@icon} name={@icon} class="mt-[1px] size-5 shrink-0" />
+      <span :if={@icon} class="min-w-0 flex-1">{render_slot(@inner_block)}</span>
+      <%= if !@icon do %>
+        {render_slot(@inner_block)}
+      <% end %>
     </p>
     """
   end

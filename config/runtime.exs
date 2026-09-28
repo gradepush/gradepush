@@ -2,6 +2,14 @@ import Config
 
 config :gradepush, :start_endpoint, System.get_env("START_ENDPOINT", "true") == "true"
 
+setup_token =
+  case System.get_env("SETUP_TOKEN") do
+    value when value in [nil, ""] -> nil
+    value -> value
+  end
+
+config :gradepush, :setup_token, setup_token
+
 demo_mode = System.get_env("DEMO_MODE", "false") == "true"
 config :gradepush, :demo_mode, demo_mode
 
@@ -52,11 +60,20 @@ if config_env() == :test do
 end
 
 if config_env() == :dev do
+  public_host = System.get_env("PHX_HOST", "localhost")
+  public_port = if public_host == "localhost", do: port, else: 443
+
   {:ok, bind_ip} =
     :inet.parse_address(String.to_charlist(System.get_env("PHX_BIND_IP", "127.0.0.1")))
 
   config :gradepush, GradePushWeb.Endpoint,
-    url: [host: "localhost", scheme: "https", port: port],
+    url: [host: public_host, scheme: "https", port: public_port],
+    debug_errors: public_host == "localhost",
+    check_origin:
+      if(public_host == "localhost",
+        do: false,
+        else: ["https://#{public_host}", "https://localhost:#{port}"]
+      ),
     https: [
       ip: bind_ip,
       port: port,
@@ -66,7 +83,7 @@ if config_env() == :dev do
         System.get_env("TLS_KEYFILE", Path.expand("../priv/cert/localhost-key.pem", __DIR__))
     ],
     live_reload: [
-      web_console_logger: true,
+      web_console_logger: public_host == "localhost",
       patterns: [
         ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
         ~r"priv/gettext/.*\.po$"E,
@@ -74,6 +91,10 @@ if config_env() == :dev do
         ~r"lib/gradepush_web/(controllers|live|components)/.*\.(ex|heex)$"E
       ]
     ]
+
+  if secret_key_base = System.get_env("SECRET_KEY_BASE") do
+    config :gradepush, GradePushWeb.Endpoint, secret_key_base: secret_key_base
+  end
 end
 
 if config_env() == :test and System.get_env("TEST_DATABASE_URL") do

@@ -25,6 +25,8 @@ defmodule GradePushWeb.Router do
     post "/demo/sign-in", DemoController, :create
     get "/setup/github/manifest/callback", SetupController, :manifest_callback
     get "/setup/github/auth/callback", SetupController, :auth_callback
+    get "/github/organizations/connect", OrganizationController, :new
+    get "/github/organizations/callback", OrganizationController, :callback
     get "/classrooms/:slug/assignments/:assignment/export.csv", ExportController, :submissions
 
     live_session :public do
@@ -54,6 +56,7 @@ defmodule GradePushWeb.Router do
 
     live_session :learning, on_mount: [{GradePushWeb.Auth, :require_authenticated_user}] do
       live "/student/classrooms", StudentLive, :index
+      live "/student/assignments", StudentLive, :schedule
       live "/student/classrooms/:slug", StudentLive, :show
       live "/student/classrooms/:slug/assignments/:assignment", StudentLive, :assignment
       live "/join/:kind/:token", InvitationLive, :show

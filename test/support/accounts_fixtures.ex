@@ -10,7 +10,9 @@ defmodule GradePush.AccountsFixtures do
 
   def user_fixture(attrs \\ %{}) do
     attrs = Map.new(attrs)
-    github_id = Map.get(attrs, :github_id, System.unique_integer([:positive, :monotonic]))
+
+    github_id =
+      Map.get(attrs, :github_id, 1_000_000 + System.unique_integer([:positive, :monotonic]))
 
     {:ok, user} =
       Accounts.upsert_github_user(

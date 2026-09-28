@@ -7,6 +7,75 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
 
   alias GradePush.{Assignments, Classrooms}
 
+  test "organization settings show connection and check results in the same feedback area",
+       %{conn: conn} do
+    %{user: teacher} = configured_gradepush_fixture()
+    conn = log_in_user(conn, teacher)
+    {:ok, view, _} = live(conn, "/teacher/settings?section=organizations")
+
+    assert has_element?(
+             view,
+             "a[href='/github/organizations/connect']",
+             "Connect an organization"
+           )
+
+    view |> element("button", "Already installed on GitHub?") |> render_click()
+    refute has_element?(view, "select[name=sharing_scope]")
+
+    view
+    |> element("button[phx-click=connect_organization][phx-value-organization='123']")
+    |> render_click()
+
+    assert has_element?(view, "[data-ui=organization-row]", "gradepush-test")
+    refute has_element?(view, "[data-ui=organization-row] details")
+
+    assert has_element?(
+             view,
+             "[aria-labelledby=github-organizations-title] [data-ui=settings-feedback] [role=status]",
+             "is connected to your account"
+           )
+
+    view |> element("button", "Check connection") |> render_click()
+
+    assert has_element?(
+             view,
+             "[aria-labelledby=github-organizations-title] [data-ui=settings-feedback] [role=status]",
+             "GitHub connection checked successfully."
+           )
+
+    refute has_element?(view, "[data-ui=organization-row] [role=status]")
+    refute has_element?(view, "[data-ui=settings-feedback]", "is connected to your account")
+
+    view |> element("button", "Already installed on GitHub?") |> render_click()
+
+    assert has_element?(
+             view,
+             "[data-ui=organization-connection]",
+             "No other installed organizations"
+           )
+
+    assert has_element?(
+             view,
+             "[data-ui=organization-connection] a[href='/github/organizations/connect']"
+           )
+  end
+
+  test "teachers without classrooms see an empty state with a working create action", %{
+    conn: conn
+  } do
+    %{user: teacher} = bootstrap_fixture()
+    conn = log_in_user(conn, teacher)
+    {:ok, view, _} = live(conn, "/classrooms")
+
+    assert has_element?(view, "[data-ui='empty']", "Your first classroom starts here")
+    view |> element("[data-ui='empty'] button", "Create a classroom") |> render_click()
+    assert has_element?(view, "#class-form")
+
+    classroom_fixture(teacher)
+    {:ok, view, _} = live(conn, "/classrooms")
+    refute has_element?(view, "[data-ui='empty']")
+  end
+
   test "overlapping classroom and assignment notifications reload the workspace once", %{
     conn: conn
   } do

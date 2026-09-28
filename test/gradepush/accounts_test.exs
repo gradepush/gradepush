@@ -102,6 +102,32 @@ defmodule GradePush.AccountsTest do
     assert "teacher.admin_revoked" in actions
   end
 
+  test "teacher removal requires classroom reassignment and preserves independent roles" do
+    %{user: admin} = bootstrap_fixture()
+    teacher = GradePush.TeachingFixtures.student_fixture()
+    teacher_membership_fixture(teacher)
+    {:ok, _} = Accounts.grant_platform_operator(admin, teacher.id)
+    classroom = GradePush.TeachingFixtures.classroom_fixture(teacher)
+    successor = user_fixture()
+    teacher_membership_fixture(successor)
+
+    assert {:error, :classrooms_assigned} = Accounts.remove_teacher(admin, teacher.id)
+    assert Accounts.teacher?(teacher)
+
+    assert {:ok, _} =
+             GradePush.Classrooms.reassign_teacher(admin, classroom.id, successor.id, teacher.id)
+
+    assert {:ok, :ok} = Accounts.remove_teacher(admin, teacher.id)
+    refute Accounts.teacher?(teacher)
+    assert Accounts.student?(teacher)
+    assert Accounts.operator?(teacher)
+    assert Accounts.get_user(teacher.id)
+    assert {:error, _} = GradePush.Classrooms.get_classroom(teacher, classroom.slug)
+    assert {:ok, _} = GradePush.Classrooms.get_classroom(successor, classroom.slug)
+    assert {:ok, events} = Accounts.list_audit(admin, :institution)
+    assert Enum.count(events, &(&1.action == "teacher.removed")) == 1
+  end
+
   test "bootstrap state requires its browser nonce and the token is encrypted at rest" do
     capture_log(fn -> assert {:ok, :created} = Installation.initialize_bootstrap() end)
     credential = Repo.get!(BootstrapCredential, 1)

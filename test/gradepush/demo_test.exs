@@ -11,6 +11,8 @@ defmodule GradePush.DemoTest do
   alias GradePush.GitHub.Fake
   alias GradePush.GitHub.Fake.Store
   alias GradePush.Repo
+  alias GradePush.Submissions
+  alias GradePush.Submissions.{Grade, Push}
   alias GradePush.Workers.ProvisionAssignmentRepository
 
   setup do
@@ -38,9 +40,17 @@ defmodule GradePush.DemoTest do
     assert {:ok, classrooms} = Classrooms.list_classrooms(teacher)
 
     assert MapSet.new(Enum.map(classrooms, & &1.slug)) ==
-             MapSet.new(["programming", "web-development"])
+             MapSet.new(
+               ~w(programming web-development procedural-programming databases workstation it-professions)
+             )
 
     assert Enum.all?(classrooms, &(&1.students_count > 0 and &1.assignments_count > 0))
+
+    assert MapSet.new(Enum.map(classrooms, &{&1.semester, &1.academic_year})) ==
+             MapSet.new([{:fall, "2025"}, {:winter, "2026"}, {:fall, "2026"}])
+
+    assert Enum.all?(classrooms, &Regex.match?(~r/^420-\d[A-Z]\d-SO$/, &1.code))
+    assert Enum.all?(classrooms, &(&1.description != "" and &1.assignments_count == 3))
 
     {:ok, programming} = Classrooms.get_student_classroom(student, "programming")
     assert {:ok, assignments} = Assignments.list_student_assignments(student, programming.id)
@@ -52,6 +62,98 @@ defmodule GradePush.DemoTest do
 
     assert Store.get({:repository, repository.owner_login, repository.name})["id"] ==
              repository.github_repository_id
+  end
+
+  test "sample submissions have coherent timelines, repository identities and test totals" do
+    Application.put_env(:gradepush, :demo_mode, true)
+    assert :ok = Demo.initialize()
+
+    subjects =
+      Repo.all(Subject) |> Repo.preload([:assignment, :repository, :pushes, grades: :tests])
+
+    names = Enum.map(subjects, & &1.repository.full_name)
+    assert Enum.uniq(names) == names
+
+    Enum.each(subjects, fn subject ->
+      assert DateTime.compare(subject.accepted_at, subject.assignment.published_at) != :lt
+
+      Enum.each(subject.pushes, fn push ->
+        assert DateTime.compare(push.observed_at, subject.accepted_at) != :lt
+        assert DateTime.compare(push.observed_at, DateTime.utc_now()) != :gt
+      end)
+
+      Enum.each(subject.grades, fn grade ->
+        push = Enum.find(subject.pushes, &(&1.commit_sha == grade.commit_sha))
+        assert %Push{} = push
+        assert DateTime.compare(grade.inserted_at, push.observed_at) != :lt
+        assert DateTime.compare(grade.inserted_at, DateTime.utc_now()) != :gt
+
+        assert Decimal.equal?(
+                 grade.score,
+                 Enum.reduce(grade.tests, Decimal.new(0), &Decimal.add(&1.points_awarded, &2))
+               )
+
+        assert Decimal.equal?(
+                 grade.max_score,
+                 Enum.reduce(grade.tests, Decimal.new(0), &Decimal.add(&1.max_points, &2))
+               )
+
+        assert grade.status == "success" == Enum.all?(grade.tests, &(&1.status == "success"))
+      end)
+    end)
+
+    assert Enum.any?(subjects, &(&1.pushes == []))
+    assert Enum.any?(subjects, &(length(&1.pushes) > 1))
+    assert Enum.any?(subjects, &(not is_nil(&1.extension_until)))
+    assert Repo.exists?(from(g in Grade, where: g.status == "failure"))
+    assert Repo.exists?(from(g in Grade, where: g.status == "success"))
+
+    assert Enum.any?(subjects, fn subject ->
+             deadline =
+               Submissions.effective_deadline(
+                 subject.assignment.deadline_at,
+                 subject.extension_until
+               )
+
+             deadline &&
+               Enum.any?(subject.pushes, &(DateTime.compare(&1.observed_at, deadline) == :gt))
+           end)
+  end
+
+  test "student can explore both team modes, extensions, passed and failed tests and an undated assignment" do
+    Application.put_env(:gradepush, :demo_mode, true)
+    assert :ok = Demo.initialize()
+    {:ok, student} = Demo.user_for_role(:student)
+
+    {:ok, classrooms} = Classrooms.list_student_classrooms(student)
+    assert length(classrooms) == 6
+
+    {:ok, programming} = Classrooms.get_student_classroom(student, "programming")
+    {:ok, web} = Classrooms.get_student_classroom(student, "web-development")
+
+    {:ok, %{subject: cli}} = Assignments.get_student_assignment(student, programming.id, "cli")
+
+    {:ok, %{subject: portfolio}} =
+      Assignments.get_student_assignment(student, web.id, "portfolio")
+
+    assert Repo.get_by!(Grade, subject_id: cli.id).status == "success"
+    assert Repo.get_by!(Grade, subject_id: portfolio.id).status == "failure"
+
+    for {classroom, slug, mode} <- [
+          {programming, "functions", "teacher"},
+          {web, "community-site", "students"}
+        ] do
+      assert {:ok, %{assignment: assignment, subject: subject, repository: %{state: "ready"}}} =
+               Assignments.get_student_assignment(student, classroom.id, slug)
+
+      assert assignment.team_mode == mode
+      assert subject.team_id
+      assert DateTime.compare(subject.extension_until, assignment.deadline_at) == :gt
+    end
+
+    {:ok, schedule} = Assignments.list_student_schedule(student)
+    assert length(schedule) == 18
+    assert Enum.any?(schedule, &is_nil(&1.assignment.deadline_at))
   end
 
   test "seeded assignment template remains valid when editing its title" do

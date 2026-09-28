@@ -18,7 +18,12 @@ defmodule GradePushWeb.WorkspaceLayout do
       <div class="ml-auto flex items-center gap-[12px] max-[760px]:gap-[6px] max-[760px]:group-data-[context=true]/header:order-1">
         <.link
           data-ui="language"
-          href={@path <> "?locale=" <> @target_locale}
+          href={
+            @path
+            |> URI.parse()
+            |> URI.append_query(URI.encode_query(%{locale: @target_locale}))
+            |> URI.to_string()
+          }
           lang={@target_locale}
           class={[
             "flex items-center justify-center min-h-[44px] rounded-[7px] text-muted text-[12px] font-semibold p-[8px]",
@@ -92,8 +97,11 @@ defmodule GradePushWeb.WorkspaceLayout do
         </.link>
       </.main_navigation>
       <.main_navigation :if={@context == :learning}>
-        <.link navigate="/student/classrooms" aria-current="page">
+        <.link navigate="/student/classrooms" aria-current={if @action != :schedule, do: "page"}>
           <.icon name="hero-rectangle-stack" class="size-4" />{gettext("Classrooms")}
+        </.link>
+        <.link navigate="/student/assignments" aria-current={if @action == :schedule, do: "page"}>
+          <.icon name="hero-calendar-days" class="size-4" />{gettext("Assignments")}
         </.link>
       </.main_navigation>
       <div class="ml-auto flex items-center gap-[12px] max-[760px]:gap-[6px] max-[760px]:group-data-[context=true]/header:order-1">
@@ -228,17 +236,17 @@ defmodule GradePushWeb.WorkspaceLayout do
     ~H"""
     <footer class="bg-white border-t border-t-[#dce3ef] text-muted text-[12px]">
       <div class={[
-        "group-data-[public=true]/page:max-w-[1160px] flex items-center justify-between max-w-[1280px] py-[22px]",
-        "px-[32px] m-auto gap-[20px] max-[760px]:py-[16px] max-[760px]:px-[20px]",
+        "group-data-[public=true]/page:max-w-[1160px] flex items-center justify-between max-w-[1280px] py-[14px]",
+        "px-[32px] m-auto gap-[20px] max-[760px]:py-[10px] max-[760px]:px-[20px]",
         "max-[760px]:[&:has([data-ui~=footer-links]_a:nth-child(2))]:items-start",
         "max-[760px]:[&:has([data-ui~=footer-links]_a:nth-child(2))]:flex-col",
         "max-[760px]:[&:has([data-ui~=footer-links]_a:nth-child(2))]:gap-[8px]"
       ]}>
         <.link
           {workspace_link(@context, "/classrooms")}
-          class="flex items-center shrink-0 min-h-[44px] [&_img]:w-[120px] [&_img]:h-auto"
+          class="flex items-center shrink-0 min-h-[44px] [&_img]:w-[96px] [&_img]:h-auto"
         >
-          <img src={~p"/images/logo.svg"} width="120" alt="GradePush" />
+          <img src={~p"/images/logo.svg"} width="96" alt="GradePush" />
         </.link>
         <nav
           data-ui="footer-links"
@@ -265,10 +273,7 @@ defmodule GradePushWeb.WorkspaceLayout do
             href="https://github.com/gradepush"
             class="inline-flex items-center py-[8px] px-0 gap-[8px]"
           >
-            <svg viewBox="0 0 24 24" class="size-4" fill="currentColor" aria-hidden="true">
-              <path d="M12 .297a12 12 0 0 0-3.793 23.384c.6.111.82-.261.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.071 1.835 2.809 1.305 3.495.998.108-.776.419-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.323 3.301 1.23a11.52 11.52 0 0 1 6.006 0c2.291-1.553 3.297-1.23 3.297-1.23.653 1.652.242 2.873.119 3.176.769.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.216.694.825.576A12 12 0 0 0 12 .297Z" />
-            </svg>
-            GitHub
+            <.icon name="github" /> GitHub
           </a>
         </nav>
       </div>

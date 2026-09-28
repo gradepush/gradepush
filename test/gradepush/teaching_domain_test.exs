@@ -284,7 +284,6 @@ defmodule GradePush.TeachingDomainTest do
         github_organization_id: System.unique_integer([:positive]),
         login: "another-test-org",
         installation_id: System.unique_integer([:positive]),
-        sharing_scope: "private",
         status: "active",
         connected_by_id: teacher.id
       })

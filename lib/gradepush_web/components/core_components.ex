@@ -30,13 +30,17 @@ defmodule GradePushWeb.CoreComponents do
   end
 
   attr :icon, :string, default: nil
+  attr :class, :any, default: nil
   slot :inner_block, required: true
 
   def connection_status(assigns) do
     ~H"""
     <span
       data-ui="connection-state"
-      class="ml-auto inline-flex items-center gap-[6px] whitespace-nowrap text-[11px] text-connection max-[760px]:ml-[50px]"
+      class={[
+        "ml-auto inline-flex items-center gap-[6px] whitespace-nowrap text-[11px] text-connection max-[760px]:ml-[50px]",
+        @class
+      ]}
     >
       <.icon :if={@icon} name={@icon} class="size-[16px]" />
       <span :if={!@icon} class="size-[6px] rounded-full bg-connection-dot" aria-hidden="true"></span>
@@ -312,7 +316,7 @@ defmodule GradePushWeb.CoreComponents do
   attr :name, :string, default: "query"
   attr :label, :string, required: true
   attr :value, :string, default: ""
-  attr :rest, :global, include: ~w(placeholder)
+  attr :rest, :global, include: ~w(placeholder maxlength)
 
   def search_input(assigns) do
     ~H"""
@@ -414,6 +418,14 @@ defmodule GradePushWeb.CoreComponents do
 
   attr :name, :string, required: true
   attr :class, :any, default: "size-4"
+
+  def icon(%{name: "github"} = assigns) do
+    ~H"""
+    <svg viewBox="0 0 24 24" class={@class} fill="currentColor" aria-hidden="true">
+      <path d="M12 .297a12 12 0 0 0-3.793 23.384c.6.111.82-.261.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.071 1.835 2.809 1.305 3.495.998.108-.776.419-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.323 3.301 1.23a11.52 11.52 0 0 1 6.006 0c2.291-1.553 3.297-1.23 3.297-1.23.653 1.652.242 2.873.119 3.176.769.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.216.694.825.576A12 12 0 0 0 12 .297Z" />
+    </svg>
+    """
+  end
 
   def icon(%{name: "hero-" <> _} = assigns) do
     ~H"""

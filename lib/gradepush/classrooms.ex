@@ -1,5 +1,5 @@
 defmodule GradePush.Classrooms do
-  @moduledoc "Classroom access, rosters, teacher collaboration, and GitHub organization sharing."
+  @moduledoc "Classroom access, rosters, teacher collaboration, and GitHub organization connections."
 
   import Ecto.Query
 
@@ -108,6 +108,10 @@ defmodule GradePush.Classrooms do
 
   defp persist_classroom(attrs, slug, user_id) do
     Multi.new()
+    |> Multi.run(:membership, fn _, _ ->
+      lock_teacher!(user_id)
+      {:ok, user_id}
+    end)
     |> Multi.insert(:classroom, fn _ ->
       %Classroom{}
       |> Classroom.changeset(Map.put(attrs, :slug, slug))
@@ -121,6 +125,7 @@ defmodule GradePush.Classrooms do
     |> case do
       {:ok, %{classroom: classroom}} -> {:ok, classroom}
       {:error, _step, changeset, _changes} -> {:error, changeset}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -348,6 +353,7 @@ defmodule GradePush.Classrooms do
   def accept_class_invitation(_, _, _), do: {:error, :unauthorized}
 
   defp accept_class_invitation_locked!(actor, invitation, profile_attrs) do
+    Repo.one!(from(u in User, where: u.id == ^actor.id, lock: "FOR UPDATE"))
     classroom_id = invitation.classroom_id
     Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
     _invitation = valid_invitation_for_update!(invitation.id)
@@ -410,13 +416,11 @@ defmodule GradePush.Classrooms do
     with :ok <- require_classroom_teacher(actor, classroom_id),
          true <- is_integer(teacher_user_id) and eligible_teacher?(teacher_user_id),
          %Classroom{} <- Repo.get(Classroom, classroom_id) do
-      %ClassroomTeacher{classroom_id: classroom_id, user_id: teacher_user_id}
-      |> Ecto.Changeset.change()
-      |> Repo.insert(on_conflict: :nothing, conflict_target: [:classroom_id, :user_id])
-      |> case do
-        {:ok, _} -> {:ok, teachers_for(classroom_id)}
-        error -> error
-      end
+      Repo.transaction(fn ->
+        lock_teacher!(teacher_user_id)
+
+        add_authorized_classroom_teacher!(actor, classroom_id, teacher_user_id)
+      end)
     else
       false -> {:error, :invalid_teacher}
       nil -> {:error, :not_found}
@@ -425,6 +429,17 @@ defmodule GradePush.Classrooms do
   end
 
   def add_teacher(_, _, _), do: {:error, :unauthorized}
+
+  defp add_authorized_classroom_teacher!(actor, classroom_id, teacher_user_id) do
+    case require_classroom_teacher(actor, classroom_id) do
+      :ok ->
+        add_classroom_teacher!(classroom_id, teacher_user_id)
+        teachers_for(classroom_id)
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
+  end
 
   @doc "Removes a classroom collaborator while preserving the last-teacher invariant."
   def remove_teacher(%User{} = actor, classroom_id, teacher_user_id) do
@@ -474,6 +489,8 @@ defmodule GradePush.Classrooms do
 
   defp reassign_classroom_teacher(classroom_id, add_user_id, replace_user_id, actor) do
     Repo.transaction(fn ->
+      lock_teacher!(add_user_id)
+      unless Accounts.admin?(actor), do: Repo.rollback(:unauthorized)
       Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
       classroom = Repo.get!(Classroom, classroom_id)
       add_classroom_teacher!(classroom_id, add_user_id)
@@ -481,6 +498,11 @@ defmodule GradePush.Classrooms do
       record_teacher_reassignment!(actor, classroom, add_user_id, replace_user_id)
       teachers_for(classroom_id)
     end)
+  end
+
+  defp lock_teacher!(user_id) do
+    Repo.one!(from(u in User, where: u.id == ^user_id, lock: "FOR UPDATE"))
+    unless eligible_teacher?(user_id), do: Repo.rollback(:invalid_teacher)
   end
 
   defp add_classroom_teacher!(classroom_id, user_id) do
@@ -598,51 +620,70 @@ defmodule GradePush.Classrooms do
 
   def get_student_classroom(_, _), do: {:error, :unauthorized}
 
-  @doc "Verifies an installation through the actor's GitHub account before connecting its organization."
-  def connect_github_organization(actor, installation_id, sharing_scope \\ "private")
-
-  def connect_github_organization(
-        %User{id: user_id} = actor,
-        installation_id,
-        sharing_scope
-      )
+  @doc "Connects an organization after verifying the teacher's own GitHub access."
+  def connect_github_organization(%User{id: user_id} = actor, installation_id)
       when is_integer(user_id) and is_integer(installation_id) do
     with true <- Accounts.teacher?(actor),
-         true <- sharing_scope in ~w(private institution),
          {:ok, verified} <-
            GradePush.Installation.verify_user_installation(actor, installation_id),
-         account when is_map(account) <- verified.account,
-         true <- account.type == "Organization" do
-      persist_github_connection(actor, verified, account, sharing_scope)
+         {:ok, connection} <- persist_github_connection(actor, verified) do
+      broadcast({"github-connection:#{connection.id}", :connected})
+      {:ok, connection}
     else
       false -> {:error, :unauthorized}
-      nil -> {:error, :invalid_installation}
       error -> error
     end
   end
 
-  def connect_github_organization(_, _, _), do: {:error, :unauthorized}
+  def connect_github_organization(_, _), do: {:error, :unauthorized}
 
-  defp persist_github_connection(actor, verified, account, sharing_scope) do
-    attrs = %{
-      github_organization_id: account.id,
-      login: account.login,
-      installation_id: verified.id,
-      sharing_scope: sharing_scope,
-      connected_by_id: actor.id,
-      status: "active"
-    }
+  defp persist_github_connection(actor, verified) do
+    Repo.transaction(fn ->
+      unless Accounts.teacher?(actor), do: Repo.rollback(:unauthorized)
 
-    case Repo.insert(GitHubConnection.changeset(%GitHubConnection{}, attrs)) do
-      {:ok, connection} ->
-        broadcast({"github-connection:#{connection.id}", :connected})
-        {:ok, connection}
+      attrs = %{
+        github_organization_id: verified.account.id,
+        login: verified.account.login,
+        installation_id: verified.id,
+        connected_by_id: actor.id,
+        status: "active"
+      }
 
-      {:error, changeset} ->
-        if Keyword.has_key?(changeset.errors, :github_organization_id),
-          do: {:error, :organization_already_connected},
-          else: {:error, changeset}
-    end
+      case Repo.insert(GitHubConnection.changeset(%GitHubConnection{}, attrs),
+             on_conflict: :nothing,
+             conflict_target: [:github_organization_id]
+           ) do
+        {:ok, _} -> :ok
+        {:error, reason} -> Repo.rollback(reason)
+      end
+
+      connection =
+        Repo.one!(
+          from(c in GitHubConnection,
+            where: c.github_organization_id == ^verified.account.id,
+            lock: "FOR UPDATE"
+          )
+        )
+
+      if connection.installation_id != verified.id do
+        Repo.delete_all(
+          from(t in GitHubConnectionTeacher, where: t.connection_id == ^connection.id)
+        )
+      end
+
+      attrs =
+        if connection.installation_id == verified.id,
+          do: Map.delete(attrs, :connected_by_id),
+          else: attrs
+
+      connection = connection |> GitHubConnection.changeset(attrs) |> Repo.update!()
+
+      %GitHubConnectionTeacher{connection_id: connection.id, user_id: actor.id}
+      |> Ecto.Changeset.change()
+      |> Repo.insert!(on_conflict: :nothing, conflict_target: [:connection_id, :user_id])
+
+      connection
+    end)
   end
 
   @doc "Disables connections after GitHub revokes or suspends an installation."
@@ -683,11 +724,8 @@ defmodule GradePush.Classrooms do
         from(c in GitHubConnection,
           left_join: s in GitHubConnectionTeacher,
           on: s.connection_id == c.id and s.user_id == ^user_id,
-          where:
-            c.connected_by_id == ^user_id or c.sharing_scope == "institution" or
-              not is_nil(s.user_id),
-          order_by: [asc: c.login],
-          preload: [:authorized_teachers]
+          where: c.connected_by_id == ^user_id or not is_nil(s.user_id),
+          order_by: [asc: c.login]
         )
         |> Repo.all()
 
@@ -698,24 +736,6 @@ defmodule GradePush.Classrooms do
   end
 
   def list_github_connections(_), do: {:error, :unauthorized}
-
-  @doc "Grants an admitted teacher permission to use a privately shared GitHub organization connection."
-  def share_github_connection(%User{} = actor, connection_id, teacher_user_id) do
-    with true <- instructional_member?(actor),
-         %GitHubConnection{} = connection <- Repo.get(GitHubConnection, connection_id),
-         true <- connection.connected_by_id == actor.id,
-         true <- eligible_teacher?(teacher_user_id) do
-      %GitHubConnectionTeacher{connection_id: connection_id, user_id: teacher_user_id}
-      |> Ecto.Changeset.change()
-      |> Repo.insert(on_conflict: :nothing, conflict_target: [:connection_id, :user_id])
-    else
-      false -> {:error, :unauthorized}
-      nil -> {:error, :not_found}
-      error -> error
-    end
-  end
-
-  def share_github_connection(_, _, _), do: {:error, :unauthorized}
 
   @doc "Returns one organization connection only when the actor may use it."
   def get_github_connection(%User{id: user_id} = actor, connection_id)
@@ -731,6 +751,30 @@ defmodule GradePush.Classrooms do
   end
 
   def get_github_connection(_, _), do: {:error, :unauthorized}
+
+  @doc "Checks the installation and token access for a connection the teacher may use."
+  def check_github_connection(actor, connection_id) do
+    with {:ok, connection} <- get_github_connection(actor, connection_id),
+         {:ok, credentials} <- GradePush.Installation.github_app_credentials(),
+         {:ok, installation} <-
+           GradePush.GitHub.get_installation(credentials, connection.installation_id),
+         %{
+           "id" => installation_id,
+           "app_id" => app_id,
+           "account" => %{"id" => organization_id, "type" => "Organization"},
+           "permissions" => %{"administration" => "write"}
+         } <- installation,
+         true <- installation_id == connection.installation_id and app_id == credentials.app_id,
+         true <- organization_id == connection.github_organization_id,
+         true <- is_nil(installation["suspended_at"]),
+         {:ok, %{"token" => token}} when is_binary(token) <-
+           GradePush.GitHub.installation_token(credentials, connection.installation_id) do
+      :ok
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :connection_unavailable}
+    end
+  end
 
   @doc "Lists starter repositories available in the selected organization."
   def list_templates(%User{} = actor, classroom_id) do
@@ -1046,8 +1090,7 @@ defmodule GradePush.Classrooms do
       where:
         c.id == ^connection_id and
           c.status == "active" and
-          (c.connected_by_id == ^user_id or c.sharing_scope == "institution" or
-             not is_nil(s.user_id))
+          (c.connected_by_id == ^user_id or not is_nil(s.user_id))
     )
   end
 

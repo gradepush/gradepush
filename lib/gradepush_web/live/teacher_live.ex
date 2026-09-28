@@ -40,11 +40,9 @@ defmodule GradePushWeb.TeacherLive do
        user: user,
        institution: institution,
        organizations: organizations,
-       sharing_teachers: [],
        class_form_errors: [],
        available_organizations: [],
        available_classroom_teachers: [],
-       github_app_install_url: github_app_install_url(),
        classes: classes,
        assignments:
          if(preview?,
@@ -180,7 +178,6 @@ defmodule GradePushWeb.TeacherLive do
       |> Map.merge(%{
         classes: real_classrooms(actor),
         organizations: real_organizations(actor),
-        sharing_teachers: real_settings_teachers(actor, socket.assigns.live_action, params),
         assignments:
           Enum.map(
             classroom_state.assignment_records,
@@ -206,11 +203,19 @@ defmodule GradePushWeb.TeacherLive do
         query: "",
         modal: nil,
         pending_teacher: nil,
-        notice: nil,
-        error: nil
+        notice: Phoenix.Flash.get(socket.assigns.flash, :info),
+        error: Phoenix.Flash.get(socket.assigns.flash, :error)
       })
 
-    {:noreply, assign(socket, assigns)}
+    socket = assign(socket, assigns)
+
+    if socket.assigns.live_action == :settings and params["connect"] == "true" do
+      socket
+      |> assign(modal: {"connect_organization", nil})
+      |> load_available_organizations()
+    else
+      {:noreply, socket}
+    end
   end
 
   defp real_classroom_state(actor, slug) do
@@ -348,11 +353,6 @@ defmodule GradePushWeb.TeacherLive do
   end
 
   defp teacher_teams(_actor, _assignment), do: []
-
-  defp real_settings_teachers(actor, :settings, %{"section" => "organizations"}),
-    do: sharing_teachers(actor)
-
-  defp real_settings_teachers(_actor, _action, _params), do: []
 
   defp assignment_tab(%{"view" => "tests"}), do: "tests"
   defp assignment_tab(_params), do: "submissions"
@@ -694,28 +694,31 @@ defmodule GradePushWeb.TeacherLive do
 
   def handle_event("connect_organization", params, socket) do
     if modal?(socket.assigns.modal, "connect_organization"),
-      do: connect_real_organization(socket, params["organization"], params["sharing_scope"]),
+      do: connect_real_organization(socket, params["organization"]),
       else: {:noreply, socket}
   end
 
-  def handle_event(
-        "share_organization",
-        %{"connection_id" => connection_id, "teacher_id" => teacher_id},
-        socket
-      ) do
-    with {:ok, connection_id} <- parse_id_result(connection_id),
-         {:ok, teacher_id} <- parse_id_result(teacher_id),
-         {:ok, _grant} <-
-           Classrooms.share_github_connection(
-             socket.assigns.current_user,
-             connection_id,
-             teacher_id
-           ) do
-      reload_real_workspace(socket, gettext("GitHub organization shared with this teacher."))
+  def handle_event("check_organization", %{"id" => value}, socket) do
+    with {:ok, id} <- parse_id_result(value),
+         true <- Enum.any?(socket.assigns.organizations, &(is_map(&1) and &1.id == id)) do
+      feedback =
+        case Classrooms.check_github_connection(socket.assigns.current_user, id) do
+          :ok ->
+            [notice: gettext("GitHub connection checked successfully."), error: nil]
+
+          _ ->
+            [
+              notice: nil,
+              error:
+                gettext(
+                  "Could not verify this connection. Check the GitHub App installation and permissions, then try again."
+                )
+            ]
+        end
+
+      {:noreply, assign(socket, feedback)}
     else
-      _reason ->
-        {:noreply,
-         assign(socket, error: gettext("Could not share this organization. Try again."))}
+      _ -> {:noreply, socket}
     end
   end
 
@@ -898,10 +901,21 @@ defmodule GradePushWeb.TeacherLive do
   defp create_invitation(socket, _context, _function, _resource),
     do: {:noreply, assign(socket, error: gettext("Could not create this invitation. Try again."))}
 
+  defp load_available_organizations(%{assigns: %{preview?: true}} = socket),
+    do: {:noreply, socket}
+
   defp load_available_organizations(socket) do
+    if GradePush.Demo.enabled?(),
+      do: {:noreply, assign(socket, available_organizations: [], error: nil)},
+      else: fetch_available_organizations(socket)
+  end
+
+  defp fetch_available_organizations(socket) do
     case Installation.list_user_organizations(socket.assigns.current_user) do
       {:ok, organizations} ->
-        {:noreply, assign(socket, available_organizations: organizations)}
+        connected_ids = Enum.map(socket.assigns.organizations, & &1.installation_id)
+        organizations = Enum.reject(organizations, &(&1.installation_id in connected_ids))
+        {:noreply, assign(socket, available_organizations: organizations, error: nil)}
 
       {:error, _reason} ->
         {:noreply,
@@ -1015,25 +1029,22 @@ defmodule GradePushWeb.TeacherLive do
     end
   end
 
-  defp connect_real_organization(socket, installation_id, sharing_scope) do
+  defp connect_real_organization(socket, installation_id) do
     with {:ok, id} <- parse_id_result(installation_id),
-         scope when scope in ["private", "institution"] <- sharing_scope || "private",
-         {:ok, _connection} <-
-           Classrooms.connect_github_organization(socket.assigns.current_user, id, scope) do
-      reload_real_workspace(socket, gettext("GitHub organization connected."))
+         false <- GradePush.Demo.enabled?(),
+         {:ok, connection} <-
+           Classrooms.connect_github_organization(socket.assigns.current_user, id) do
+      reload_real_workspace(
+        socket,
+        gettext("%{organization} is connected to your account.", organization: connection.login)
+      )
     else
-      {:error, :organization_owner_required} ->
+      {:error, reason} ->
         {:noreply,
-         assign(socket,
-           error:
-             gettext(
-               "An organization owner must connect GitHub first, then share the connection with colleagues."
-             )
-         )}
+         assign(socket, error: GradePushWeb.AccountComponents.organization_error(reason))}
 
-      _reason ->
-        {:noreply,
-         assign(socket, error: gettext("Could not connect this GitHub organization. Try again."))}
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -1233,32 +1244,10 @@ defmodule GradePushWeb.TeacherLive do
     end)
   end
 
-  defp sharing_teachers(actor) do
-    case Accounts.institution_teachers(actor) do
-      {:ok, teachers} ->
-        teachers
-        |> Enum.reject(&(&1.id == actor.id))
-        |> Enum.map(&TeacherWorkspace.teacher/1)
-
-      _ ->
-        []
-    end
-  end
-
   defp institution_name do
     case Accounts.institution() do
       %{name: name} when is_binary(name) -> name
       _ -> ""
-    end
-  end
-
-  defp github_app_install_url do
-    case Installation.github_app_metadata() do
-      %{slug: slug} when is_binary(slug) and slug != "" ->
-        "https://github.com/apps/#{URI.encode(slug)}/installations/new"
-
-      _ ->
-        nil
     end
   end
 

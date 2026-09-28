@@ -24,7 +24,7 @@ defmodule GradePush.Demo do
   }
 
   alias GradePush.Crypto
-  alias GradePush.Demo.InstanceMode
+  alias GradePush.Demo.{Catalog, InstanceMode}
   alias GradePush.GitHub.Fake
   alias GradePush.GitHub.Fake.Store
   alias GradePush.Installation.GitHubApp
@@ -64,7 +64,19 @@ defmodule GradePush.Demo do
     %{github_id: 9_000_000_109, login: "jade-martel", name: "Jade Martel", id: "D-1009"},
     %{github_id: 9_000_000_110, login: "antoine-morin", name: "Antoine Morin", id: "D-1010"},
     %{github_id: 9_000_000_111, login: "rosalie-gervais", name: "Rosalie Gervais", id: "D-1011"},
-    %{github_id: 9_000_000_112, login: "felix-beaulieu", name: "Félix Beaulieu", id: "D-1012"}
+    %{github_id: 9_000_000_112, login: "felix-beaulieu", name: "Félix Beaulieu", id: "D-1012"},
+    %{github_id: 9_000_000_113, login: "sarah-nguyen", name: "Sarah Nguyen", id: "D-1013"},
+    %{github_id: 9_000_000_114, login: "olivier-rivard", name: "Olivier Rivard", id: "D-1014"},
+    %{github_id: 9_000_000_115, login: "ines-benkacem", name: "Inès Benkacem", id: "D-1015"},
+    %{github_id: 9_000_000_116, login: "samuel-mercier", name: "Samuel Mercier", id: "D-1016"},
+    %{github_id: 9_000_000_117, login: "alice-chen", name: "Alice Chen", id: "D-1017"},
+    %{github_id: 9_000_000_118, login: "gabriel-dube", name: "Gabriel Dubé", id: "D-1018"},
+    %{github_id: 9_000_000_119, login: "nora-haddad", name: "Nora Haddad", id: "D-1019"},
+    %{github_id: 9_000_000_120, login: "xavier-leduc", name: "Xavier Leduc", id: "D-1020"},
+    %{github_id: 9_000_000_121, login: "eva-desrosiers", name: "Éva Desrosiers", id: "D-1021"},
+    %{github_id: 9_000_000_122, login: "adam-moreau", name: "Adam Moreau", id: "D-1022"},
+    %{github_id: 9_000_000_123, login: "clara-simard", name: "Clara Simard", id: "D-1023"},
+    %{github_id: 9_000_000_124, login: "liam-bertrand", name: "Liam Bertrand", id: "D-1024"}
   ]
 
   def enabled? do
@@ -340,11 +352,12 @@ defmodule GradePush.Demo do
     institution = insert_institution!()
     teacher = insert_user!(9_000_000_001, "demo-teacher", "Alex Martin", "fr")
     colleague = insert_user!(9_000_000_002, "camille-bergeron", "Camille Bergeron", "fr")
-    students = Enum.map(@students, &insert_student!(&1, institution.id, now))
+    joined_at = ~U[2025-08-20 13:00:00.000000Z]
+    students = Enum.map(@students, &insert_student!(&1, institution.id, joined_at))
 
-    insert_membership!(institution.id, teacher.id, :admin, now)
-    insert_membership!(institution.id, teacher.id, :teacher, now)
-    insert_membership!(institution.id, colleague.id, :teacher, now)
+    insert_membership!(institution.id, teacher.id, :admin, joined_at)
+    insert_membership!(institution.id, teacher.id, :teacher, joined_at)
+    insert_membership!(institution.id, colleague.id, :teacher, joined_at)
     Repo.insert!(%PlatformOperator{user_id: teacher.id, added_by_id: teacher.id})
     insert_github_app!()
 
@@ -352,96 +365,59 @@ defmodule GradePush.Demo do
     insert_connection_teacher!(connection.id, teacher.id)
     insert_connection_teacher!(connection.id, colleague.id)
 
-    programming =
-      insert_classroom!(teacher, connection, %{
-        slug: "programming",
-        title: "Programmation I",
-        code: "420-110",
-        description: "Développer une base solide en Python et en résolution de problèmes.",
-        semester: "fall",
-        academic_year: "2026"
-      })
+    Enum.each(Catalog.classrooms(), fn data ->
+      classroom = insert_classroom!(teacher, connection, data)
+      enrolled = Enum.take(students, data.students)
+      joined_at = semester_start(classroom)
+      insert_classroom_teacher!(classroom.id, teacher.id)
+      if data.shared, do: insert_classroom_teacher!(classroom.id, colleague.id)
+      insert_students_in_class!(classroom.id, enrolled, joined_at)
 
-    web_development =
-      insert_classroom!(teacher, connection, %{
-        slug: "web-development",
-        title: "Développement Web",
-        code: "420-210",
-        description: "Créer des expériences Web accessibles et adaptées à tous les écrans.",
-        semester: "fall",
-        academic_year: "2026"
-      })
-
-    insert_classroom_teacher!(programming.id, teacher.id)
-    insert_classroom_teacher!(programming.id, colleague.id)
-    insert_classroom_teacher!(web_development.id, teacher.id)
-    insert_students_in_class!(programming.id, Enum.take(students, 8), now)
-    insert_students_in_class!(web_development.id, Enum.take(students, 6), now)
-
-    cli =
-      insert_assignment!(programming, %{
-        slug: "cli",
-        title: "Analyseur d’arguments CLI",
-        instructions:
-          "# Objectif\n\nCréez un analyseur d’arguments en ligne de commande.\n\nDocumentez les cas valides et les erreurs dans votre dépôt.",
-        deadline_at: DateTime.add(now, 4 * 86_400, :second),
-        template_repository: "gradepush-demo/starter",
-        autograding_enabled: true
-      })
-
-    loops =
-      insert_assignment!(programming, %{
-        slug: "loops",
-        title: "Boucles et collections",
-        instructions: "Écrivez des fonctions pour parcourir et transformer des collections.",
-        deadline_at: DateTime.add(now, -9 * 86_400, :second),
-        autograding_enabled: false
-      })
-
-    functions =
-      insert_assignment!(programming, %{
-        slug: "functions",
-        title: "Fonctions et tests",
-        instructions: "En équipe, implémentez et testez une petite bibliothèque de fonctions.",
-        deadline_at: DateTime.add(now, 14 * 86_400, :second),
-        kind: "team",
-        team_mode: "teacher",
-        autograding_enabled: false
-      })
-
-    portfolio =
-      insert_assignment!(web_development, %{
-        slug: "portfolio",
-        title: "Portfolio adaptatif",
-        instructions:
-          "Concevez un portfolio accessible qui s’adapte aux petits et grands écrans.",
-        deadline_at: DateTime.add(now, 7 * 86_400, :second),
-        autograding_enabled: false
-      })
-
-    tests = insert_assignment_tests!(cli)
-    accepted_cli = Enum.take(students, 5) |> Enum.with_index()
-    seed_individual_submissions!(cli, accepted_cli, tests, now, "cli")
-
-    seed_individual_submissions!(
-      loops,
-      Enum.take(students, 7) |> Enum.with_index(),
-      [],
-      now,
-      "loops"
-    )
-
-    seed_team_submissions!(functions, students, teacher.id, now)
-
-    seed_individual_submissions!(
-      portfolio,
-      Enum.take(students, 4) |> Enum.with_index(),
-      [],
-      now,
-      "portfolio"
-    )
+      Enum.each(data.assignments, &seed_assignment!(&1, classroom, enrolled, teacher.id, now))
+    end)
 
     :ok
+  end
+
+  defp seed_assignment!(data, classroom, students, teacher_id, now) do
+    attrs =
+      data
+      |> Map.put(:deadline_at, deadline_at(data.deadline))
+      |> Map.put(:published_at, semester_start(classroom))
+      |> Map.put(:autograding_enabled, data.tests != [])
+
+    assignment = insert_assignment!(classroom, attrs)
+    tests = insert_assignment_tests!(assignment, data.tests)
+    accepted = Enum.take(students, data.accepted)
+    anchor = submission_anchor(assignment, classroom, now)
+    prefix = "#{classroom.slug}-#{assignment.slug}"
+
+    if assignment.kind == "team" do
+      seed_team_submissions!(assignment, accepted, teacher_id, tests, anchor, prefix)
+    else
+      seed_individual_submissions!(assignment, Enum.with_index(accepted), tests, anchor, prefix)
+    end
+  end
+
+  defp semester_start(classroom) do
+    month = if classroom.semester == :winter, do: 1, else: 8
+    date = Date.new!(String.to_integer(classroom.academic_year), month, 20)
+    DateTime.new!(date, ~T[09:00:00], "America/Toronto") |> DateTime.shift_zone!("Etc/UTC")
+  end
+
+  defp deadline_at(nil), do: nil
+
+  defp deadline_at(date) do
+    DateTime.new!(date, ~T[23:59:00], "America/Toronto") |> DateTime.shift_zone!("Etc/UTC")
+  end
+
+  defp submission_anchor(assignment, classroom, now) do
+    deadline = assignment.deadline_at || DateTime.add(semester_start(classroom), 60, :day)
+
+    Enum.min_by(
+      [DateTime.add(deadline, 1, :day), DateTime.add(now, -1, :hour)],
+      &DateTime.to_unix/1
+    )
   end
 
   defp insert_institution! do
@@ -506,7 +482,6 @@ defmodule GradePush.Demo do
       github_organization_id: 9_000_000_789,
       login: "gradepush-demo",
       installation_id: 123,
-      sharing_scope: "institution",
       status: "active",
       connected_by_id: teacher_id
     })
@@ -555,116 +530,52 @@ defmodule GradePush.Demo do
     |> Repo.insert!()
   end
 
-  defp insert_assignment_tests!(assignment) do
-    [
-      %{
-        name: "Parses valid options",
-        description: "Recognizes named options and values.",
-        type: "command",
-        points: 20,
-        command: "python -m unittest tests.test_parser"
-      },
-      %{
-        name: "Handles missing values",
-        description: "Reports an error for options without a value.",
-        type: "io",
-        points: 30,
-        command: "python main.py",
-        input: "--output",
-        expected: "missing value"
-      },
-      %{
-        name: "Includes project files",
-        description: "Keeps the command-line entry point in the repository.",
-        type: "file",
-        points: 50,
-        path: "main.py"
-      }
-    ]
-    |> Enum.map(fn attrs ->
+  defp insert_assignment_tests!(assignment, tests) do
+    Enum.map(tests, fn attrs ->
       %AssignmentTest{assignment_id: assignment.id}
       |> AssignmentTest.changeset(attrs)
       |> Repo.insert!()
     end)
   end
 
-  defp seed_individual_submissions!(assignment, students, tests, now, prefix) do
+  defp seed_individual_submissions!(assignment, students, tests, anchor, prefix) do
     Enum.each(students, fn {student, index} ->
-      accepted_at = DateTime.add(now, -(index + 4) * 86_400, :second)
-
-      subject =
-        %Subject{}
-        |> Subject.changeset(%{
-          assignment_id: assignment.id,
-          user_id: student.id,
-          kind: "individual",
-          accepted_at: accepted_at
-        })
-        |> Repo.insert!()
-
-      repository = insert_repository!(subject, prefix, student.login, index)
-
-      maybe_seed_individual_push(
-        assignment,
-        subject,
-        repository,
-        tests,
-        now,
-        prefix,
-        student,
-        index
-      )
+      subject = insert_subject!(assignment, %{user_id: student.id}, anchor, index)
+      seed_submission!(assignment, subject, tests, anchor, prefix, student.login, index)
     end)
   end
 
-  defp maybe_seed_individual_push(
-         _assignment,
-         _subject,
-         _repository,
-         _tests,
-         _now,
-         _prefix,
-         _student,
-         3
-       ),
-       do: :ok
+  defp insert_subject!(assignment, identity, anchor, index) do
+    extension =
+      if (index == 4 or (index == 0 and assignment.kind == "team")) and assignment.deadline_at,
+        do: DateTime.add(assignment.deadline_at, 3, :day)
 
-  defp maybe_seed_individual_push(
-         assignment,
-         subject,
-         repository,
-         tests,
-         now,
-         prefix,
-         student,
-         index
-       ) do
-    pushed_at = DateTime.add(now, -(index + 1) * 86_400 + 60 * 60, :second)
-    sha = commit_sha(prefix, student.login, index)
-    insert_push!(subject, repository, sha, pushed_at, prefix, index)
-    maybe_seed_grade(assignment, subject, repository, tests, sha, index)
+    attrs = %{
+      assignment_id: assignment.id,
+      kind: assignment.kind,
+      accepted_at: DateTime.add(anchor, -14 * 86_400 + index * 60, :second),
+      extension_until: extension
+    }
+
+    %Subject{}
+    |> Subject.changeset(Map.merge(attrs, identity))
+    |> Repo.insert!()
   end
 
-  defp maybe_seed_grade(assignment, subject, repository, tests, sha, index)
-       when tests != [] and index in [0, 2] do
-    score = if index == 0, do: 100, else: 70
-    insert_grade!(assignment, subject, repository, tests, sha, score, 800_000 + index)
-  end
-
-  defp maybe_seed_grade(_assignment, _subject, _repository, _tests, _sha, _index), do: :ok
-
-  defp seed_team_submissions!(assignment, students, teacher_id, now) do
+  defp seed_team_submissions!(assignment, students, teacher_id, tests, anchor, prefix) do
     students
-    |> Enum.take(8)
-    |> Enum.chunk_every(2)
-    |> Enum.with_index(1)
+    |> Enum.chunk_every(assignment.team_size)
+    |> Enum.with_index()
     |> Enum.each(fn {members, index} ->
+      creator_id = if assignment.team_mode == "teacher", do: teacher_id, else: hd(members).id
+
       team =
         %Team{}
         |> Team.changeset(%{
           assignment_id: assignment.id,
-          created_by_id: teacher_id,
-          name: "Équipe #{index}"
+          created_by_id: creator_id,
+          name:
+            Enum.at(~w(Orion Atlas Boréal Nova Vega Sirius Aurore Eclipse Lyra Phoenix), index)
         })
         |> Repo.insert!()
 
@@ -676,31 +587,37 @@ defmodule GradePush.Demo do
         })
       end)
 
-      subject =
-        %Subject{}
-        |> Subject.changeset(%{
-          assignment_id: assignment.id,
-          team_id: team.id,
-          kind: "team",
-          accepted_at: DateTime.add(now, -index * 86_400, :second)
-        })
-        |> Repo.insert!()
-
-      repository = insert_repository!(subject, "functions", "team-#{index}", index)
-      pushed_at = DateTime.add(now, -(index + 1) * 86_400 + 90 * 60, :second)
-
-      insert_push!(
-        subject,
-        repository,
-        commit_sha("functions", "team-#{index}", index),
-        pushed_at,
-        "functions",
-        index
-      )
+      subject = insert_subject!(assignment, %{team_id: team.id}, anchor, index)
+      seed_submission!(assignment, subject, tests, anchor, prefix, "team-#{index + 1}", index)
     end)
   end
 
-  defp insert_repository!(subject, prefix, login, index) do
+  defp seed_submission!(assignment, subject, tests, anchor, prefix, login, index) do
+    repository = insert_repository!(subject, prefix, login, tests != [])
+
+    unless rem(index, 6) == 3 do
+      days = Enum.at([[11, 8, 8, 5, 2, 2, 2], [1], [10, 7, 4, 4, 0], [6, 3, 3]], rem(index, 4))
+
+      days
+      |> Enum.with_index()
+      |> Enum.each(fn {day, sequence} ->
+        sha = commit_sha(prefix, login, sequence)
+        pushed_at = DateTime.add(anchor, -day * 86_400 + sequence * 60, :second)
+        insert_push!(subject, repository, sha, pushed_at, prefix, sequence)
+      end)
+
+      sha = commit_sha(prefix, login, length(days) - 1)
+      grade_index = if assignment.slug == "portfolio", do: index + 2, else: index
+      graded_at = DateTime.add(anchor, -List.last(days) * 86_400 + length(days) * 60, :second)
+
+      if tests != [] and rem(index, 6) != 1,
+        do: insert_grade!(subject, repository, tests, sha, grade_index, graded_at)
+    end
+
+    :ok
+  end
+
+  defp insert_repository!(subject, prefix, login, autograding?) do
     name = "#{prefix}-#{String.replace(login, "_", "-")}"
 
     %Repository{subject_id: subject.id}
@@ -710,9 +627,9 @@ defmodule GradePush.Demo do
       name: name,
       full_name: "gradepush-demo/#{name}",
       html_url: "https://github.com/gradepush-demo/#{name}",
-      workflow_id: if(prefix == "cli", do: 123_400 + index, else: nil),
-      workflow_path: if(prefix == "cli", do: ".github/workflows/gradepush.yml", else: nil),
-      workflow_file_sha: if(prefix == "cli", do: String.duplicate("d", 40), else: nil),
+      workflow_id: if(autograding?, do: 123_400 + subject.id),
+      workflow_path: if(autograding?, do: ".github/workflows/gradepush.yml"),
+      workflow_file_sha: if(autograding?, do: String.duplicate("d", 40)),
       state: "ready"
     })
     |> Repo.insert!()
@@ -731,7 +648,17 @@ defmodule GradePush.Demo do
     |> Repo.insert!()
   end
 
-  defp insert_grade!(assignment, subject, repository, tests, sha, score, run_id) do
+  defp insert_grade!(subject, repository, tests, sha, index, graded_at) do
+    results =
+      Enum.with_index(tests, fn test, position ->
+        passed? = rem(index, 3) != 2 or position != 1
+        %{test: test, awarded: if(passed?, do: test.points, else: 0), passed?: passed?}
+      end)
+
+    score = Enum.sum(Enum.map(results, & &1.awarded))
+    maximum = Enum.sum(Enum.map(tests, & &1.points))
+    run_id = 800_000 + subject.id
+
     grade =
       %Grade{}
       |> Grade.changeset(%{
@@ -739,28 +666,24 @@ defmodule GradePush.Demo do
         repository_id: repository.id,
         commit_sha: sha,
         run_id: run_id,
-        status: "success",
+        status: if(score == maximum, do: "success", else: "failure"),
         score: Decimal.new(score),
-        max_score: Decimal.new(100),
+        max_score: Decimal.new(maximum),
         html_url: repository.html_url <> "/actions/runs/#{run_id}"
       })
+      |> Ecto.Changeset.put_change(:inserted_at, graded_at)
       |> Repo.insert!()
 
-    Enum.each(tests, fn test ->
-      points = Decimal.new(test.points)
-      awarded = if score == 100, do: points, else: Decimal.mult(points, Decimal.new("0.7"))
-
-      %GradeTest{result_id: grade.id, assignment_test_id: test.id}
+    Enum.each(results, fn result ->
+      %GradeTest{result_id: grade.id, assignment_test_id: result.test.id}
       |> GradeTest.changeset(%{
-        name: test.name,
-        status: if(awarded == points, do: "success", else: "failure"),
-        points_awarded: awarded,
-        max_points: points
+        name: result.test.name,
+        status: if(result.passed?, do: "success", else: "failure"),
+        points_awarded: Decimal.new(result.awarded),
+        max_points: Decimal.new(result.test.points)
       })
       |> Repo.insert!()
     end)
-
-    assignment
   end
 
   defp commit_sha(prefix, login, index) do

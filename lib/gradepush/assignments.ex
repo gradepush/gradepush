@@ -375,6 +375,7 @@ defmodule GradePush.Assignments do
   end
 
   defp accept_assignment_locked!(actor, token, profile_attrs) do
+    Repo.one!(from(u in User, where: u.id == ^actor.id, lock: "FOR UPDATE"))
     invitation = lock_assignment_invitation!(token)
     assignment = lock_published_assignment!(invitation.assignment_id)
     classroom = active_assignment_classroom!(assignment)
@@ -472,6 +473,50 @@ defmodule GradePush.Assignments do
   end
 
   def list_student_assignments(_, _), do: {:error, :unauthorized}
+
+  @doc "Lists published assignments across active student enrollments with personal or team deadlines."
+  def list_student_schedule(%User{id: user_id} = actor) when is_integer(user_id) do
+    if Accounts.student?(actor) do
+      assignments =
+        from(a in Assignment,
+          join: c in Classroom,
+          on: c.id == a.classroom_id,
+          join: m in ClassroomStudent,
+          on: m.classroom_id == c.id and m.user_id == ^user_id,
+          where:
+            is_nil(m.removed_at) and is_nil(c.archived_at) and is_nil(a.archived_at) and
+              not is_nil(a.published_at),
+          preload: [classroom: c]
+        )
+        |> Repo.all()
+
+      extensions =
+        student_subject_query(user_id, Enum.map(assignments, & &1.id))
+        |> select([s], {s.assignment_id, s.extension_until})
+        |> Repo.all()
+        |> Map.new()
+
+      entries =
+        Enum.map(assignments, fn assignment ->
+          %{
+            assignment: assignment,
+            classroom: assignment.classroom,
+            deadline_at:
+              Submissions.effective_deadline(assignment.deadline_at, extensions[assignment.id])
+          }
+        end)
+
+      {:ok,
+       Enum.sort_by(entries, fn entry ->
+         {is_nil(entry.deadline_at), entry.deadline_at && DateTime.to_unix(entry.deadline_at),
+          entry.assignment.title, entry.assignment.id}
+       end)}
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  def list_student_schedule(_), do: {:error, :unauthorized}
 
   @doc "Fetches an assignment for an enrolled student without exposing classmates' work."
   def get_student_assignment(%User{id: user_id} = actor, classroom_id, slug)
@@ -1079,6 +1124,12 @@ defmodule GradePush.Assignments do
   defp student_subjects(_user_id, []), do: []
 
   defp student_subjects(user_id, assignment_ids) do
+    student_subject_query(user_id, assignment_ids)
+    |> preload([:user, :repository, team: [members: :user]])
+    |> Repo.all()
+  end
+
+  defp student_subject_query(user_id, assignment_ids) do
     team_ids =
       from(m in TeamMember,
         where: m.user_id == ^user_id and is_nil(m.left_at),
@@ -1088,10 +1139,8 @@ defmodule GradePush.Assignments do
     from(s in Subject,
       where:
         s.assignment_id in ^assignment_ids and
-          (s.user_id == ^user_id or s.team_id in subquery(team_ids)),
-      preload: [:user, :repository, team: [members: :user]]
+          (s.user_id == ^user_id or s.team_id in subquery(team_ids))
     )
-    |> Repo.all()
   end
 
   defp enrich_subject_profiles(subjects) do

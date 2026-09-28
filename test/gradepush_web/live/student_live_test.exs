@@ -15,6 +15,101 @@ defmodule GradePushWeb.StudentLiveTest do
     %{teacher: teacher, classroom: classroom, assignment: assignment, student: student}
   end
 
+  test "assignment schedule switches views, retains locale and refreshes extensions and access",
+       context do
+    %{
+      conn: conn,
+      teacher: teacher,
+      classroom: classroom,
+      assignment: assignment,
+      student: student
+    } = context
+
+    {:ok, _} =
+      Assignments.update_assignment(teacher, assignment.id, %{
+        deadline_at: ~U[2026-10-01 02:00:00.000000Z]
+      })
+
+    {:ok, invitation} = Assignments.create_assignment_invitation(teacher, assignment.id)
+
+    {:ok, %{subject: subject}} =
+      Assignments.accept_assignment_invitation(student, invitation.token, %{
+        name: "Camille",
+        student_id: "2026001"
+      })
+
+    {:ok, view, _} =
+      conn |> log_in_user(student) |> live("/student/assignments?locale=fr&month=2026-09")
+
+    assert has_element?(
+             view,
+             "[data-ui='navigation'] a[aria-current='page'][href='/student/assignments']"
+           )
+
+    assert has_element?(view, "[data-list-row]", assignment.title)
+    assert has_element?(view, "[data-list-row]", classroom.code)
+    view |> element("#schedule-views a", "Calendrier") |> render_click()
+
+    assert has_element?(
+             view,
+             "#deadline-calendar td:has(time[datetime='2026-09-30']) a",
+             assignment.title
+           )
+
+    assert has_element?(
+             view,
+             "[data-ui='language'][href*='month=2026-09'][href*='view=calendar'][href*='locale=en']"
+           )
+
+    extension = ~U[2026-10-03 18:00:00.000000Z]
+    {:ok, _} = Submissions.set_extension(teacher, assignment.id, subject.id, extension)
+    refute has_element?(view, "#deadline-calendar a", assignment.title)
+    view |> element("a[aria-label='Mois suivant']") |> render_click()
+
+    assert has_element?(
+             view,
+             "#deadline-calendar td:has(time[datetime='2026-10-03']) a",
+             assignment.title
+           )
+
+    path = "/student/classrooms/#{classroom.slug}/assignments/#{assignment.slug}"
+    view |> element("#deadline-calendar a[href='#{path}']") |> render_click()
+    assert_patch(view, path)
+    assert has_element?(view, "h1", assignment.title)
+    render_patch(view, "/student/assignments")
+    {:ok, _} = Classrooms.remove_student(teacher, classroom.id, student.id)
+    refute has_element?(view, "[data-list-row]", assignment.title)
+  end
+
+  test "an empty schedule receives assignments published in an enrolled classroom", context do
+    %{
+      conn: conn,
+      teacher: teacher,
+      classroom: classroom,
+      assignment: assignment,
+      student: student
+    } = context
+
+    assignment |> Ecto.Changeset.change(published_at: nil) |> GradePush.Repo.update!()
+    {:ok, invitation} = Classrooms.create_class_invitation(teacher, classroom.id)
+
+    {:ok, _} =
+      Classrooms.accept_class_invitation(student, invitation.token, %{
+        name: "Camille",
+        student_id: "2026001"
+      })
+
+    {:ok, view, _} =
+      conn
+      |> log_in_user(student)
+      |> live("/student/assignments?view[]=invalid&month[]=invalid")
+
+    assert has_element?(view, "h2", "No assignments yet")
+    new_assignment = assignment_fixture(teacher, classroom)
+    assert has_element?(view, "#undated-assignments [data-list-row]", new_assignment.title)
+    refute has_element?(view, "[data-list-row]", assignment.title)
+  end
+
   test "student classrooms show localized terms, teachers and only published assignment counts",
        context do
     %{teacher: teacher, classroom: classroom, student: student, conn: conn} = context

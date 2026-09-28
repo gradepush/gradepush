@@ -22,6 +22,37 @@ defmodule GradePush.Installation do
 
   def configured?, do: not is_nil(Accounts.institution())
 
+  @doc "Checks HTTPS and rejects local addresses without probing network reachability."
+  def public_setup_url?(base_url) when is_binary(base_url) do
+    uri = URI.parse(base_url)
+
+    valid_base_url?(base_url) and uri.scheme == "https" and
+      not local_setup_host?(String.downcase(String.trim_trailing(uri.host, ".")))
+  end
+
+  def public_setup_url?(_base_url), do: false
+
+  defp local_setup_host?(host) do
+    case :inet.parse_address(String.to_charlist(host)) do
+      {:ok, {_, _, _, _} = address} ->
+        local_ipv4?(address)
+
+      {:ok, {first, _, _, _, _, _, _, _}} ->
+        first not in 0x2000..0x3FFF
+
+      {:error, _} ->
+        not String.contains?(host, ".") or
+          String.ends_with?(host, [".localhost", ".local", ".internal"])
+    end
+  end
+
+  defp local_ipv4?({a, _, _, _}) when a in [0, 10, 127] or a >= 224, do: true
+  defp local_ipv4?({172, b, _, _}) when b in 16..31, do: true
+  defp local_ipv4?({192, 168, _, _}), do: true
+  defp local_ipv4?({169, 254, _, _}), do: true
+  defp local_ipv4?({100, b, _, _}) when b in 64..127, do: true
+  defp local_ipv4?(_address), do: false
+
   @doc "Returns a private setup link for use by the server operator."
   def setup_link(base_url) when is_binary(base_url) do
     with false <- configured?(),
@@ -35,13 +66,16 @@ defmodule GradePush.Installation do
     end
   end
 
-  def initialize_bootstrap do
-    case Repo.transaction(fn -> bootstrap_token_record() end) do
+  def initialize_bootstrap(configured_token \\ Application.get_env(:gradepush, :setup_token)) do
+    case Repo.transaction(fn -> bootstrap_token_record(configured_token) end) do
       {:ok, {:configured, _}} ->
         {:ok, :configured}
 
-      {:ok, {:ready, token, status}} ->
-        Logger.warning("GradePush one-time setup token: #{token}")
+      {:ok, {:ready, _token, status}} ->
+        Logger.info(
+          "GradePush setup is ready. Use your SETUP_TOKEN or run gradepush-setup for a private setup link."
+        )
+
         {:ok, status}
 
       {:error, reason} ->
@@ -90,6 +124,9 @@ defmodule GradePush.Installation do
 
       not valid_base_url?(base_url) ->
         {:error, :invalid_base_url}
+
+      not public_setup_url?(base_url) ->
+        {:error, :public_https_required}
 
       true ->
         :ok
@@ -278,9 +315,14 @@ defmodule GradePush.Installation do
     with true <- Accounts.teacher?(actor),
          {:ok, access_token} <- user_access_token(actor),
          {:ok, installations} <- GradePush.GitHub.list_user_installations(access_token) do
+      app_id = configured_app_id()
+
       organizations =
         installations
-        |> Enum.filter(&(integer_field(&1, :app_id) == configured_app_id()))
+        |> Enum.filter(fn installation ->
+          integer_field(installation, :app_id) == app_id and
+            field(field(installation, :account) || %{}, :type) == "Organization"
+        end)
         |> Enum.map(fn installation ->
           account = field(installation, :account) || %{}
 
@@ -398,7 +440,7 @@ defmodule GradePush.Installation do
     |> Keyword.get(:web_url, "https://github.com")
   end
 
-  defp bootstrap_token_record do
+  defp bootstrap_token_record(configured_token) do
     case Repo.one(from(institution in Institution, limit: 1)) do
       %Institution{} ->
         Repo.delete_all(
@@ -408,17 +450,36 @@ defmodule GradePush.Installation do
         {:configured, nil}
 
       nil ->
-        credential = lock_bootstrap_credential()
-
-        case credential && Crypto.decrypt(credential.token_encrypted, "bootstrap.token") do
-          {:ok, token} -> {:ready, token, :existing}
-          _other -> create_bootstrap_token(credential)
-        end
+        validate_configured_setup_token!(configured_token)
+        ensure_bootstrap_token(lock_bootstrap_credential(), configured_token)
     end
   end
 
-  defp create_bootstrap_token(credential) do
-    token = random_token()
+  defp ensure_bootstrap_token(credential, configured_token) do
+    case credential && Crypto.decrypt(credential.token_encrypted, "bootstrap.token") do
+      {:ok, token} when is_nil(configured_token) ->
+        {:ready, token, :existing}
+
+      {:ok, token} ->
+        if Crypto.secure_compare(Crypto.hash(configured_token), credential.token_hash),
+          do: {:ready, token, :existing},
+          else: create_bootstrap_token(credential, configured_token)
+
+      _other ->
+        create_bootstrap_token(credential, configured_token)
+    end
+  end
+
+  defp validate_configured_setup_token!(nil), do: :ok
+
+  defp validate_configured_setup_token!(token) do
+    unless is_binary(token) and Regex.match?(~r/\A[!-~]{32,128}\z/, token) do
+      Repo.rollback(:invalid_configured_setup_token)
+    end
+  end
+
+  defp create_bootstrap_token(credential, configured_token) do
+    token = configured_token || random_token()
 
     case Crypto.encrypt(token, "bootstrap.token") do
       {:ok, encrypted} -> persist_bootstrap_token(token, encrypted, credential)
@@ -733,6 +794,7 @@ defmodule GradePush.Installation do
         Path.join(base_url, "/auth/github/callback")
       ],
       setup_url: Path.join(base_url, "/setup"),
+      setup_on_update: true,
       hook_attributes: %{url: Path.join(base_url, "/webhooks/github"), active: true},
       public: true,
       default_permissions: %{
@@ -814,9 +876,10 @@ defmodule GradePush.Installation do
   end
 
   defp validate_installation_permissions(app_installation) do
-    if field(field(app_installation, :permissions) || %{}, :administration) == "write",
-      do: :ok,
-      else: {:error, :installation_not_authorized}
+    if is_nil(field(app_installation, :suspended_at)) and
+         field(field(app_installation, :permissions) || %{}, :administration) == "write",
+       do: :ok,
+       else: {:error, :installation_not_authorized}
   end
 
   defp require_organization_owner(membership) do

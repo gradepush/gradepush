@@ -18,8 +18,8 @@ defmodule GradePushWeb.NavigationComponents do
         "mt-[28px] flex border-b border-line",
         @compact &&
           [
-            "max-[760px]:grid max-[760px]:auto-cols-fr max-[760px]:grid-flow-col",
-            "max-[760px]:[&>a]:flex-col max-[760px]:[&>a]:gap-[6px] max-[760px]:[&>a]:px-[4px]",
+            "max-[760px]:grid max-[760px]:auto-cols-[minmax(max-content,1fr)] max-[760px]:grid-flow-col max-[760px]:overflow-x-auto",
+            "max-[760px]:[&>a]:flex-col max-[760px]:[&>a]:gap-[6px] max-[760px]:[&>a]:px-[12px]",
             "max-[760px]:[&>a]:py-[12px] max-[760px]:[&>a]:text-[11px] max-[760px]:[&>a]:whitespace-nowrap"
           ],
         @class

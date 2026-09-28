@@ -34,7 +34,7 @@
             section={@settings_section}
             user={@user}
             organizations={@organizations}
-            sharing_teachers={@sharing_teachers}
+            preview={@preview?}
             notice={@notice}
             error={@error}
           />
@@ -56,7 +56,7 @@
           </.page_heading>
           <ClassroomComponents.grouped_classes
             :let={classroom}
-            :if={@scenario != "empty"}
+            :if={@scenario != "empty" and @classes != []}
             classes={@classes}
           >
             <ClassroomComponents.card
@@ -69,7 +69,7 @@
               teachers={classroom.teachers}
             />
           </ClassroomComponents.grouped_classes>
-          <.empty_state :if={@scenario == "empty"}>
+          <.empty_state :if={@scenario == "empty" or @classes == []}>
             <.icon name="hero-academic-cap" class="size-8" /><h2>
               {gettext("Your first classroom starts here")}
             </h2><p>
@@ -451,12 +451,17 @@
           <.field_hint :if={classroom_organization_locked?(assigns)}>
             {gettext("The GitHub organization cannot change after assignments have been created.")}
           </.field_hint>
-          <.field_hint :if={classroom_organizations(@organizations) == [] and not @preview?}>
+          <.notice
+            :if={classroom_organizations(@organizations) == [] and not @preview?}
+            kind="error"
+            icon="hero-exclamation-circle"
+            class="!mb-0 text-[13px] leading-[1.6]"
+          >
             {gettext("Connect a GitHub organization in settings before creating a classroom.")}
             <.link patch="/teacher/settings?section=organizations">{gettext(
               "Open organization settings"
             )}</.link>
-          </.field_hint>
+          </.notice>
           <.modal_actions>
             <.button type="button" phx-click="close">{gettext("Cancel")}</.button><.button
               type="submit"
@@ -602,75 +607,47 @@
           {gettext("Teachers are added locally in this preview. No invitation is sent.")}
         </p>
       <% modal?(@modal, "connect_organization") -> %>
-        <p>
-          {gettext(
-            "Authorize GradePush on GitHub to create assignment repositories in your organization."
-          )}
-        </p>
-        <div
-          :if={@preview?}
-          class="text-muted text-[12px] mt-[16px] mb-0 mx-0"
-        >
-          {gettext(
-            "GitHub connections are unavailable in this preview. No permissions will be changed."
-          )}
-        </div>
-        <form
-          :if={!@preview? and @available_organizations != []}
-          phx-submit="connect_organization"
-          class="grid gap-[18px]"
-        >
-          <.field>
-            {gettext("Installed organization")}
-            <.input type="select" name="organization" required>
-              <option value="" selected>{gettext("Select an organization")}</option>
-              <option
-                :for={organization <- @available_organizations}
-                value={organization.installation_id}
-              >
-                {organization.login}
-              </option>
-            </.input>
-          </.field>
-          <.field>
-            {gettext("Who can use this connection?")}
-            <.input type="select" name="sharing_scope">
-              <option value="private">{gettext("Only me")}</option>
-              <option value="institution">{gettext("All institution teachers")}</option>
-            </.input>
-          </.field>
-          <.modal_actions>
-            <.button type="button" phx-click="close">{gettext("Cancel")}</.button>
-            <.button type="submit" variant="primary">{gettext("Connect organization")}</.button>
-          </.modal_actions>
-        </form>
-        <div
-          :if={!@preview? and @available_organizations == []}
-          class="text-muted text-[13px] leading-[1.6] py-[20px] px-[22px] m-0 max-[760px]:p-[18px]"
-        >
-          <p>{gettext("No GitHub organization is installed for GradePush yet.")}</p>
-          <.button
-            :if={@github_app_install_url}
-            variant="primary"
-            href={@github_app_install_url}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {gettext("Install GradePush on GitHub")}<.icon
-              name="hero-arrow-top-right-on-square"
-              class="size-4"
-            />
-          </.button>
-          <p :if={!@github_app_install_url}>
-            {gettext("Ask the platform administrator to connect GitHub first.")}
+        <div data-ui="organization-connection" class="grid gap-[20px]">
+          <p class="text-muted leading-[1.65]">
+            {gettext(
+              "Connect an organization where GradePush is already installed. Your GitHub permissions will be verified."
+            )}
           </p>
+          <p :if={@preview? || GradePush.Demo.enabled?()} class="text-muted text-[13px]">
+            {gettext("GitHub connections are unavailable in demo mode.")}
+          </p>
+          <ul :if={@available_organizations != []} class="divide-y divide-line">
+            <li
+              :for={organization <- @available_organizations}
+              class="flex items-center justify-between gap-[16px] py-[12px]"
+            >
+              <strong class="min-w-0 break-words">{organization.login}</strong>
+              <.button
+                phx-click="connect_organization"
+                phx-value-organization={organization.installation_id}
+                phx-disable-with={gettext("Connecting…")}
+              >{gettext("Connect")}</.button>
+            </li>
+          </ul>
+          <.empty_state :if={
+            @available_organizations == [] && !@preview? && !GradePush.Demo.enabled?()
+          }>
+            <.icon name="hero-building-office-2" class="size-6" />
+            <p>
+              {gettext("No other installed organizations are available for your GitHub account.")}
+            </p>
+          </.empty_state>
+          <.modal_actions>
+            <.button phx-click="close">{gettext("Close")}</.button>
+            <.button
+              :if={!@preview? && !GradePush.Demo.enabled?()}
+              href={~p"/github/organizations/connect"}
+              variant="primary"
+            >
+              {gettext("Continue on GitHub")}
+            </.button>
+          </.modal_actions>
         </div>
-        <.modal_actions :if={@preview? or @available_organizations == []}>
-          <.button phx-click="close">{gettext("Close")}</.button>
-          <.button :if={@preview?} type="submit" variant="primary" disabled>{gettext(
-            "Continue on GitHub"
-          )}</.button>
-        </.modal_actions>
       <% modal?(@modal, "remove") -> %>
         <p>
           {gettext("Remove %{name} from this classroom?",

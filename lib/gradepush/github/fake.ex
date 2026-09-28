@@ -41,6 +41,12 @@ defmodule GradePush.GitHub.Fake do
     :ok
   end
 
+  def set_installations(installations) when is_list(installations) do
+    state = Process.get(@test_state_key, %{})
+    Process.put(@test_state_key, Map.put(state, :installations, installations))
+    :ok
+  end
+
   def set_workflow_file_sha(owner, repository, sha) when is_binary(sha) do
     state = Process.get(@test_state_key, %{})
     shas = Map.put(Map.get(state, :workflow_file_shas, %{}), {owner, repository}, sha)
@@ -88,18 +94,27 @@ defmodule GradePush.GitHub.Fake do
   end
 
   @impl true
-  def list_installations(_credentials), do: {:ok, [@installation]}
+  def list_installations(_credentials), do: {:ok, installations()}
 
   @impl true
-  def get_installation(_credentials, 123), do: {:ok, @installation}
-  def get_installation(_credentials, _installation_id), do: {:error, :not_found}
+  def get_installation(_credentials, installation_id), do: find_installation(installation_id)
 
   @impl true
-  def list_user_installations(_access_token), do: {:ok, [@installation]}
+  def list_user_installations(_access_token), do: {:ok, installations()}
 
   @impl true
-  def get_user_installation(_access_token, 123), do: {:ok, @installation}
-  def get_user_installation(_access_token, _installation_id), do: {:error, :not_found}
+  def get_user_installation(_access_token, installation_id),
+    do: find_installation(installation_id)
+
+  defp installations,
+    do: Map.get(Process.get(@test_state_key, %{}), :installations, [@installation])
+
+  defp find_installation(id) do
+    case Enum.find(installations(), &(&1["id"] == id)) do
+      nil -> {:error, :not_found}
+      installation -> {:ok, installation}
+    end
+  end
 
   @impl true
   def get_user_organization_membership(_access_token, organization) do

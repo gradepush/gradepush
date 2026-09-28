@@ -14,6 +14,7 @@ services:
       DB_NAME: ${DB_NAME:-gradepush}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-}
       CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-}
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
       UI_PREVIEW: ${UI_PREVIEW:-false}
       DEMO_MODE: ${DEMO_MODE:-false}
       PHX_HOST: ${PHX_HOST:-localhost}

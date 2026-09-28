@@ -6,7 +6,6 @@ defmodule GradePush.Repo.Migrations.CreateTeaching do
       add :github_organization_id, :bigint, null: false
       add :login, :string, null: false
       add :installation_id, :bigint, null: false
-      add :sharing_scope, :string, null: false, default: "private"
       add :status, :string, null: false, default: "active"
       add :connected_by_id, references(:users, on_delete: :restrict), null: false
       timestamps(type: :utc_datetime_usec)
@@ -14,10 +13,6 @@ defmodule GradePush.Repo.Migrations.CreateTeaching do
 
     create unique_index(:github_organization_connections, [:github_organization_id])
     create unique_index(:github_organization_connections, [:installation_id])
-
-    create constraint(:github_organization_connections, :github_connection_scope_check,
-             check: "sharing_scope IN ('private', 'institution')"
-           )
 
     create constraint(:github_organization_connections, :github_connection_status_check,
              check: "status IN ('active', 'revoked', 'suspended')"

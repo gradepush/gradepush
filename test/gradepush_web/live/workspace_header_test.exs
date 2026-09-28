@@ -48,9 +48,13 @@ defmodule GradePushWeb.WorkspaceHeaderTest do
     assert has_element?(view, "[data-ui~='settings-nav'] a[aria-current='page']", "Organisations")
     refute has_element?(view, "#github-account-title")
     assert has_element?(view, "[data-ui~='organization-row']", "cegep-sorel-tracy")
-    view |> element("[data-ui~='settings-actions'] button") |> render_click()
-    assert has_element?(view, "[role='dialog']", "Aucune permission ne sera modifiée")
-    assert has_element?(view, "[role='dialog'] button[disabled]", "Continuer sur GitHub")
+
+    view
+    |> element("[data-ui~='settings-actions'] button", "Déjà installée sur GitHub?")
+    |> render_click()
+
+    assert has_element?(view, "[role='dialog']", "Les connexions GitHub ne sont pas disponibles")
+    refute has_element?(view, "[role='dialog'] a[href='/github/organizations/connect']")
     render_click(view, "close")
     refute has_element?(view, "[role='dialog']")
     view |> element("[data-ui~='navigation'] a[href='/classrooms']") |> render_click()

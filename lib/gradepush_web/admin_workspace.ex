@@ -47,6 +47,19 @@ defmodule GradePushWeb.AdminWorkspace do
   def error(:not_found), do: gettext("This record is no longer available.")
   def error(:last_admin), do: gettext("Keep at least one institution administrator.")
   def error(:last_administrator), do: gettext("Keep at least one institution administrator.")
+
+  def error(:last_platform_operator),
+    do:
+      gettext(
+        "Keep at least one platform administrator. Add another administrator before removing this access."
+      )
+
+  def error(:account_not_found),
+    do:
+      gettext(
+        "Account not found. Ask this person to sign in to GradePush with GitHub first, then try again."
+      )
+
   def error(:cannot_remove_self), do: gettext("You cannot remove your own account.")
   def error(:invalid_student_profile), do: gettext("Enter your name and student ID.")
 
@@ -83,9 +96,12 @@ defmodule GradePushWeb.AdminWorkspace do
   end
 
   defp action("institution.renamed"), do: gettext("Institution renamed")
+  defp action("platform.operator_granted"), do: gettext("Platform administrator added")
+  defp action("platform.operator_removed"), do: gettext("Platform administrator removed")
   defp action("institution.footer_updated"), do: gettext("Institution links updated")
   defp action("teacher.invited"), do: gettext("Teacher invited")
   defp action("teacher.removed"), do: gettext("Teacher removed from institution")
+  defp action("student.removed"), do: gettext("Student removed from institution")
   defp action("teacher.role_changed"), do: gettext("Institution role changed")
   defp action("classroom.teacher_added"), do: gettext("Teacher added to classroom")
   defp action("classroom.teacher_replaced"), do: gettext("Classroom teacher replaced")

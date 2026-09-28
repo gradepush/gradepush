@@ -113,29 +113,33 @@ defmodule GradePushWeb.Presentation do
   end
 
   def date(value, locale \\ Gettext.get_locale(GradePushWeb.Gettext)) do
-    months =
-      Gettext.with_locale(GradePushWeb.Gettext, locale, fn ->
-        [
-          gettext("January"),
-          gettext("February"),
-          gettext("March"),
-          gettext("April"),
-          gettext("May"),
-          gettext("June"),
-          gettext("July"),
-          gettext("August"),
-          gettext("September"),
-          gettext("October"),
-          gettext("November"),
-          gettext("December")
-        ]
-      end)
-
-    month = Enum.at(months, value.month - 1)
+    month = Enum.at(month_names(locale), value.month - 1)
 
     if locale == "fr",
       do: "#{value.day} #{month} #{value.year}",
       else: "#{month} #{value.day}, #{value.year}"
+  end
+
+  def month(value, locale \\ Gettext.get_locale(GradePushWeb.Gettext)),
+    do: "#{Enum.at(month_names(locale), value.month - 1)} #{value.year}"
+
+  defp month_names(locale) do
+    Gettext.with_locale(GradePushWeb.Gettext, locale, fn ->
+      [
+        gettext("January"),
+        gettext("February"),
+        gettext("March"),
+        gettext("April"),
+        gettext("May"),
+        gettext("June"),
+        gettext("July"),
+        gettext("August"),
+        gettext("September"),
+        gettext("October"),
+        gettext("November"),
+        gettext("December")
+      ]
+    end)
   end
 
   def datetime_text(value), do: %{en: datetime(value, "en"), fr: datetime(value, "fr")}

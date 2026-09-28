@@ -10,7 +10,9 @@ defmodule GradePush.TeachingFixtures do
 
   def student_fixture(attrs \\ %{}) do
     attrs = Map.new(attrs)
-    github_id = Map.get(attrs, :github_id, System.unique_integer([:positive, :monotonic]))
+
+    github_id =
+      Map.get(attrs, :github_id, 1_000_000 + System.unique_integer([:positive, :monotonic]))
 
     {:ok, student} =
       Accounts.upsert_github_user(
@@ -83,7 +85,6 @@ defmodule GradePush.TeachingFixtures do
           github_organization_id: unique,
           login: "gradepush-test-#{unique}",
           installation_id: unique,
-          sharing_scope: "private",
           status: "active",
           connected_by_id: teacher.id
         })

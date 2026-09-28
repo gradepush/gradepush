@@ -2,7 +2,7 @@ defmodule GradePushWeb.SignInLive do
   @moduledoc false
   use GradePushWeb, :live_view
 
-  alias GradePushWeb.WorkspaceLayout
+  alias GradePushWeb.OnboardingComponents
 
   @impl true
   def mount(_params, session, socket) do
@@ -20,26 +20,62 @@ defmodule GradePushWeb.SignInLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <.page public>
-      <div class="min-h-screen flex flex-col">
-        <WorkspaceLayout.public_header locale={@locale} path="/auth/sign-in" />
-        <.page_content>
-          <.empty_state>
-            <h1>{gettext("Sign in with GitHub")}</h1>
-            <p>{gettext("Sign in with GitHub to return to your classrooms.")}</p>
-            <.button href="/auth/github" variant="primary">{gettext("Continue on GitHub")}</.button>
-            <.notice
-              :if={Phoenix.Flash.get(@flash, :error)}
-              kind="error"
-              role="alert"
-            >
-              {Phoenix.Flash.get(@flash, :error)}
-            </.notice>
-          </.empty_state>
-        </.page_content>
-        <WorkspaceLayout.footer context={:public} links={@footer_links} />
+    <OnboardingComponents.frame
+      locale={@locale}
+      path="/auth/sign-in"
+      eyebrow="GradePush"
+      title={gettext("Welcome to your classroom")}
+      description={gettext("Your classes, assignments, and code, together in one place.")}
+      footer_links={@footer_links}
+    >
+      <:overview>
+        <dl class="space-y-[24px]">
+          <div class="flex items-start gap-[14px]">
+            <span class="inline-flex size-[38px] shrink-0 items-center justify-center rounded-[10px] bg-brand-soft text-brand"><.icon
+              name="hero-presentation-chart-bar"
+              class="size-5"
+            /></span>
+            <div>
+              <dt class="text-[14px] font-semibold">{gettext("Teachers")}</dt><dd class="mt-[5px] text-[13px] leading-[1.65] text-muted">
+                {gettext("Organize your classes and follow your students’ work.")}
+              </dd>
+            </div>
+          </div>
+          <div class="flex items-start gap-[14px]">
+            <span class="inline-flex size-[38px] shrink-0 items-center justify-center rounded-[10px] bg-brand-soft text-brand"><.icon
+              name="hero-academic-cap"
+              class="size-5"
+            /></span>
+            <div>
+              <dt class="text-[14px] font-semibold">{gettext("Students")}</dt><dd class="mt-[5px] text-[13px] leading-[1.65] text-muted">
+                {gettext("Find your assignments, deadlines, and test results.")}
+              </dd>
+            </div>
+          </div>
+        </dl>
+      </:overview>
+      <.panel_heading>
+        <.icon name="hero-user-circle" class="size-5 text-brand" />
+        <h2>{gettext("Sign in with GitHub")}</h2>
+      </.panel_heading>
+      <div class="p-[28px] max-[760px]:p-[22px]">
+        <.notice :if={Phoenix.Flash.get(@flash, :error)} kind="error" role="alert">
+          {Phoenix.Flash.get(@flash, :error)}
+        </.notice>
+        <p class="text-[14px] leading-[1.7] text-muted">
+          {gettext("Use your GitHub account to access your GradePush workspace.")}
+        </p>
+        <.button href="/auth/github" variant="primary" class="my-[24px] w-full">
+          <.icon name="github" class="size-5" />{gettext("Continue on GitHub")}
+        </.button>
+        <p class="flex items-start gap-[10px] border-t border-line pt-[20px] text-[12px] leading-[1.7] text-muted">
+          <.icon name="hero-link" class="mt-[2px] size-4 shrink-0" />
+          <span>{gettext(
+            "Joining a new class? Open the invitation link your teacher shared with you."
+          )}</span>
+        </p>
       </div>
-    </.page>
+    </OnboardingComponents.frame>
     """
   end
 end

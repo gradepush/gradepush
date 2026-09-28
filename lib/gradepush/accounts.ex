@@ -239,6 +239,79 @@ defmodule GradePush.Accounts do
 
   def operator?(_actor), do: false
 
+  def list_platform_operators(actor) do
+    if operator?(actor) do
+      {:ok,
+       Repo.all(
+         from(o in PlatformOperator, join: u in assoc(o, :user), order_by: u.login, select: u)
+       )}
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  def find_platform_operator_candidate(actor, login)
+      when is_binary(login) and byte_size(login) <= 100 do
+    if operator?(actor) do
+      login = login |> String.trim() |> String.trim_leading("@") |> String.downcase()
+
+      case Repo.one(from(u in User, where: fragment("lower(?)", u.login) == ^login)) do
+        nil -> {:error, :account_not_found}
+        user -> {:ok, user}
+      end
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  def find_platform_operator_candidate(_, _), do: {:error, :unauthorized}
+
+  @doc "Grants platform access to an existing account without changing institution roles."
+  def grant_platform_operator(actor, user_id),
+    do: change_platform_operator(actor, user_id, :grant)
+
+  @doc "Removes platform access while retaining at least one operator, including concurrent changes."
+  def remove_platform_operator(actor, user_id),
+    do: change_platform_operator(actor, user_id, :remove)
+
+  defp change_platform_operator(%User{} = actor, user_id, operation) when is_integer(user_id) do
+    Repo.transaction(fn ->
+      unless operator?(actor), do: Repo.rollback(:unauthorized)
+
+      unless Repo.one(from(i in Institution, lock: "FOR UPDATE")),
+        do: Repo.rollback(:institution_not_configured)
+
+      unless operator?(actor), do: Repo.rollback(:unauthorized)
+      target = get_user(user_id) || Repo.rollback(:not_found)
+      operator = Repo.get_by(PlatformOperator, user_id: user_id)
+      persist_platform_operator(actor, target, operator, operation)
+      target
+    end)
+  end
+
+  defp change_platform_operator(_, _, _), do: {:error, :unauthorized}
+
+  defp persist_platform_operator(actor, target, nil, :grant) do
+    Repo.insert!(%PlatformOperator{user_id: target.id, added_by_id: actor.id})
+    audit_platform_access!(actor, target, "platform.operator_granted")
+  end
+
+  defp persist_platform_operator(_actor, _target, %PlatformOperator{}, :grant), do: :ok
+  defp persist_platform_operator(_actor, _target, nil, :remove), do: Repo.rollback(:not_found)
+
+  defp persist_platform_operator(actor, target, operator, :remove) do
+    if Repo.aggregate(PlatformOperator, :count) <= 1, do: Repo.rollback(:last_platform_operator)
+    audit_platform_access!(actor, target, "platform.operator_removed")
+    Repo.delete!(operator)
+  end
+
+  defp audit_platform_access!(actor, target, action) do
+    case record_audit(actor, :platform, action, "user", target.id, target.login) do
+      {:ok, _event} -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
   def institution_teachers(actor) do
     if institution_member?(actor) do
       institution_id = institution_id()
@@ -377,6 +450,91 @@ defmodule GradePush.Accounts do
     else
       {:error, :unauthorized}
     end
+  end
+
+  @doc "Lists completed student registrations with class counts, without classroom contents."
+  def list_institution_students(actor, opts \\ []) do
+    if admin?(actor) do
+      query =
+        opts |> Keyword.get(:query, "") |> to_string() |> String.slice(0, 100) |> String.trim()
+
+      institution_id = institution_id()
+
+      students =
+        from(m in InstitutionMembership,
+          join: u in User,
+          on: u.id == m.user_id,
+          where: m.institution_id == ^institution_id and m.role == :student,
+          where:
+            fragment("length(trim(?)) > 0", m.student_name) and
+              fragment("length(trim(?)) > 0", m.student_id)
+        )
+        |> search_registered_students(query)
+
+      total = Repo.aggregate(students, :count, :id)
+      pages = max(1, div(total + 24, 25))
+
+      page =
+        case Ecto.Type.cast(:integer, Keyword.get(opts, :page, 1)) do
+          {:ok, value} when is_integer(value) -> value |> max(1) |> min(pages)
+          _ -> 1
+        end
+
+      entries =
+        from([m, u] in students,
+          order_by: [asc: fragment("lower(?)", m.student_name), asc: u.id],
+          offset: ^((page - 1) * 25),
+          limit: 25,
+          select: %{
+            id: u.id,
+            name: m.student_name,
+            identifier: m.student_id,
+            handle: u.login,
+            avatar_url: u.avatar_url
+          }
+        )
+        |> Repo.all()
+
+      ids = Enum.map(entries, & &1.id)
+
+      counts =
+        from(s in GradePush.Classrooms.ClassroomStudent,
+          where: s.user_id in ^ids and is_nil(s.removed_at),
+          group_by: s.user_id,
+          select: {s.user_id, count(s.id)}
+        )
+        |> Repo.all()
+        |> Map.new()
+
+      {:ok,
+       %{
+         entries: Enum.map(entries, &Map.put(&1, :classrooms, Map.get(counts, &1.id, 0))),
+         total: total,
+         page: page,
+         pages: pages,
+         query: query
+       }}
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  defp search_registered_students(students, ""), do: students
+
+  defp search_registered_students(students, query) do
+    escaped =
+      query
+      |> String.replace("\\", "\\\\")
+      |> String.replace("%", "\\%")
+      |> String.replace("_", "\\_")
+
+    pattern = "%" <> escaped <> "%"
+
+    from([m, u] in students,
+      where:
+        ilike(m.student_name, ^pattern) or ilike(m.student_id, ^pattern) or
+          ilike(u.login, ^pattern)
+    )
   end
 
   def create_teacher_invitation(actor) do
@@ -588,6 +746,60 @@ defmodule GradePush.Accounts do
 
       nil ->
         {:error, :not_found}
+    end
+  end
+
+  @doc "Removes student registration and classroom access, preserving the account and existing work."
+  def remove_student(actor, user_id) do
+    with true <- admin?(actor),
+         id when is_integer(id) <- parse_id(user_id),
+         false <- actor_id(actor) == id do
+      remove_institution_student(actor, id)
+    else
+      true -> {:error, :cannot_remove_self}
+      false -> {:error, :unauthorized}
+      nil -> {:error, :not_found}
+    end
+  end
+
+  defp remove_institution_student(actor, user_id) do
+    Repo.transaction(fn ->
+      Repo.one!(from(i in Institution, lock: "FOR NO KEY UPDATE"))
+      target = Repo.one(from(u in User, where: u.id == ^user_id, lock: "FOR UPDATE"))
+      unless admin?(actor), do: Repo.rollback(:unauthorized)
+      membership = target && student_membership(target)
+      unless membership, do: Repo.rollback(:not_found)
+
+      classrooms =
+        from(s in GradePush.Classrooms.ClassroomStudent,
+          where: s.user_id == ^user_id and is_nil(s.removed_at)
+        )
+
+      classroom_ids = Repo.all(from(s in classrooms, select: s.classroom_id))
+      now = DateTime.utc_now()
+      Repo.update_all(classrooms, set: [removed_at: now, updated_at: now])
+      Repo.delete!(membership)
+
+      record_audit(actor, :institution, "student.removed", "user", user_id, target.login)
+      |> audit_result!()
+
+      classroom_ids
+    end)
+    |> case do
+      {:ok, classroom_ids} ->
+        for id <- classroom_ids do
+          Phoenix.PubSub.broadcast(
+            GradePush.PubSub,
+            "classroom:#{id}",
+            {:student_removed, user_id}
+          )
+        end
+
+        Phoenix.PubSub.broadcast(GradePush.PubSub, "user:#{user_id}", {:student_removed, user_id})
+        {:ok, :removed}
+
+      error ->
+        error
     end
   end
 
@@ -833,6 +1045,12 @@ defmodule GradePush.Accounts do
 
       if admin?(target) and count_role(:admin) <= 1 do
         Repo.rollback(:last_administrator)
+      end
+
+      if Repo.exists?(
+           from(t in GradePush.Classrooms.ClassroomTeacher, where: t.user_id == ^target.id)
+         ) do
+        Repo.rollback(:classrooms_assigned)
       end
 
       revoked_at = DateTime.utc_now() |> DateTime.truncate(:microsecond)

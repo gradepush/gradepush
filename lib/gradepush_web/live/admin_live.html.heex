@@ -55,6 +55,7 @@
             :for={
               {key, title, icon} <- [
                 {"teachers", gettext("Teachers"), "hero-user-group"},
+                {"students", gettext("Students"), "hero-academic-cap"},
                 {"classrooms", gettext("Classrooms"), "hero-rectangle-stack"},
                 {"history", gettext("History"), "hero-clock"},
                 {"settings", gettext("Settings"), "hero-cog-6-tooth"}
@@ -72,6 +73,7 @@
             :for={
               {key, title, icon} <- [
                 {"configuration", gettext("Configuration"), "hero-adjustments-horizontal"},
+                {"administrators", gettext("Administrators"), "hero-user-group"},
                 {"services", gettext("Services"), "hero-server-stack"},
                 {"history", gettext("History"), "hero-clock"}
               ]
@@ -99,8 +101,19 @@
       </.notice>
       <div class="pt-[28px] [&>[data-ui~=toolbar]]:mt-0">
         <%= cond do %>
+          <% @live_action == :platform and @section == "administrators" -> %>
+            <AdminComponents.platform_administrators
+              users={@platform_admins}
+              actor_id={@actor_id}
+              preview={@preview?}
+            />
           <% @live_action == :platform -> %>
-            <AdminComponents.platform section={@section} user={@user} platform={@platform} />
+            <AdminComponents.platform section={@section} platform={@platform} />
+          <% @section == "students" -> %>
+            <AdminComponents.student_directory
+              directory={@student_directory}
+              actor_id={@actor_id}
+            />
           <% @section == "teachers" -> %>
             <.list_toolbar>
               <form id="admin-search" phx-change="search" role="search">
@@ -245,7 +258,7 @@
               </.panel_heading>
               <form
                 id="institution-form"
-                class="grid max-w-[660px] p-[24px] gap-[18px] max-[760px]:p-[18px]"
+                class="grid p-[22px] gap-[20px] max-[760px]:p-[18px]"
                 phx-submit="save_institution"
               >
                 <.field>
@@ -255,7 +268,7 @@
                     maxlength="100"
                     value={@state.name}
                   />
-                </.field><.modal_actions>
+                </.field><.modal_actions class="!mt-0 border-t border-line pt-[20px]">
                   <.button type="submit" variant="primary" phx-disable-with={gettext("Saving…")}>{gettext(
                     "Save changes"
                   )}</.button>
@@ -277,28 +290,30 @@
               <.form
                 for={@footer_form}
                 id="footer-form"
-                class="grid max-w-[660px] p-[24px] gap-[18px] max-[760px]:p-[18px]"
+                class="grid p-[22px] gap-[20px] max-[760px]:p-[18px]"
                 phx-submit="save_footer"
               >
-                <.field_hint id="footer-url-help">
+                <.field_hint id="footer-url-help" class="!m-0">
                   {gettext("Use HTTPS links. Assistance also accepts mailto:email@example.org.")}
                 </.field_hint>
-                <.input
-                  :for={
-                    {field, label} <- [
-                      {:support_url, gettext("Assistance")},
-                      {:privacy_url, gettext("Privacy")},
-                      {:accessibility_url, gettext("Accessibility")},
-                      {:terms_url, gettext("Terms of use")}
-                    ]
-                  }
-                  field={@footer_form[field]}
-                  type="url"
-                  label={label}
-                  maxlength="2048"
-                  aria-describedby="footer-url-help"
-                />
-                <.modal_actions>
+                <div class="grid grid-cols-2 gap-[20px] max-[760px]:grid-cols-1">
+                  <.input
+                    :for={
+                      {field, label} <- [
+                        {:support_url, gettext("Assistance")},
+                        {:privacy_url, gettext("Privacy")},
+                        {:accessibility_url, gettext("Accessibility")},
+                        {:terms_url, gettext("Terms of use")}
+                      ]
+                    }
+                    field={@footer_form[field]}
+                    type="url"
+                    label={label}
+                    maxlength="2048"
+                    aria-describedby="footer-url-help"
+                  />
+                </div>
+                <.modal_actions class="!mt-0 border-t border-line pt-[20px]">
                   <.button type="submit" variant="primary" phx-disable-with={gettext("Saving…")}>{gettext(
                     "Save changes"
                   )}</.button>
@@ -327,6 +342,82 @@
       {@error}
     </.notice>
     <%= case @modal do %>
+      <% {"student_remove", _} -> %>
+        <p phx-mounted={JS.focus(to: "#cancel-student-removal")}>
+          {gettext("Remove %{name} from the institution?", name: @student_target.name)}
+        </p>
+        <p class="mt-[16px] text-muted leading-[1.65]">
+          {gettext(
+            "Their student registration and access to all classes will be removed. Their account, existing work, and GitHub repositories will be kept. They can register again using an invitation link."
+          )}
+        </p>
+        <.modal_actions>
+          <.button id="cancel-student-removal" phx-click="close">{gettext("Cancel")}</.button>
+          <.button
+            variant="danger"
+            phx-click="remove_student"
+            phx-disable-with={gettext("Saving…")}
+          >
+            {gettext("Remove")}
+          </.button>
+        </.modal_actions>
+      <% {"operator_add", _} -> %>
+        <form id="platform-admin-form" phx-submit="find_platform_admin" class="grid gap-[20px]">
+          <p class="text-muted leading-[1.65]">
+            {gettext("This person must have signed in to GradePush with GitHub at least once.")}
+          </p>
+          <.field>
+            {gettext("GitHub username")}
+            <.input
+              name="operator[login]"
+              required
+              maxlength="100"
+              autocomplete="off"
+              placeholder="octocat"
+            />
+          </.field>
+          <.modal_actions>
+            <.button phx-click="close">{gettext("Cancel")}</.button>
+            <.button type="submit" variant="primary">{gettext("Continue")}</.button>
+          </.modal_actions>
+        </form>
+      <% {action, _} when action in ["operator_grant", "operator_remove"] -> %>
+        <div class="flex items-center gap-[12px] mb-[20px]">
+          <.user_avatar src={@operator_target.avatar_url}>
+            {@operator_target.initials}
+          </.user_avatar>
+          <div class="min-w-0">
+            <strong class="break-words">{@operator_target.name}</strong><p class="text-muted text-[13px] break-words">
+              @{@operator_target.handle}
+            </p>
+          </div>
+        </div>
+        <p class="text-muted leading-[1.65]">
+          {if action == "operator_grant",
+            do:
+              gettext(
+                "This person will be able to manage platform administrators and view configuration, service status, and platform history. Institution and classroom permissions stay unchanged."
+              ),
+            else:
+              gettext(
+                "This person will lose access to platform administration. Their account, institution roles, and classrooms will be kept."
+              )}
+        </p>
+        <.modal_actions class="mt-[24px]">
+          <.button phx-click="close">{gettext("Cancel")}</.button>
+          <.button
+            :if={action == "operator_grant"}
+            variant="primary"
+            phx-click="grant_platform_admin"
+            phx-disable-with={gettext("Saving…")}
+          >{gettext("Grant platform access")}</.button>
+          <.button
+            :if={action == "operator_remove"}
+            variant="danger"
+            phx-click="confirm_remove_platform_admin"
+            phx-disable-with={gettext("Saving…")}
+          >{gettext("Remove access")}</.button>
+        </.modal_actions>
       <% {"invite", _} -> %>
         <p>
           {gettext(
@@ -408,7 +499,9 @@
           )}
         </p>
         <p class="rounded-[7px] bg-[#f6f8fb] mt-[16px] mb-[22px] text-[13px] p-[14px] mx-0">
-          {gettext("Their GitHub repositories and access will be kept.")}
+          {gettext(
+            "Their teacher and institution administrator access will be removed. Their account and GitHub repositories will be kept. Student and platform administrator roles stay unchanged."
+          )}
         </p>
         <.notice
           :if={AdminWorkspace.class_count(@state, id) > 0}

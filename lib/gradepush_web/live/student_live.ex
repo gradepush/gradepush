@@ -9,6 +9,7 @@ defmodule GradePushWeb.StudentLive do
     GradingComponents,
     Markdown,
     Presentation,
+    StudentScheduleComponents,
     WorkspaceLayout
   }
 
@@ -30,6 +31,7 @@ defmodule GradePushWeb.StudentLive do
        classes: [],
        classroom: nil,
        assignments: [],
+       schedule: nil,
        assignment: nil,
        subject: nil,
        repository: nil,
@@ -59,12 +61,19 @@ defmodule GradePushWeb.StudentLive do
          |> assign(classes: classes, page_title: gettext("My classrooms"))
          |> subscribe_to(["user:#{actor.id}" | Enum.map(classes, &"classroom:#{&1.id}")])}
 
+      :schedule ->
+        load_schedule(socket, params)
+
       action when action in [:show, :assignment] ->
         load_classroom(socket, params)
     end
   end
 
   @impl true
+  def handle_info({event, _id}, %{assigns: %{live_action: :schedule}} = socket)
+      when event in [:repository_changed, :push_recorded, :grade_recorded, :grade_untrusted],
+      do: {:noreply, socket}
+
   def handle_info(
         {:student_removed, user_id},
         %{assigns: %{current_user: %{id: user_id}}} = socket
@@ -80,6 +89,8 @@ defmodule GradePushWeb.StudentLive do
              :assignment_created,
              :assignment_updated,
              :assignment_archived,
+             :assignment_accepted,
+             :team_changed,
              :repository_changed,
              :push_recorded,
              :grade_recorded,
@@ -91,11 +102,39 @@ defmodule GradePushWeb.StudentLive do
   def handle_info(_message, socket), do: {:noreply, socket}
 
   defp refresh(socket) do
-    if socket.assigns.live_action == :index do
+    if socket.assigns.live_action in [:index, :schedule] do
       handle_params(socket.assigns.route_params, socket.assigns.path, socket)
     else
       load_classroom(socket, socket.assigns.route_params)
     end
+  end
+
+  defp load_schedule(socket, params) do
+    actor = socket.assigns.current_user
+
+    classes =
+      case Classrooms.list_student_classrooms(actor) do
+        {:ok, classes} -> classes
+        {:error, _} -> []
+      end
+
+    entries =
+      case Assignments.list_student_schedule(actor) do
+        {:ok, entries} -> entries
+        {:error, _} -> []
+      end
+
+    {:noreply,
+     socket
+     |> assign(
+       schedule: StudentScheduleComponents.prepare(entries, params),
+       page_title: gettext("My assignments")
+     )
+     |> subscribe_to(
+       ["user:#{actor.id}"] ++
+         Enum.map(classes, &"classroom:#{&1.id}") ++
+         Enum.map(entries, &"assignment:#{&1.assignment.id}")
+     )}
   end
 
   defp load_classroom(socket, params) do
@@ -170,6 +209,17 @@ defmodule GradePushWeb.StudentLive do
       %{html_url: "https://github.com/" <> _ = url} -> url
       _ -> nil
     end
+  end
+
+  defp language_url(path, params, locale) do
+    query =
+      params
+      |> Map.take(~w(view month))
+      |> Enum.filter(fn {_key, value} -> is_binary(value) end)
+      |> Map.new()
+      |> Map.put("locale", locale)
+
+    path <> "?" <> URI.encode_query(query)
   end
 
   defp due(nil), do: gettext("No deadline")

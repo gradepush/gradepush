@@ -9,7 +9,7 @@
       contexts={@contexts}
       preview={false}
       locale={@locale}
-      language_urls={Map.new(~w(en fr), &{&1, @path <> "?locale=" <> &1})}
+      language_urls={Map.new(~w(en fr), &{&1, language_url(@path, @route_params, &1)})}
     />
     <.page_content
       id="student-content"
@@ -44,6 +44,8 @@
               teachers={Enum.map(classroom.teachers, &Presentation.user(&1.user))}
             />
           </ClassroomComponents.grouped_classes>
+        <% @live_action == :schedule -> %>
+          <StudentScheduleComponents.schedule schedule={@schedule} />
         <% is_nil(@classroom) or (@live_action == :assignment and is_nil(@assignment)) -> %>
           <.empty_state>
             <h1>{gettext("This page is not available.")}</h1><.button navigate="/student/classrooms">{gettext(

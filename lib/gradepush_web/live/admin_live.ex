@@ -30,6 +30,10 @@ defmodule GradePushWeb.AdminLive do
            else: Presentation.contexts(actor)
          ),
        invitation_url: nil,
+       platform_admins: [],
+       student_directory: empty_student_directory(),
+       student_target: nil,
+       operator_target: nil,
        section: "teachers",
        modal: nil,
        error: nil,
@@ -55,8 +59,8 @@ defmodule GradePushWeb.AdminLive do
   defp show_section(params, socket) do
     sections =
       if socket.assigns.live_action == :institution,
-        do: ~w(teachers classrooms history settings),
-        else: ~w(configuration services history)
+        do: ~w(teachers students classrooms history settings),
+        else: ~w(configuration administrators services history)
 
     section = if params["section"] in sections, do: params["section"], else: hd(sections)
 
@@ -69,6 +73,9 @@ defmodule GradePushWeb.AdminLive do
      assign(socket,
        section: section,
        platform: load_platform(socket),
+       platform_admins: platform_administrators(socket),
+       student_directory: load_student_directory(socket, section),
+       operator_target: nil,
        page_title: title,
        modal: nil,
        notice: nil,
@@ -78,8 +85,80 @@ defmodule GradePushWeb.AdminLive do
   end
 
   @impl true
+  def handle_event("search_students", %{"query" => query}, socket) when is_binary(query) do
+    update_student_directory(socket, query, 1)
+  end
+
+  def handle_event("student_page", %{"page" => page}, socket) do
+    update_student_directory(socket, socket.assigns.student_directory.query, page)
+  end
+
   def handle_event("search", %{"query" => query}, socket),
     do: {:noreply, assign(socket, query: query)}
+
+  def handle_event("add_platform_admin", _, socket) do
+    if platform_access?(socket),
+      do:
+        {:noreply, assign(socket, modal: {"operator_add", nil}, operator_target: nil, error: nil)},
+      else: complete(socket, {:error, :unauthorized})
+  end
+
+  def handle_event(
+        "find_platform_admin",
+        %{"operator" => %{"login" => login}},
+        %{assigns: %{modal: {"operator_add", _}}} = socket
+      ) do
+    with true <- platform_access?(socket),
+         {:ok, target} <-
+           Accounts.find_platform_operator_candidate(socket.assigns.current_user, login) do
+      {:noreply,
+       assign(socket,
+         modal: {"operator_grant", target.id},
+         operator_target: Presentation.user(target),
+         error: nil
+       )}
+    else
+      false -> complete(socket, {:error, :unauthorized})
+      error -> complete(socket, error)
+    end
+  end
+
+  def handle_event(
+        "grant_platform_admin",
+        _,
+        %{assigns: %{modal: {"operator_grant", id}}} = socket
+      ) do
+    complete_platform_access(
+      socket,
+      Accounts.grant_platform_operator(socket.assigns.current_user, id)
+    )
+  end
+
+  def handle_event("remove_platform_admin", %{"id" => id}, socket) do
+    with true <- platform_access?(socket),
+         {:ok, users} <- Accounts.list_platform_operators(socket.assigns.current_user),
+         %{} = target <- Enum.find(users, &(to_string(&1.id) == id)) do
+      {:noreply,
+       assign(socket,
+         modal: {"operator_remove", target.id},
+         operator_target: Presentation.user(target),
+         error: nil
+       )}
+    else
+      _ -> complete(socket, {:error, :unauthorized})
+    end
+  end
+
+  def handle_event(
+        "confirm_remove_platform_admin",
+        _,
+        %{assigns: %{modal: {"operator_remove", id}}} = socket
+      ) do
+    complete_platform_access(
+      socket,
+      Accounts.remove_platform_operator(socket.assigns.current_user, id)
+    )
+  end
 
   def handle_event("open_admin", %{"kind" => kind} = params, socket)
       when kind in ~w(invite member staff) do
@@ -130,6 +209,30 @@ defmodule GradePushWeb.AdminLive do
 
   def handle_event("confirm_remove", _, %{assigns: %{modal: {"member", id}}} = socket) do
     {:noreply, assign(socket, modal: {"remove", id}, error: nil)}
+  end
+
+  def handle_event("open_student_removal", %{"id" => id}, socket) do
+    target =
+      Enum.find(socket.assigns.student_directory.entries, &(to_string(&1.id) == to_string(id)))
+
+    if target && Accounts.admin?(socket.assigns.current_user) do
+      {:noreply,
+       assign(socket, modal: {"student_remove", target.id}, student_target: target, error: nil)}
+    else
+      complete(socket, {:error, :unauthorized})
+    end
+  end
+
+  def handle_event("remove_student", _, %{assigns: %{modal: {"student_remove", id}}} = socket) do
+    case Accounts.remove_student(socket.assigns.current_user, id) do
+      {:ok, _} = result ->
+        {:noreply, updated} = complete(socket, result)
+        directory = socket.assigns.student_directory
+        update_student_directory(updated, directory.query, directory.page)
+
+      error ->
+        complete(socket, error)
+    end
   end
 
   def handle_event("remove_member", _, %{assigns: %{modal: {"remove", id}}} = socket) do
@@ -218,6 +321,57 @@ defmodule GradePushWeb.AdminLive do
     {:noreply, assign(socket, error: message)}
   end
 
+  defp platform_access?(socket),
+    do:
+      not socket.assigns.preview? and socket.assigns.live_action == :platform and
+        Accounts.operator?(socket.assigns.current_user)
+
+  defp empty_student_directory, do: %{entries: [], total: 0, page: 1, pages: 1, query: ""}
+
+  defp load_student_directory(
+         %{assigns: %{preview?: false, live_action: :institution, current_user: actor}},
+         "students"
+       ) do
+    case Accounts.list_institution_students(actor) do
+      {:ok, directory} -> directory
+      _ -> empty_student_directory()
+    end
+  end
+
+  defp load_student_directory(_, _), do: empty_student_directory()
+
+  defp update_student_directory(socket, query, page) do
+    case Accounts.list_institution_students(socket.assigns.current_user, query: query, page: page) do
+      {:ok, directory} -> {:noreply, assign(socket, student_directory: directory, error: nil)}
+      {:error, _} = error -> complete(socket, error)
+    end
+  end
+
+  defp platform_administrators(socket) do
+    if platform_access?(socket) do
+      case Accounts.list_platform_operators(socket.assigns.current_user) do
+        {:ok, users} -> Enum.map(users, &Presentation.user/1)
+        _ -> []
+      end
+    else
+      []
+    end
+  end
+
+  defp complete_platform_access(socket, {:ok, _}) do
+    if Accounts.operator?(socket.assigns.current_user) do
+      {:noreply, socket} = show_section(%{"section" => "administrators"}, socket)
+      {:noreply, assign(socket, notice: gettext("Platform access updated."))}
+    else
+      {:noreply,
+       socket
+       |> put_flash(:info, gettext("Your platform administrator access has been removed."))
+       |> redirect(to: "/")}
+    end
+  end
+
+  defp complete_platform_access(socket, error), do: complete(socket, error)
+
   defp initial_state(true, _actor), do: PreviewAdministration.initial()
 
   defp initial_state(false, actor) do
@@ -304,5 +458,9 @@ defmodule GradePushWeb.AdminLive do
   defp modal_title({"invite", _}), do: gettext("Invite a teacher")
   defp modal_title({"member", _}), do: gettext("Manage teacher")
   defp modal_title({"remove", _}), do: gettext("Remove teacher?")
+  defp modal_title({"student_remove", _}), do: gettext("Remove student?")
   defp modal_title({"staff", _}), do: gettext("Assign teachers")
+  defp modal_title({"operator_add", _}), do: gettext("Add a platform administrator")
+  defp modal_title({"operator_grant", _}), do: gettext("Grant platform access?")
+  defp modal_title({"operator_remove", _}), do: gettext("Remove platform access?")
 end
