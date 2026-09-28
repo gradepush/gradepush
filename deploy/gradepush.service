@@ -10,6 +10,8 @@ Group=gradepush
 WorkingDirectory=/opt/gradepush/current
 EnvironmentFile=/etc/gradepush/gradepush.env
 Environment=PHX_SERVER=true
+Environment=RELEASE_DISTRIBUTION=name
+Environment=RELEASE_NODE=gradepush@127.0.0.1
 Environment=GRADEPUSH_DATA_DIR=/var/lib/gradepush
 Environment=RELEASE_TMP=/tmp/gradepush
 Environment=ERL_CRASH_DUMP=/tmp/gradepush-crash.dump
