@@ -10,40 +10,36 @@
 
 Uses the published image with PostgreSQL and Caddy. No repository clone or build is required.
 
-1. Download the [standalone Compose file](compose.self-host.yaml) into an empty directory:
+1. Point your domain to the server's public IP and open ports **80** and **443**.
+
+2. Download and run the installer on your Linux server or macOS:
 
    ```sh
-   mkdir gradepush && cd gradepush
-   curl -fsSL https://raw.githubusercontent.com/gradepush/gradepush/main/compose.self-host.yaml -o compose.yaml
+   curl -fsSLO https://raw.githubusercontent.com/gradepush/gradepush/main/install.sh
+   sh install.sh
    ```
 
-2. Point your domain to the server's public IP and open ports **80** and **443**. Generate `.env`, replacing `grades.example.org` with your domain, without `https://`:
-
-   ```sh
-   (umask 077; cat > .env <<EOF
-   PHX_HOST=grades.example.org
-   DB_PASSWORD=$(openssl rand -hex 32)
-   SETUP_TOKEN=$(openssl rand -hex 32)
-   EOF
-   )
-   ```
+   Enter your domain. The installer creates `gradepush/compose.yaml` and `.env`, generates secrets, and displays your private setup link.
 
 3. Start GradePush:
 
    ```sh
+   cd gradepush
    docker compose pull
    docker compose up -d --wait
    ```
 
    Caddy manages HTTPS automatically.
 
-4. Open `https://your-domain/setup` and enter `SETUP_TOKEN` from `.env`, or retrieve your private setup link:
+4. Open the private setup link printed by the installer. To retrieve it again:
 
    ```sh
    docker compose exec app gradepush-setup
    ```
 
 5. Enter your institution name, create the GitHub App, and sign in with GitHub. Connect an organization in **Settings → Organizations** and create your first classroom.
+
+For manual installation, use the [standalone Compose file](compose.self-host.yaml) with `PHX_HOST`, `DB_PASSWORD`, and `SETUP_TOKEN` in `.env`.
 
 ## Try the demo locally
 

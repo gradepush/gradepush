@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+import hashlib
+import os
+from pathlib import Path
+import pty
+import re
+import shutil
+import subprocess
+import tempfile
+import unittest
+
+
+ROOT = Path(__file__).resolve().parent.parent
+DOCKER = shutil.which("docker")
+
+
+class InstallerTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.work = Path(self.temporary.name)
+        self.bin = self.work / "bin"
+        self.bin.mkdir()
+        self.env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}")
+        self.env.update(FIXTURE=str(ROOT / "compose.self-host.yaml"), REAL_DOCKER=DOCKER)
+        self.stub("curl", '''#!/bin/sh
+set -eu
+printf '%s\\n' "$@" > "$DOWNLOAD_ARGS"
+[ "${DOWNLOAD_FAIL:-0}" = 0 ] || exit 22
+while [ "$1" != -o ]; do shift; done
+if [ "${DOWNLOAD_CORRUPT:-0}" = 1 ]; then
+  printf 'unexpected contents' > "$2"
+else
+  cp "$FIXTURE" "$2"
+fi
+''')
+        self.stub("docker", '''#!/bin/sh
+set -eu
+if [ "$2" = version ]; then
+  printf '%s\\n' "${COMPOSE_VERSION:-2.32.0}"
+else
+  [ "${CONFIG_FAIL:-0}" = 0 ] || exit 1
+  exec "$REAL_DOCKER" "$@"
+fi
+''')
+        self.env["DOWNLOAD_ARGS"] = str(self.work / "download-args")
+
+    def stub(self, name, source):
+        path = self.bin / name
+        path.write_text(source)
+        path.chmod(0o700)
+
+    def install(self, *args):
+        return subprocess.run(
+            ["sh", str(ROOT / "install.sh"), "--domain", "grades.example.org", *args],
+            cwd=self.work, env=self.env, text=True, capture_output=True,
+        )
+
+    def assert_no_installation(self):
+        self.assertFalse((self.work / "gradepush").exists())
+        self.assertEqual(list(self.work.glob(".gradepush-install.*")), [])
+
+    def test_generates_private_config_and_setup_link(self):
+        result = self.install()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        directory = self.work / "gradepush"
+        config = dict(line.split("=", 1) for line in (directory / ".env").read_text().splitlines())
+        self.assertEqual(config["PHX_HOST"], "grades.example.org")
+        for key in ("DB_PASSWORD", "SETUP_TOKEN"):
+            self.assertRegex(config[key], r"^[a-f0-9]{64}$")
+        self.assertNotEqual(config["DB_PASSWORD"], config["SETUP_TOKEN"])
+        self.assertNotIn(config["DB_PASSWORD"], result.stdout)
+        self.assertIn(f'https://grades.example.org/setup#setup_token={config["SETUP_TOKEN"]}', result.stdout)
+        self.assertEqual(directory.stat().st_mode & 0o777, 0o700)
+        self.assertEqual((directory / ".env").stat().st_mode & 0o777, 0o600)
+        self.assertEqual((directory / "compose.yaml").read_bytes(), (ROOT / "compose.self-host.yaml").read_bytes())
+        self.assertRegex((self.work / "download-args").read_text(), r"/[a-f0-9]{40}/compose.self-host.yaml")
+        self.assertEqual(list(self.work.glob(".gradepush-install.*")), [])
+
+    def test_repeated_run_preserves_existing_files(self):
+        self.assertEqual(self.install().returncode, 0)
+        env = self.work / "gradepush/.env"
+        before = env.read_bytes()
+        result = self.install()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("already exists", result.stderr)
+        self.assertEqual(env.read_bytes(), before)
+
+    def test_does_not_follow_existing_symlink(self):
+        (self.work / "gradepush").symlink_to(self.work / "missing")
+        self.assertNotEqual(self.install().returncode, 0)
+        self.assertFalse((self.work / "missing").exists())
+
+    def test_rejects_invalid_domains(self):
+        for domain in ("localhost", "https://grades.example.org", "example.org/path", "example.org:443",
+                       "127.0.0.1", "bad host.org", "-bad.example.org", "bad-.example.org",
+                       "bad..org", "example.org\nDEMO_MODE=true", "$(touch attack).org", "a" * 64 + ".org"):
+            with self.subTest(domain=domain):
+                self.assertNotEqual(self.install("--domain", domain).returncode, 0)
+                self.assert_no_installation()
+        self.assertFalse((self.work / "download-args").exists())
+
+    def test_download_and_validation_failures_leave_no_installation(self):
+        for setting in ("DOWNLOAD_FAIL", "DOWNLOAD_CORRUPT", "CONFIG_FAIL"):
+            with self.subTest(setting=setting):
+                self.env[setting] = "1"
+                self.assertNotEqual(self.install().returncode, 0)
+                self.assert_no_installation()
+                del self.env[setting]
+
+    def test_random_generation_failure_leaves_no_installation(self):
+        real_openssl = shutil.which("openssl")
+        self.env["REAL_OPENSSL"] = real_openssl
+        self.stub("openssl", '''#!/bin/sh
+[ "$1" != rand ] || exit 1
+exec "$REAL_OPENSSL" "$@"
+''')
+        self.assertNotEqual(self.install().returncode, 0)
+        self.assert_no_installation()
+
+    def test_compose_minimum_version(self):
+        for version in ("2.31.0", "1.29.2"):
+            self.env["COMPOSE_VERSION"] = version
+            self.assertNotEqual(self.install().returncode, 0)
+            self.assert_no_installation()
+        for index, version in enumerate(("v2.32.0", "v5.5.1")):
+            self.env["COMPOSE_VERSION"] = version
+            self.assertEqual(self.install("--directory", f"version-{index}").returncode, 0)
+
+    def test_directory_with_spaces(self):
+        result = self.install("--directory", "my installation")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((self.work / "my installation/.env").exists())
+
+    def test_interactive_domain_prompt(self):
+        master, slave = pty.openpty()
+        try:
+            with subprocess.Popen(
+                ["sh", str(ROOT / "install.sh")], cwd=self.work, env=self.env,
+                stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            ) as process:
+                os.write(master, b"grades.example.org\n")
+                output, error = process.communicate(timeout=15)
+                self.assertEqual(process.returncode, 0, error)
+                self.assertIn("Public domain", output)
+                self.assertTrue((self.work / "gradepush/.env").exists())
+        finally:
+            os.close(master)
+            os.close(slave)
+
+    def test_compose_checksum_matches_repository(self):
+        expected = re.search(r"^compose_sha256=([a-f0-9]+)$", (ROOT / "install.sh").read_text(), re.M)[1]
+        self.assertEqual(hashlib.sha256((ROOT / "compose.self-host.yaml").read_bytes()).hexdigest(), expected)
+
+
+if __name__ == "__main__":
+    if not DOCKER:
+        raise SystemExit("Docker with Compose is required to validate generated configurations.")
+    unittest.main()
