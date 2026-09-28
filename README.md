@@ -1,4 +1,9 @@
-# GradePush
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gradepush/.github/main/profile/assets/gradepush-logo-on-dark.svg">
+  <img src="https://raw.githubusercontent.com/gradepush/.github/main/profile/assets/gradepush-logo.svg" alt="GradePush" width="280">
+</picture>
+
+GradePush Core is an open-source, self-hosted alternative to GitHub Classroom. Create classrooms, distribute individual or team assignments, and follow student progress with GitHub repositories and automated tests.
 
 ## Requirements
 
