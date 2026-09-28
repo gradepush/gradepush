@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -60,6 +61,9 @@ jobs:
       - name: Run project checks
         run: mix precommit
 
+      - name: Check release secret initialization
+        run: scripts/test-release-env
+
       - name: Build production assets
         run: MIX_ENV=prod mix assets.deploy
 
@@ -68,18 +72,21 @@ jobs:
 
       - name: Smoke-test the Compose release
         run: |
-          docker compose up --build -d --wait --wait-timeout 120
+          scripts/local-compose up --build -d --wait --wait-timeout 120
           docker compose exec -T app test -s /app/LICENSE
           docker compose exec -T app test -s /app/THIRD_PARTY_NOTICES.md
+          test "$(docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT rolsuper FROM pg_roles WHERE rolname = current_user"')" = f
           python3 - <<'PY'
           from html.parser import HTMLParser
           import json
+          import ssl
           from urllib.parse import urljoin, urlparse
           from urllib.request import urlopen
 
-          base_url = "http://127.0.0.1:4000"
+          base_url = "https://localhost:4000"
+          context = ssl.create_default_context(cafile="priv/cert/ca.pem")
 
-          with urlopen(f"{base_url}/health", timeout=10) as response:
+          with urlopen(f"{base_url}/health/ready", context=context, timeout=10) as response:
               if json.load(response) != {"status": "ok"}:
                   raise SystemExit("The health endpoint did not return the expected status.")
 
@@ -96,14 +103,14 @@ jobs:
                       if urlparse(url).netloc == urlparse(base_url).netloc:
                           self.urls.add(url)
 
-          with urlopen(base_url, timeout=10) as response:
+          with urlopen(base_url, context=context, timeout=10) as response:
               html = response.read().decode("utf-8")
           assets = LocalAssets()
           assets.feed(html)
           if not assets.urls:
               raise SystemExit("No local stylesheet, script, or icon links were found.")
           for url in sorted(assets.urls):
-              with urlopen(url, timeout=10) as response:
+              with urlopen(url, context=context, timeout=10) as response:
                   if response.status != 200:
                       raise SystemExit(f"Unexpected HTTP {response.status} for {url}")
           print(f"Fetched the homepage and {len(assets.urls)} local assets.")
@@ -113,6 +120,15 @@ jobs:
         if: failure()
         run: docker compose logs --no-color || true
 
+      - name: Scan runtime image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.74.0
+          image-ref: gradepush:local
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
       - name: Remove Compose smoke-test services
         if: always()
-        run: docker compose down --volumes --remove-orphans
+        run: docker compose -f compose.yaml -f compose.local.yaml down --volumes --remove-orphans
