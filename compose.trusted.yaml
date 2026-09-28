@@ -1,0 +1,32 @@
+services:
+  local-https:
+    profiles: [container-certificates]
+
+  app:
+    depends_on: !override
+      db:
+        condition: service_healthy
+    environment:
+      TLS_CERTFILE: /trusted-certs/localhost.pem
+      TLS_KEYFILE: /trusted-certs/localhost-key.pem
+    volumes:
+      - type: bind
+        source: ./priv/cert/ca.pem
+        target: /trusted-certs/ca.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./priv/cert/localhost.pem
+        target: /trusted-certs/localhost.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./priv/cert/localhost-key.pem
+        target: /trusted-certs/localhost-key.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --cacert /trusted-certs/ca.pem https://localhost:$$PORT/health/ready >/dev/null"]

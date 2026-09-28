@@ -2,8 +2,9 @@
 set -eu
 
 cd "$(dirname "$0")/.."
+scripts/setup-https
 if [ "$#" -eq 0 ]; then
   set -- up -d --build --wait
 fi
 
-exec docker compose -f compose.yaml -f compose.local.yaml "$@"
+exec docker compose -f compose.yaml -f compose.local.yaml -f compose.trusted.yaml "$@"

@@ -194,6 +194,12 @@ jobs:
         if: failure()
         run: docker compose logs --no-color || true
 
+      - name: Check trusted local HTTPS on Linux
+        run: |
+          scripts/setup-https
+          docker compose -f compose.yaml -f compose.local.yaml -f compose.trusted.yaml up -d --wait --wait-timeout 120
+          curl --fail --silent https://localhost:4000/health/ready
+
       - name: Scan runtime image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

@@ -3,6 +3,7 @@
 ## Requirements
 
 - Docker with Compose v2.32 or newer (Linux containers on Windows).
+- For trusted local HTTPS on macOS/Linux: `curl` and OpenSSL.
 - For self-hosting: `curl`, OpenSSL, and a public domain pointing to the server, with ports **80** and **443** open.
 
 ## Self-host with Docker
@@ -55,17 +56,33 @@ Uses the published image with PostgreSQL and Caddy. No repository clone or build
 
 2. Start with sample data:
 
+   macOS / Linux:
+
+   ```sh
+   scripts/local-compose --env-file .env.example -p gradepush-demo -f compose.demo.yaml up -d --build --wait
+   ```
+
+   Windows:
+
    ```sh
    docker compose --env-file .env.example -p gradepush-demo -f compose.yaml -f compose.local.yaml -f compose.demo.yaml up -d --build --wait
    ```
 
 3. Open [https://localhost:4000/demo](https://localhost:4000/demo) and choose a role.
 
-Local certificates are generated inside Docker. Your browser may show a certificate warning.
+On macOS/Linux, the launcher configures certificate trust and may request your OS password. On Windows, Docker generates the certificate; your browser may show a warning.
 
 ## Develop with Docker
 
 1. From a clone of this repository, start the development environment:
+
+   macOS / Linux:
+
+   ```sh
+   scripts/dev
+   ```
+
+   Windows:
 
    ```sh
    docker compose -p gradepush-development -f compose.development.yaml up --build --watch

@@ -2,8 +2,9 @@
 set -eu
 
 cd "$(dirname "$0")/.."
+scripts/setup-https
 if [ "$#" -eq 0 ]; then
   set -- up --build --watch
 fi
 
-exec docker compose --env-file .env.example -p gradepush-development -f compose.development.yaml "$@"
+exec docker compose --env-file .env.example -p gradepush-development -f compose.development.yaml -f compose.trusted.yaml "$@"
