@@ -52,12 +52,18 @@ if config_env() == :test do
 end
 
 if config_env() == :dev do
+  {:ok, bind_ip} =
+    :inet.parse_address(String.to_charlist(System.get_env("PHX_BIND_IP", "127.0.0.1")))
+
   config :gradepush, GradePushWeb.Endpoint,
     url: [host: "localhost", scheme: "https", port: port],
     https: [
+      ip: bind_ip,
       port: port,
-      certfile: Path.expand("../priv/cert/localhost.pem", __DIR__),
-      keyfile: Path.expand("../priv/cert/localhost-key.pem", __DIR__)
+      certfile:
+        System.get_env("TLS_CERTFILE", Path.expand("../priv/cert/localhost.pem", __DIR__)),
+      keyfile:
+        System.get_env("TLS_KEYFILE", Path.expand("../priv/cert/localhost-key.pem", __DIR__))
     ],
     live_reload: [
       web_console_logger: true,

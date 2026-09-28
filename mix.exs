@@ -110,6 +110,10 @@ defmodule GradePush.MixProject do
   end
 
   defp setup_dev_https(_args) do
-    if Mix.env() == :dev, do: Mix.Task.run("cmd", ["scripts/setup-https"])
+    supplied_certificate = System.get_env("TLS_CERTFILE") && System.get_env("TLS_KEYFILE")
+
+    if Mix.env() == :dev && !supplied_certificate do
+      Mix.Task.run("cmd", ["scripts/setup-https"])
+    end
   end
 end

@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")/.."
+scripts/setup-https
+
+LOCAL_UID=$(id -u)
+LOCAL_GID=$(id -g)
+export LOCAL_UID LOCAL_GID
+
+if [ "$#" -eq 0 ]; then
+  set -- up -d --build --wait --wait-timeout 600
+fi
+
+exec docker compose --env-file .env.example -p gradepush-development -f compose.development.yaml "$@"

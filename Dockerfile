@@ -1,6 +1,23 @@
 ARG ELIXIR_IMAGE=hexpm/elixir:1.20.4-erlang-29.1.1-alpine-3.24.2@sha256:ad851f40ce103dcb4ad56f23877d99473ef5c013e09b9e57921ffe877ac6d6a9
 ARG RUNTIME_IMAGE=alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
+FROM ${ELIXIR_IMAGE} AS development
+
+ARG LOCAL_UID=1000
+ARG LOCAL_GID=1000
+
+ENV HOME=/opt/gradepush
+WORKDIR /app
+
+RUN apk add --no-cache bash build-base ca-certificates coreutils curl diffutils git inotify-tools openssl \
+    && mkdir -p /opt/gradepush /app/deps /app/_build \
+    && chown -R ${LOCAL_UID}:${LOCAL_GID} /opt/gradepush /app
+
+USER ${LOCAL_UID}:${LOCAL_GID}
+RUN mix local.hex --force && mix local.rebar --force
+
+CMD ["sh", "-c", "mix setup && exec mix phx.server"]
+
 FROM ${ELIXIR_IMAGE} AS build
 
 ENV MIX_ENV=prod

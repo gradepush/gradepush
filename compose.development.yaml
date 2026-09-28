@@ -1,0 +1,69 @@
+services:
+  app:
+    build:
+      context: .
+      target: development
+      args:
+        LOCAL_UID: ${LOCAL_UID:-1000}
+        LOCAL_GID: ${LOCAL_GID:-1000}
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: gradepush
+      DB_PASSWORD: gradepush
+      DB_NAME: gradepush_dev
+      DEMO_MODE: ${DEMO_MODE:-false}
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+      PHX_BIND_IP: 0.0.0.0
+      PORT: ${DEV_PORT:-4000}
+      TLS_CERTFILE: /certs/localhost.pem
+      TLS_KEYFILE: /certs/localhost-key.pem
+    ports:
+      - "127.0.0.1:${DEV_PORT:-4000}:${DEV_PORT:-4000}"
+    volumes:
+      - .:/app
+      - dev_deps:/app/deps
+      - dev_build:/app/_build
+      - type: bind
+        source: ./priv/cert/ca.pem
+        target: /certs/ca.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./priv/cert/localhost.pem
+        target: /certs/localhost.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./priv/cert/localhost-key.pem
+        target: /certs/localhost-key.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --cacert /certs/ca.pem https://localhost:$$PORT/health/ready >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      start_period: 600s
+      retries: 12
+
+  db:
+    extends:
+      file: compose.yaml
+      service: db
+    environment:
+      POSTGRES_DB: gradepush_dev
+      POSTGRES_USER: gradepush
+      POSTGRES_PASSWORD: gradepush
+      POSTGRES_APP_CREATEDB: "true"
+
+volumes:
+  dev_deps:
+  dev_build:
+  postgres_data:
