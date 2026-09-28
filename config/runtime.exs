@@ -75,6 +75,21 @@ if config_env() == :test and System.get_env("TEST_DATABASE_URL") do
 end
 
 if config_env() == :prod do
+  database_ssl =
+    case System.get_env("DATABASE_SSL", "false") do
+      "false" ->
+        false
+
+      "true" ->
+        case System.get_env("DATABASE_SSL_CA_FILE") do
+          nil -> true
+          path -> [cacertfile: path]
+        end
+
+      _ ->
+        raise "DATABASE_SSL must be true or false"
+    end
+
   database_config =
     if database_url = System.get_env("DATABASE_URL") do
       [url: database_url]
@@ -90,7 +105,8 @@ if config_env() == :prod do
 
   config :gradepush,
          GradePush.Repo,
-         database_config ++ [pool_size: String.to_integer(System.get_env("POOL_SIZE", "10"))]
+         database_config ++
+           [pool_size: String.to_integer(System.get_env("POOL_SIZE", "10")), ssl: database_ssl]
 
   if System.get_env("START_ENDPOINT", "true") == "true" do
     secret_key_base = System.fetch_env!("SECRET_KEY_BASE")
@@ -105,13 +121,19 @@ if config_env() == :prod do
       raise "HTTP is supported only for local development; configure HTTPS for a public host"
     end
 
+    bind_ip =
+      case :inet.parse_address(String.to_charlist(System.get_env("PHX_BIND_IP", "0.0.0.0"))) do
+        {:ok, address} -> address
+        {:error, _} -> raise "PHX_BIND_IP must be an IPv4 or IPv6 address"
+      end
+
     config :gradepush, GradePushWeb.Endpoint,
       url: [
         host: host,
         scheme: scheme,
         port: String.to_integer(System.get_env("PHX_URL_PORT", "443"))
       ],
-      http: [ip: {0, 0, 0, 0}],
+      http: [ip: bind_ip],
       secret_key_base: secret_key_base
 
     case {System.get_env("TLS_CERTFILE"), System.get_env("TLS_KEYFILE")} do
@@ -121,7 +143,7 @@ if config_env() == :prod do
       {certfile, keyfile} when is_binary(certfile) and is_binary(keyfile) ->
         config :gradepush, GradePushWeb.Endpoint,
           http: false,
-          https: [ip: {0, 0, 0, 0}, port: port, certfile: certfile, keyfile: keyfile]
+          https: [ip: bind_ip, port: port, certfile: certfile, keyfile: keyfile]
 
       _ ->
         raise "TLS_CERTFILE and TLS_KEYFILE must be configured together"

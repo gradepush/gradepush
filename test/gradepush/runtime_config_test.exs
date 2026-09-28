@@ -1,7 +1,7 @@
 defmodule GradePush.RuntimeConfigTest do
   use ExUnit.Case, async: false
 
-  @variables ~w(PORT PHX_HOST PHX_SCHEME PHX_URL_PORT START_ENDPOINT TLS_CERTFILE TLS_KEYFILE SECRET_KEY_BASE CREDENTIAL_ENCRYPTION_KEY DB_HOST DB_USER DB_PASSWORD)
+  @variables ~w(PORT PHX_HOST PHX_SCHEME PHX_URL_PORT PHX_BIND_IP START_ENDPOINT TLS_CERTFILE TLS_KEYFILE SECRET_KEY_BASE CREDENTIAL_ENCRYPTION_KEY DB_HOST DB_USER DB_PASSWORD DATABASE_URL DATABASE_SSL DATABASE_SSL_CA_FILE)
 
   setup do
     previous = Map.new(@variables, &{&1, System.get_env(&1)})
@@ -62,6 +62,38 @@ defmodule GradePush.RuntimeConfigTest do
     assert endpoint[:http][:port] == 4104
     assert endpoint[:url][:scheme] == "https"
     refute endpoint[:https]
+  end
+
+  test "database TLS uses Postgrex peer verification with system or supplied CAs" do
+    assert repo_config()[:ssl] == false
+
+    System.put_env("DATABASE_SSL", "true")
+    assert repo_config()[:ssl] == true
+
+    System.put_env("DATABASE_SSL_CA_FILE", "/certs/database-ca.pem")
+    assert repo_config()[:ssl] == [cacertfile: "/certs/database-ca.pem"]
+
+    System.put_env("DATABASE_SSL", "typo")
+
+    assert_raise RuntimeError, "DATABASE_SSL must be true or false", fn ->
+      repo_config()
+    end
+  end
+
+  test "a native release can bind only to the reverse proxy's loopback interface" do
+    System.put_env("PHX_BIND_IP", "127.0.0.1")
+    assert endpoint_config(:prod)[:http][:ip] == {127, 0, 0, 1}
+
+    System.put_env("PHX_BIND_IP", "invalid")
+
+    assert_raise RuntimeError, "PHX_BIND_IP must be an IPv4 or IPv6 address", fn ->
+      endpoint_config(:prod)
+    end
+  end
+
+  defp repo_config do
+    Config.Reader.read!("config/runtime.exs", env: :prod)
+    |> get_in([:gradepush, GradePush.Repo])
   end
 
   defp endpoint_config(environment) do

@@ -1,0 +1,30 @@
+[Unit]
+Description=GradePush
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=gradepush
+Group=gradepush
+WorkingDirectory=/opt/gradepush/current
+EnvironmentFile=/etc/gradepush/gradepush.env
+Environment=PHX_SERVER=true
+Environment=GRADEPUSH_DATA_DIR=/var/lib/gradepush
+Environment=RELEASE_TMP=/tmp/gradepush
+Environment=ERL_CRASH_DUMP=/tmp/gradepush-crash.dump
+StateDirectory=gradepush
+StateDirectoryMode=0700
+ExecStartPre=/opt/gradepush/current/bin/gradepush eval GradePush.Release.migrate()
+ExecStart=/opt/gradepush/current/bin/gradepush start
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=180
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
