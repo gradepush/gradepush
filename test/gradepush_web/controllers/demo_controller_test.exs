@@ -31,10 +31,10 @@ defmodule GradePushWeb.DemoControllerTest do
     assert has_element?(
              view,
              "[role='dialog']",
-             "Bulk cloning and this command are not available yet"
+             "CLI access is unavailable in demo mode."
            )
 
-    assert has_element?(view, "[role='dialog'] code", "gh gradepush clone --assignment cli")
+    assert has_element?(view, "#cli-clone code", "--classroom programming --assignment cli")
   end
 
   test "the demo page signs in the selected role through a revocable session", %{conn: conn} do

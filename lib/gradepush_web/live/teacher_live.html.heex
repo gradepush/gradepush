@@ -168,10 +168,18 @@
           </.notice>
           <%= if @tab == "assignments" do %>
             <.list_toolbar>
-              <h2>{gettext("Assignments")}</h2><.button
-                variant="primary"
-                patch={"/classrooms/#{@classroom.slug}/assignments/new"}
-              ><.icon name="hero-plus" class="size-4" />{gettext("New assignment")}</.button>
+              <h2>{gettext("Assignments")}</h2>
+              <div class="flex flex-wrap gap-[8px]">
+                <.button phx-click={open_modal("clone_all")}>
+                  <.icon name="hero-arrow-down-tray" class="size-4" />{gettext(
+                    "Clone all locally"
+                  )}
+                </.button>
+                <.button
+                  variant="primary"
+                  patch={"/classrooms/#{@classroom.slug}/assignments/new"}
+                ><.icon name="hero-plus" class="size-4" />{gettext("New assignment")}</.button>
+              </div>
             </.list_toolbar>
             <.data_list :if={@classroom.assignments > 0}>
               <.list_header kind="assignments">
@@ -303,10 +311,11 @@
     dialog_id="class-dialog"
     title_id="class-modal-title"
     title={modal_title(@modal)}
-    class={
+    class={[
+      modal?(@modal, "clone_all") && "w-[640px]",
       modal?(@modal, "test_results") &&
         "w-[640px] [&_[data-ui~=grading]]:border [&_[data-ui~=grading]]:border-line [&_[data-ui~=grading]]:rounded-[9px] [&_[data-ui~=grading]]:overflow-hidden"
-    }
+    ]}
   >
     <.notice
       :if={@error}
@@ -461,41 +470,12 @@
           </.modal_actions>
         </form>
       <% modal?(@modal, "clone_all") -> %>
-        <div class={[
-          "text-[14px] leading-[1.5] [&_ol]:pl-[20px] [&_ol]:my-[22px] [&_ol]:mx-0 [&_li+li]:mt-[22px]",
-          "[&_h3]:text-[14px] [&_h3]:font-semibold [&_h3]:mb-[6px] [&_p]:text-muted [&_p]:my-[6px] [&_p]:mx-0",
-          "[&_a]:underline [&_a]:underline-offset-[3px] [&_code]:text-[12px] [&_code]:wrap-anywhere",
-          "[&_code]:whitespace-pre-wrap [&_pre]:bg-surface-heading [&_pre]:border [&_pre]:border-line",
-          "[&_pre]:rounded-[6px] [&_pre]:mt-[10px] [&_pre]:p-[12px]"
-        ]}>
-          <p>
-            {gettext("Download every student repository for this assignment into a local folder.")}
-          </p>
-          <ol>
-            <li>
-              <h3>{gettext("Install GitHub CLI")}</h3><p>
-                <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">{gettext(
-                  "Get GitHub CLI"
-                )}</a>
-              </p><code>gh auth login</code>
-            </li>
-            <li>
-              <h3>{gettext("Install the GradePush extension")}</h3><p>
-                {gettext(
-                  "The extension is not available yet. Installation instructions will appear here."
-                )}
-              </p>
-            </li>
-            <li>
-              <h3>{gettext("Clone the assignment repositories")}</h3><p>
-                {local(@classroom.title, @locale)} · {local(@assignment.title, @locale)}
-              </p><pre aria-label={gettext("Command preview")}><code>gh gradepush clone --assignment {@assignment.key} --classroom {@classroom.slug}</code></pre>
-            </li>
-          </ol>
-          <p class="text-muted text-[12px] mt-[16px] mb-0 mx-0">
-            {gettext("Preview only. Bulk cloning and this command are not available yet.")}
-          </p>
-        </div>
+        <GradePushWeb.CLIComponents.clone_instructions
+          classroom={@classroom.slug}
+          assignment={@assignment && @assignment.key}
+          server={GradePushWeb.Endpoint.url()}
+          demo={@preview? or GradePush.Demo.enabled?()}
+        />
         <.modal_actions>
           <.button phx-click="close">{gettext("Close")}</.button>
         </.modal_actions>

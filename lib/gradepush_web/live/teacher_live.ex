@@ -1510,7 +1510,9 @@ defmodule GradePushWeb.TeacherLive do
        when kind in ["edit", "invite", "teachers", "remove"],
        do: not is_nil(assigns.classroom)
 
-  defp modal_resource_available?(kind, assigns) when kind in ["assignment_invite", "clone_all"],
+  defp modal_resource_available?("clone_all", assigns), do: not is_nil(assigns.classroom)
+
+  defp modal_resource_available?("assignment_invite", assigns),
     do: not is_nil(assigns.assignment)
 
   defp modal_resource_available?("teams", assigns),

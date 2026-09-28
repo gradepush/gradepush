@@ -153,7 +153,8 @@ defmodule GradePushWeb.Auth do
   end
 
   defp protected_path?(path) do
-    String.starts_with?(path, ["/join/", "/student/", "/classrooms"])
+    path == "/cli/authorize" or
+      String.starts_with?(path, ["/join/", "/student/", "/classrooms"])
   end
 
   defp local_target(conn) do

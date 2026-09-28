@@ -1,0 +1,97 @@
+defmodule GradePushWeb.CLIComponents do
+  @moduledoc "Installation and cloning commands for the GradePush CLI."
+  use GradePushWeb, :html
+
+  attr :classroom, :string, required: true
+  attr :assignment, :string, default: nil
+  attr :server, :string, required: true
+  attr :demo, :boolean, default: false
+
+  def clone_instructions(assigns) do
+    assigns = assign(assigns, :clone_command, clone_command(assigns))
+
+    ~H"""
+    <div class="space-y-[20px] text-[14px] leading-[1.6]">
+      <p class="text-muted">
+        {gettext(
+          "Download repositories into folders named after their GitHub repositories. Existing folders are skipped."
+        )}
+      </p>
+      <p :if={@demo} class="text-[13px] text-muted">
+        {gettext("Commands are shown as examples. CLI access is unavailable in demo mode.")}
+      </p>
+      <ol class="space-y-[20px]">
+        <li>
+          <h3 class="mb-[8px] font-semibold">{gettext("1. Install the extension")}</h3>
+          <p class="mb-[8px] text-[13px] text-muted">
+            <a
+              href="https://cli.github.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-brand underline underline-offset-2"
+            >{gettext("GitHub CLI")}</a>
+            {gettext("and Git must be installed.")}
+          </p>
+          <.command id="cli-install" command="gh extension install gradepush/gh-gradepush" />
+        </li>
+        <li>
+          <h3 class="mb-[8px] font-semibold">{gettext("2. Sign in")}</h3>
+          <div class="space-y-[8px]">
+            <.command id="cli-github-login" command="gh auth login" />
+            <.command
+              id="cli-login"
+              command={"gh gradepush login --server " <> quote_argument(@server)}
+            />
+          </div>
+        </li>
+        <li>
+          <h3 class="mb-[8px] font-semibold">{gettext("3. Clone the repositories")}</h3>
+          <.command id="cli-clone" command={@clone_command} />
+        </li>
+      </ol>
+    </div>
+    """
+  end
+
+  attr :id, :string, required: true
+  attr :command, :string, required: true
+
+  def command(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      phx-hook="CopyCommand"
+      data-copy={@command}
+      data-success={gettext("Copied")}
+      data-error={gettext("Copy failed. Select and copy the command manually.")}
+    >
+      <div class="flex items-start gap-[10px] rounded-[7px] border border-line bg-surface-heading p-[12px]">
+        <code class="min-w-0 flex-1 select-all whitespace-pre-wrap break-words text-[12px] leading-[1.7]">{@command}</code>
+        <.button
+          variant="copy"
+          class="h-[32px] shrink-0"
+          aria-label={gettext("Copy command")}
+          title={gettext("Copy command")}
+        >
+          <.icon name="hero-document-duplicate" class="size-4" />
+        </.button>
+      </div>
+      <span role="status" class="block text-[12px] text-muted empty:hidden mt-[4px]"></span>
+    </div>
+    """
+  end
+
+  defp clone_command(assigns) do
+    "gh gradepush clone --server " <>
+      quote_argument(assigns.server) <>
+      " --classroom " <>
+      quote_argument(assigns.classroom) <>
+      if(assigns.assignment, do: " --assignment " <> quote_argument(assigns.assignment), else: "")
+  end
+
+  defp quote_argument(value) do
+    if Regex.match?(~r/\A[a-zA-Z0-9._:\/-]+\z/, value),
+      do: value,
+      else: "'" <> String.replace(value, "'", "'\"'\"'") <> "'"
+  end
+end

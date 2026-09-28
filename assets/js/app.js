@@ -5,6 +5,27 @@ import {hooks as colocatedHooks} from "phoenix-colocated/gradepush"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+const CopyCommand = {
+  mounted() {
+    this.button = this.el.querySelector("button")
+    this.copy = async () => {
+      const status = this.el.querySelector('[role="status"]')
+      try {
+        await navigator.clipboard.writeText(this.el.dataset.copy)
+        status.textContent = this.el.dataset.success
+      } catch {
+        const range = document.createRange()
+        range.selectNodeContents(this.el.querySelector("code"))
+        const selection = window.getSelection()
+        selection.removeAllRanges()
+        selection.addRange(range)
+        status.textContent = this.el.dataset.error
+      }
+    }
+    this.button.addEventListener("click", this.copy)
+  },
+  destroyed() { this.button.removeEventListener("click", this.copy) },
+}
 const CopyInvitation = {
   mounted() {
     this.copy = async () => {
@@ -74,7 +95,7 @@ const SetupToken = {
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, CopyInvitation, HeaderDisclosure, SetupToken},
+  hooks: {...colocatedHooks, CopyInvitation, CopyCommand, HeaderDisclosure, SetupToken},
 })
 
 topbar.config({barColors: {0: "#2052F2"}, shadowColor: "transparent"})

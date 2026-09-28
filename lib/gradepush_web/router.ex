@@ -33,6 +33,10 @@ defmodule GradePushWeb.Router do
       live "/auth/sign-in", SignInLive, :index
     end
 
+    live_session :cli_access, on_mount: [{GradePushWeb.Auth, :require_authenticated_user}] do
+      live "/cli/authorize", CLIAuthorizationLive, :authorize
+    end
+
     live_session :teaching, on_mount: [{GradePushWeb.Auth, :require_teacher}] do
       live "/classrooms", TeacherLive, :index
       live "/teacher/settings", TeacherLive, :settings

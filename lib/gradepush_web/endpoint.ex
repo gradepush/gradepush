@@ -48,5 +48,6 @@ defmodule GradePushWeb.Endpoint do
   plug GradePushWeb.Router
 
   def request_log_level(%{path_info: ["join" | _]}), do: false
+  def request_log_level(%{path_info: ["cli", "authorize"]}), do: false
   def request_log_level(_conn), do: :info
 end
