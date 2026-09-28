@@ -2789,8 +2789,8 @@ msgstr "Copied"
 msgid "Copy failed. Select and copy the command manually."
 msgstr "Copy failed. Select and copy the command manually."
 
-#: lib/gradepush_web/components/cli_components.ex:73
-#: lib/gradepush_web/components/cli_components.ex:74
+#: lib/gradepush_web/components/cli_components.ex:78
+#: lib/gradepush_web/components/cli_components.ex:79
 #, elixir-autogen, elixir-format
 msgid "Copy command"
 msgstr "Copy command"

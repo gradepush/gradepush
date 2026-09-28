@@ -11,7 +11,7 @@ defmodule GradePushWeb.CLIComponents do
     assigns = assign(assigns, :clone_command, clone_command(assigns))
 
     ~H"""
-    <div class="space-y-[20px] text-[14px] leading-[1.6]">
+    <div class="space-y-[16px] text-[14px] leading-[1.6]">
       <p class="text-muted">
         {gettext(
           "Download repositories into folders named after their GitHub repositories. Existing folders are skipped."
@@ -20,7 +20,7 @@ defmodule GradePushWeb.CLIComponents do
       <p :if={@demo} class="text-[13px] text-muted">
         {gettext("Commands are shown as examples. CLI access is unavailable in demo mode.")}
       </p>
-      <ol class="space-y-[20px]">
+      <ol class="space-y-[16px]">
         <li>
           <h3 class="mb-[8px] font-semibold">{gettext("1. Install the extension")}</h3>
           <p class="mb-[8px] text-[13px] text-muted">
@@ -65,8 +65,13 @@ defmodule GradePushWeb.CLIComponents do
       data-success={gettext("Copied")}
       data-error={gettext("Copy failed. Select and copy the command manually.")}
     >
-      <div class="flex items-start gap-[10px] rounded-[7px] border border-line bg-surface-heading p-[12px]">
-        <code class="min-w-0 flex-1 select-all whitespace-pre-wrap break-words text-[12px] leading-[1.7]">{@command}</code>
+      <div class="flex items-center gap-[10px] rounded-[7px] border border-line bg-surface-heading px-[12px] py-[8px]">
+        <pre
+          tabindex="0"
+          role="region"
+          aria-label={@command}
+          class="min-w-0 flex-1 overflow-x-auto rounded-[3px] py-[4px] text-[12px] leading-[20px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        ><code class="block w-max select-all whitespace-pre">{@command}</code></pre>
         <.button
           variant="copy"
           class="h-[32px] shrink-0"
