@@ -42,10 +42,10 @@
             <dt>{gettext("Teachers")}</dt><dd>{length(@state.teachers)}</dd>
           </div>
           <div>
-            <dt>{gettext("Classrooms")}</dt><dd>{length(@state.classrooms)}</dd>
+            <dt>{gettext("Students")}</dt><dd>{@state.students}</dd>
           </div>
           <div>
-            <dt>{gettext("Students")}</dt><dd>{@state.students}</dd>
+            <dt>{gettext("Classrooms")}</dt><dd>{length(@state.classrooms)}</dd>
           </div>
         </dl>
       </.overview>
@@ -191,7 +191,7 @@
                 </p>
               </div>
             </div>
-            <.data_list>
+            <.data_list :if={@state.classrooms != []}>
               <.data_table kind="admin">
                 <caption class="sr-only">{gettext("Institution classrooms")}</caption><.list_header kind="table">
                   <tr>
@@ -228,6 +228,10 @@
                 </tbody>
               </.data_table>
             </.data_list>
+            <.empty_state :if={@state.classrooms == []}>
+              <.icon name="hero-rectangle-stack" class="size-8" />
+              <h3>{gettext("No classrooms yet")}</h3>
+            </.empty_state>
           <% @section == "history" -> %>
             <AdminComponents.history events={@state.history} />
           <% @section == "settings" -> %>

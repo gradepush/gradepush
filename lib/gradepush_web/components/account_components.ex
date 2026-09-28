@@ -23,20 +23,6 @@ defmodule GradePushWeb.AccountComponents do
       "[&>[data-ui~=error]]:m-0 [&>[data-ui~=notice]]:col-span-full [&>[data-ui~=notice]]:m-0",
       "max-[760px]:grid-cols-[minmax(0,1fr)] max-[760px]:gap-[20px]"
     ]}>
-      <.notice
-        :if={@error}
-        kind="error"
-        role="alert"
-      >
-        {@error}
-      </.notice>
-      <.notice
-        :if={@notice}
-        kind="success"
-        role="status"
-      >
-        {@notice}
-      </.notice>
       <nav
         data-ui="settings-nav"
         class={[
@@ -66,6 +52,7 @@ defmodule GradePushWeb.AccountComponents do
         <.panel_heading variant="account">
           <h2 id="github-account-title">{gettext("GitHub account")}</h2>
         </.panel_heading>
+        <.settings_feedback notice={@notice} error={@error} />
         <div class={[
           "flex items-center p-[22px] gap-[14px] [&>div]:min-w-0 [&_a]:flex [&_a]:items-center [&_a]:mt-[4px]",
           "[&_a]:text-muted [&_a]:text-[12px] [&_a]:gap-[4px] [&_a:hover]:text-brand [&_a:hover]:underline",
@@ -93,6 +80,7 @@ defmodule GradePushWeb.AccountComponents do
           <h2 id="github-organizations-title">{gettext("GitHub organizations")}</h2>
           <p>{gettext("Choose a connected organization when creating a classroom.")}</p>
         </.panel_heading>
+        <.settings_feedback notice={@notice} error={@error} />
         <div>
           <p
             :if={@organizations == []}
@@ -219,5 +207,21 @@ defmodule GradePushWeb.AccountComponents do
   defp shareable_teachers(organization, teachers) do
     existing_ids = Enum.map(organization.authorized_teachers, & &1.user_id)
     Enum.reject(teachers, &(&1.id in existing_ids))
+  end
+
+  attr :notice, :string, default: nil
+  attr :error, :string, default: nil
+
+  defp settings_feedback(assigns) do
+    ~H"""
+    <div
+      :if={@notice || @error}
+      data-ui="settings-feedback"
+      class="px-[22px] pt-[16px] max-[760px]:px-[18px]"
+    >
+      <.notice :if={@error} kind="error" role="alert" class="!m-0">{@error}</.notice>
+      <.notice :if={@notice} kind="success" role="status" class="!m-0">{@notice}</.notice>
+    </div>
+    """
   end
 end
