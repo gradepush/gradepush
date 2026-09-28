@@ -86,9 +86,10 @@ defmodule GradePushWeb.AssignmentComponents do
                                                                             @locale
                                                                           )
                                                                       )}</span>
-        <span :if={@assignment.tests?}><.icon name="hero-check-circle" class="size-4" />{gettext(
+        <span :if={@assignment.tests?}><.icon name="hero-check-circle" class="size-4" />{ngettext(
+          "%{count} automatic test",
           "%{count} automatic tests",
-          count: length(@tests)
+          length(@tests)
         )}</span>
         <span :if={@assignment[:cutoff]}><.icon name="hero-lock-closed" class="size-4" />{gettext(
           "Pushes close at the deadline"
@@ -437,11 +438,15 @@ defmodule GradePushWeb.AssignmentComponents do
       </.data_list>
       <.empty_state :if={@rows == []}>
         <.icon name="hero-user-group" class="size-8" /><h3>
-          {if @assignment.group? and @assignment.submitted == 0,
-            do: gettext("No teams yet"),
-            else: gettext("No matching results")}
+          {cond do
+            @total == 0 -> gettext("No students yet")
+            @assignment.group? and @assignment.submitted == 0 -> gettext("No teams yet")
+            true -> gettext("No matching results")
+          end}
         </h3><p>
-          {empty_message(@assignment, @teams)}
+          {if @total == 0,
+            do: gettext("Share the classroom link to let your students join."),
+            else: empty_message(@assignment, @teams)}
         </p>
       </.empty_state>
       <p :if={@assignment.group?} class="text-muted text-[12px] mt-[18px]">

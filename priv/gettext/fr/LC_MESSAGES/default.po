@@ -772,8 +772,10 @@ msgstr "Option inconnue"
 
 #: lib/gradepush_web/components/assignment_components.ex:78
 #, elixir-autogen, elixir-format
-msgid "%{count} automatic tests"
-msgstr "%{count} tests automatiques"
+msgid "%{count} automatic test"
+msgid_plural "%{count} automatic tests"
+msgstr[0] "%{count} test automatique"
+msgstr[1] "%{count} tests automatiques"
 
 #: lib/gradepush_web/components/assignment_editor.ex:236
 #, elixir-autogen, elixir-format
