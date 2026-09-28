@@ -30,13 +30,15 @@ Local HTTPS is automatic. Your OS may ask for your password to trust the certifi
    openssl rand -hex 32
    ```
 
-2. Edit `.env`: set `PHX_HOST` to your domain, choose a unique `DB_PASSWORD`, paste the generated value into `SETUP_TOKEN`, and set `GRADEPUSH_IMAGE=ghcr.io/gradepush/gradepush:0.1.0`.
-3. Start GradePush with automatic HTTPS:
+2. Point your domain's DNS record to the server's public IP and open ports **80** and **443**. Edit `.env`: set `PHX_HOST=grades.example.org` (your domain, without `https://`), choose a unique `DB_PASSWORD`, paste the generated value into `SETUP_TOKEN`, and set `GRADEPUSH_IMAGE=ghcr.io/gradepush/gradepush:0.1.0`.
+3. Start GradePush with Caddy for automatic HTTPS:
 
    ```sh
    docker compose -f compose.yaml -f compose.https.yaml pull
    docker compose -f compose.yaml -f compose.https.yaml up -d --no-build --wait
    ```
+
+   Caddy obtains, installs, and renews the certificate automatically, and redirects HTTP to HTTPS. No Certbot or manual certificate setup is needed. Certificates are kept in the `caddy_data` Docker volume.
 
 4. Open `https://your-domain/setup`. Enter your token and institution name, create the GitHub App, then sign in with GitHub.
 
