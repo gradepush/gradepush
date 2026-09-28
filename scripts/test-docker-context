@@ -1,0 +1,115 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")/.."
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT HUP INT TERM
+mkdir -p "$scratch/context"
+cp .dockerignore "$scratch/context/.dockerignore"
+
+cat > "$scratch/allowed" <<'PATHS'
+mix.exs
+mix.lock
+LICENSE
+THIRD_PARTY_NOTICES.md
+config/config.exs
+config/runtime.exs
+lib/gradepush.ex
+lib/gradepush_web/live/page.html.heex
+assets/tsconfig.json
+assets/css/app.css
+assets/js/app.js
+assets/vendor/topbar.js
+priv/repo/migrations/20260101000000_create_tables.exs
+priv/gettext/en/LC_MESSAGES/default.po
+priv/gettext/default.pot
+priv/static/robots.txt
+priv/static/favicon.ico
+priv/static/images/logo.svg
+priv/static/fonts/font.woff2
+rel/env.sh.eex
+rel/entrypoint.sh
+rel/setup.sh
+PATHS
+
+cat > "$scratch/blocked" <<'PATHS'
+.env
+.env.local
+.env.example
+.envrc
+.git/config
+.github/workflows/ci.yml
+.agent-local/secrets.json
+AGENTS.md
+README.md
+docs/architecture.md
+Dockerfile
+compose.yaml
+unknown-directory/file.ex
+deps/package/source.ex
+_build/prod/release.tar
+backups/database.dump
+test/fixture.ex
+priv/cert/localhost-key.pem
+priv/data/secret.json
+priv/static/uploads/avatar.png
+priv/static/assets/app.js
+priv/static/assets/app.css
+priv/static/cache_manifest.json
+priv/static/images/logo-0123456789abcdef0123456789abcdef.svg
+priv/static/images/logo.svg.gz
+priv/static/.private/logo.svg
+priv/static/secrets/logo.svg
+config/.env.production
+config/private.env
+config/private.env.local
+config/prod.secret.exs
+config/runtime.local.exs
+config/secrets.exs
+config/credentials.exs
+config/local.exs
+config/app.pem
+config/app.key
+config/app.p12
+config/app.pfx
+config/.secrets/private.exs
+config/runtime.exs.bak
+config/runtime.exs~
+lib/.git/config
+lib/AGENTS.md
+lib/module.ex.swp
+lib/module.ex.orig
+lib/tmp/module.ex
+lib/backups/module.ex
+lib/credentials/private.ex
+assets/node_modules/package/index.js
+assets/js/.env
+assets/js/build/app.js
+assets/js/dist/app.js
+assets/js/coverage/report.js
+assets/js/.cache/app.js
+assets/js/app.js.map
+assets/vendor/deps/module.js
+rel/releases/COOKIE
+rel/erl_crash.dump
+rel/env.sh.eex.bak
+PATHS
+
+cat "$scratch/allowed" "$scratch/blocked" | while IFS= read -r path; do
+  mkdir -p "$scratch/context/$(dirname "$path")"
+  printf '%s\n' 'synthetic build-context fixture' > "$scratch/context/$path"
+done
+
+if ! docker build --file - --output "type=local,dest=$scratch/export" "$scratch/context" > "$scratch/build.log" 2>&1 <<'DOCKERFILE'
+FROM scratch
+COPY . /
+DOCKERFILE
+then
+  cat "$scratch/build.log"
+  exit 1
+fi
+
+(cd "$scratch/export" && find . -type f | sed 's|^./||' | LC_ALL=C sort) > "$scratch/actual"
+LC_ALL=C sort "$scratch/allowed" > "$scratch/expected"
+diff -u "$scratch/expected" "$scratch/actual"
+printf '%s\n' 'Docker context: required inputs included; synthetic secrets, local files and build artifacts excluded.'
