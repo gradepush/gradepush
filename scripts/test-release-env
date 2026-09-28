@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")/.."
+release_env="$(pwd)/rel/env.sh.eex"
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT HUP INT TERM
+
+export RELEASE_ROOT="$scratch/release"
+export GRADEPUSH_DATA_DIR="$scratch/data"
+unset SECRET_KEY_BASE CREDENTIAL_ENCRYPTION_KEY RELEASE_COOKIE RELEASE_TMP
+
+sh -eu -c '. "$1"; test -n "$SECRET_KEY_BASE"; test -n "$RELEASE_COOKIE"; test "$(printf %s "$CREDENTIAL_ENCRYPTION_KEY" | base64 -d | wc -c | tr -d " ")" = 32' sh "$release_env"
+cp -R "$GRADEPUSH_DATA_DIR" "$scratch/first"
+sh -eu -c '. "$1"' sh "$release_env"
+diff -r "$scratch/first" "$GRADEPUSH_DATA_DIR"
+insecure_files=$(find "$GRADEPUSH_DATA_DIR" -type f ! -perm 600)
+test -z "$insecure_files"
+
+export GRADEPUSH_DATA_DIR="$scratch/external"
+SECRET_KEY_BASE=external-session CREDENTIAL_ENCRYPTION_KEY=external-credentials RELEASE_COOKIE=external-cookie \
+  sh -eu -c '. "$1"; test "$SECRET_KEY_BASE" = external-session; test "$CREDENTIAL_ENCRYPTION_KEY" = external-credentials; test "$RELEASE_COOKIE" = external-cookie' sh "$release_env"
+test ! -e "$GRADEPUSH_DATA_DIR"
+
+export GRADEPUSH_DATA_DIR="$scratch/concurrent"
+sh -eu -c '. "$1"' sh "$release_env" &
+first=$!
+sh -eu -c '. "$1"' sh "$release_env" &
+second=$!
+wait "$first"
+wait "$second"
+test "$(find "$GRADEPUSH_DATA_DIR" -type f | wc -l | tr -d ' ')" = 3
+
+printf '%s\n' 'Release secrets: generation, permissions, reuse, overrides and concurrent initialization passed.'

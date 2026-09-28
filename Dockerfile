@@ -1,30 +1,30 @@
-ARG ELIXIR_IMAGE=hexpm/elixir:1.20.4-erlang-29.1.1-debian-bookworm-20260918-slim@sha256:037687742ae12c329b59a681a230d62ef3ddd555c0275e577ce41c61539e5248
-ARG RUNTIME_IMAGE=debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251
+ARG ELIXIR_IMAGE=hexpm/elixir:1.20.4-erlang-29.1.1-alpine-3.24.2@sha256:ad851f40ce103dcb4ad56f23877d99473ef5c013e09b9e57921ffe877ac6d6a9
+ARG RUNTIME_IMAGE=alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
 FROM ${ELIXIR_IMAGE} AS build
 
 ENV MIX_ENV=prod
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential ca-certificates git \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache build-base ca-certificates git
 
 RUN mix local.hex --force && mix local.rebar --force
 
 COPY mix.exs mix.lock ./
 COPY config config
 
-RUN mix deps.get --only prod && mix deps.compile
+RUN mix deps.get --only prod --check-locked && mix deps.compile
 
 COPY lib lib
 COPY priv priv
 COPY assets assets
+COPY rel rel
 COPY LICENSE THIRD_PARTY_NOTICES.md ./
 
 RUN mix compile --warnings-as-errors \
     && mix assets.deploy \
-    && mix release
+    && mix release \
+    && rm _build/prod/rel/gradepush/releases/COOKIE
 
 FROM ${RUNTIME_IMAGE} AS app
 
@@ -32,11 +32,14 @@ ENV HOME=/app \
     LANG=C.UTF-8 \
     MIX_ENV=prod \
     PHX_SERVER=true \
+    GRADEPUSH_DATA_DIR=/var/lib/gradepush \
+    RELEASE_TMP=/tmp/gradepush \
+    ERL_CRASH_DUMP=/tmp/erl_crash.dump \
     PORT=4000
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl libncurses6 libssl3 libstdc++6 \
-    && rm -rf /var/lib/apt/lists/* \
+RUN apk add --no-cache ca-certificates curl libstdc++ lksctp-tools ncurses-libs openssl \
+    && addgroup -S -g 10001 gradepush \
+    && adduser -S -D -H -u 10001 -G gradepush gradepush \
     && mkdir -p /app /var/lib/gradepush \
     && chown 10001:10001 /app /var/lib/gradepush
 

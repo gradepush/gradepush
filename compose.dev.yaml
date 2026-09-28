@@ -2,5 +2,6 @@ services:
   db:
     environment:
       POSTGRES_DB: gradepush_dev
+      POSTGRES_APP_CREATEDB: "true"
     ports:
       - "127.0.0.1:54329:5432"

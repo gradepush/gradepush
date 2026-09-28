@@ -1,5 +1,6 @@
 services:
   app:
+    image: ${GRADEPUSH_IMAGE:-gradepush:local}
     build: .
     init: true
     depends_on:
@@ -24,6 +25,13 @@ services:
       - "127.0.0.1:${HOST_PORT:-4000}:4000"
     restart: unless-stopped
     stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=64m
     volumes:
       - gradepush_data:/var/lib/gradepush
 
@@ -42,6 +50,7 @@ services:
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql
+      - ./deploy/postgres-init.sh:/docker-entrypoint-initdb.d/10-gradepush.sh:ro
 
 volumes:
   gradepush_data:
