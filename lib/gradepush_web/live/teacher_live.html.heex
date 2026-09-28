@@ -498,9 +498,6 @@
                   "https://gradepush.example/join/assignment/#{@assignment.key}"
           }
         />
-        <.field_hint :if={GradePush.Demo.enabled?()}>
-          {gettext("Invitations are disabled in demo mode.")}
-        </.field_hint>
         <p
           :if={@preview? && !GradePush.Demo.enabled?()}
           id="assignment-invitation-note"
