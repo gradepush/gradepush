@@ -15,7 +15,7 @@ defmodule GradePushWeb.CoreComponents do
   def user_avatar(assigns) do
     assigns =
       assign(assigns, :classes, [
-        "inline-flex shrink-0 items-center justify-center rounded-full object-cover font-semibold",
+        "inline-flex max-w-none shrink-0 items-center justify-center rounded-full object-cover font-semibold",
         if(assigns.size == "small",
           do: "size-[29px] bg-avatar-small text-[10px] text-avatar-ink",
           else: "size-[34px] bg-avatar text-[12px] text-secondary"
