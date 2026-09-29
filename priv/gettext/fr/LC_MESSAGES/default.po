@@ -232,7 +232,7 @@ msgstr "Aller au contenu"
 
 #: lib/gradepush_web/components/admin_components.ex:81
 #: lib/gradepush_web/components/assignment_components.ex:260
-#: lib/gradepush_web/live/demo_live.ex:68
+#: lib/gradepush_web/live/demo_live.ex:65
 #: lib/gradepush_web/live/teacher_live.html.heex:257
 #, elixir-autogen, elixir-format
 msgid "Student"
@@ -265,7 +265,7 @@ msgid "Build a command-line parser that accepts a file path and a help flag. Sho
 msgstr "Créez un analyseur de ligne de commande qui accepte un chemin de fichier et une option d’aide. Affichez un message utile si la saisie est invalide."
 
 #: lib/gradepush_web/components/assignment_components.ex:82
-#: lib/gradepush_web/live/student_live.ex:229
+#: lib/gradepush_web/live/student_live.ex:232
 #, elixir-autogen, elixir-format
 msgid "Due %{date}"
 msgstr "À remettre le %{date}"
@@ -378,8 +378,8 @@ msgstr "Gérer les enseignants"
 #: lib/gradepush_web/components/student_schedule_components.ex:96
 #: lib/gradepush_web/components/student_schedule_components.ex:108
 #: lib/gradepush_web/components/student_schedule_components.ex:165
-#: lib/gradepush_web/live/student_live.ex:225
 #: lib/gradepush_web/live/student_live.ex:228
+#: lib/gradepush_web/live/student_live.ex:231
 #: lib/gradepush_web/live/teacher_live.html.heex:211
 #, elixir-autogen, elixir-format
 msgid "No deadline"
@@ -1448,7 +1448,7 @@ msgstr "Changer d’espace"
 #: lib/gradepush_web/live/admin_live.html.heex:146
 #: lib/gradepush_web/live/admin_live.html.heex:175
 #: lib/gradepush_web/live/admin_live.html.heex:462
-#: lib/gradepush_web/live/demo_live.ex:50
+#: lib/gradepush_web/live/demo_live.ex:47
 #, elixir-autogen, elixir-format
 msgid "Teacher"
 msgstr "Enseignant"
@@ -2203,12 +2203,12 @@ msgstr "Les tests automatisés ne peuvent plus être modifiés après une accept
 msgid "Choose a demo role to continue."
 msgstr "Choisissez un rôle pour continuer la démonstration."
 
-#: lib/gradepush_web/live/demo_live.ex:72
+#: lib/gradepush_web/live/demo_live.ex:69
 #, elixir-autogen, elixir-format
 msgid "Continue as a student"
 msgstr "Continuer comme étudiant"
 
-#: lib/gradepush_web/live/demo_live.ex:52
+#: lib/gradepush_web/live/demo_live.ex:49
 #, elixir-autogen, elixir-format
 msgid "Continue as a teacher"
 msgstr "Continuer comme enseignant"
@@ -2218,12 +2218,12 @@ msgstr "Continuer comme enseignant"
 msgid "Daily pushes: %{counts}"
 msgstr "Pushs par jour : %{counts}"
 
-#: lib/gradepush_web/components/layouts/root.html.heex:22
+#: lib/gradepush_web/components/layouts/root.html.heex:60
 #, elixir-autogen, elixir-format
 msgid "Demo mode"
 msgstr "Mode démo"
 
-#: lib/gradepush_web/components/layouts/root.html.heex:24
+#: lib/gradepush_web/components/layouts/root.html.heex:62
 #, elixir-autogen, elixir-format
 msgid "Demo mode · Data is reset regularly."
 msgstr "Mode démo · Les données sont réinitialisées régulièrement."
@@ -2236,7 +2236,7 @@ msgstr "Mode démo · Les données sont réinitialisées régulièrement."
 msgid "Invitations are disabled in demo mode."
 msgstr "Les invitations sont désactivées en mode démo."
 
-#: lib/gradepush_web/components/layouts/root.html.heex:25
+#: lib/gradepush_web/components/layouts/root.html.heex:63
 #, elixir-autogen, elixir-format
 msgid "Switch view"
 msgstr "Changer de vue"
@@ -2245,11 +2245,6 @@ msgstr "Changer de vue"
 #, elixir-autogen, elixir-format
 msgid "The demo is not ready. Try again shortly."
 msgstr "La démonstration n’est pas prête. Réessayez dans un instant."
-
-#: lib/gradepush_web/live/demo_live.ex:18
-#, elixir-autogen, elixir-format
-msgid "Try GradePush"
-msgstr "Essayer GradePush"
 
 #: lib/gradepush_web/live/setup_live.ex:267
 #, elixir-autogen, elixir-format
@@ -2536,27 +2531,22 @@ msgstr "Liens utiles"
 msgid "A classroom. Two perspectives."
 msgstr "Une classe. Deux points de vue."
 
-#: lib/gradepush_web/live/demo_live.ex:75
+#: lib/gradepush_web/live/demo_live.ex:72
 #, elixir-autogen, elixir-format
 msgid "Browse your classes and deadlines"
 msgstr "Consulter vos classes et vos échéances"
 
-#: lib/gradepush_web/live/demo_live.ex:55
+#: lib/gradepush_web/live/demo_live.ex:52
 #, elixir-autogen, elixir-format
 msgid "Create and share assignments"
 msgstr "Créer et partager des devoirs"
 
-#: lib/gradepush_web/live/demo_live.ex:39
-#, elixir-autogen, elixir-format
-msgid "Discover how GradePush connects teachers, students, and their code."
-msgstr "Découvrez comment GradePush réunit les enseignants, les étudiants et leur code."
-
-#: lib/gradepush_web/live/demo_live.ex:70
+#: lib/gradepush_web/live/demo_live.ex:67
 #, elixir-autogen, elixir-format
 msgid "Find your next assignment and see how your work is progressing."
 msgstr "Retrouvez vos prochains devoirs et suivez la progression de votre travail."
 
-#: lib/gradepush_web/live/demo_live.ex:58
+#: lib/gradepush_web/live/demo_live.ex:55
 #, elixir-autogen, elixir-format
 msgid "Follow pushes and automated test results"
 msgstr "Suivre les pushs et les résultats des tests"
@@ -2566,28 +2556,23 @@ msgstr "Suivre les pushs et les résultats des tests"
 msgid "Interactive demo"
 msgstr "Démo interactive"
 
-#: lib/gradepush_web/live/demo_live.ex:61
+#: lib/gradepush_web/live/demo_live.ex:58
 #, elixir-autogen, elixir-format
 msgid "Manage students and teaching colleagues"
 msgstr "Gérer les étudiants et les collègues enseignants"
 
-#: lib/gradepush_web/live/demo_live.ex:51
+#: lib/gradepush_web/live/demo_live.ex:48
 #: lib/gradepush_web/live/sign_in_live.ex:40
 #, elixir-autogen, elixir-format
 msgid "Organize your classes and follow your students’ work."
 msgstr "Organisez vos classes et suivez le travail de vos étudiants."
 
-#: lib/gradepush_web/live/demo_live.ex:78
+#: lib/gradepush_web/live/demo_live.ex:75
 #, elixir-autogen, elixir-format
 msgid "Read instructions and find your repository"
 msgstr "Lire les consignes et accéder à votre dépôt"
 
-#: lib/gradepush_web/live/demo_live.ex:42
-#, elixir-autogen, elixir-format
-msgid "Sample classes are ready to explore. No GitHub account required."
-msgstr "Des classes sont prêtes à explorer. Aucun compte GitHub requis."
-
-#: lib/gradepush_web/live/demo_live.ex:81
+#: lib/gradepush_web/live/demo_live.ex:78
 #, elixir-autogen, elixir-format
 msgid "See which automated tests passed"
 msgstr "Voir les tests automatisés réussis"
@@ -3264,3 +3249,23 @@ msgstr "Copier la commande"
 #, elixir-autogen, elixir-format
 msgid "Copy failed. Select and copy the text manually."
 msgstr "La copie a échoué. Sélectionnez et copiez le texte manuellement."
+
+#: lib/gradepush_web/metadata.ex:21
+#, elixir-autogen, elixir-format
+msgid "GitHub Classroom alternative"
+msgstr "Alternative à GitHub Classroom"
+
+#: lib/gradepush_web/metadata.ex:24
+#, elixir-autogen, elixir-format
+msgid "GradePush is an open-source, self-hosted alternative to GitHub Classroom. Explore assignments, GitHub repositories, and automated grading without a GitHub account."
+msgstr "GradePush est une alternative libre et autohébergée à GitHub Classroom. Explorez les devoirs, les dépôts GitHub et la correction automatisée sans compte GitHub."
+
+#: lib/gradepush_web/metadata.ex:46
+#, elixir-autogen, elixir-format
+msgid "GradePush logo"
+msgstr "Logo GradePush"
+
+#: lib/gradepush_web/metadata.ex:41
+#, elixir-autogen, elixir-format
+msgid "Manage programming assignments, GitHub repositories, and automated feedback with GradePush."
+msgstr "Gérez les devoirs de programmation, les dépôts GitHub et la rétroaction automatisée avec GradePush."

@@ -28,6 +28,7 @@ defmodule GradePushWeb.Endpoint do
   end
 
   plug Plug.RequestId
+  plug GradePushWeb.Metadata
   plug GradePushWeb.Plugs.SecureTransport
   plug GradePushWeb.Plugs.DemoBoundary
 

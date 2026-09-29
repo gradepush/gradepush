@@ -15,7 +15,7 @@ defmodule GradePushWeb.DemoLive do
        assign(socket,
          footer_links: GradePush.Accounts.footer_links(),
          locale: locale,
-         page_title: gettext("Try GradePush")
+         page_title: GradePushWeb.Metadata.demo_title()
        )}
     else
       {:ok, Phoenix.LiveView.redirect(socket, to: "/auth/sign-in")}
@@ -36,10 +36,7 @@ defmodule GradePushWeb.DemoLive do
                 {gettext("A classroom. Two perspectives.")}
               </h1>
               <p class="mt-[18px] text-[16px] leading-[1.65] text-muted max-[760px]:text-[14px]">
-                {gettext("Discover how GradePush connects teachers, students, and their code.")}
-              </p>
-              <p class="mt-[10px] text-[13px] text-muted">
-                {gettext("Sample classes are ready to explore. No GitHub account required.")}
+                {GradePushWeb.Metadata.demo_description()}
               </p>
             </header>
             <div class="grid grid-cols-2 gap-[24px] max-[760px]:grid-cols-1 max-[760px]:gap-[18px]">
