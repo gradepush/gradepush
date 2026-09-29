@@ -40,6 +40,7 @@ defmodule GradePushWeb.TeacherLive do
        user: user,
        institution: institution,
        organizations: organizations,
+       github_app: if(preview?, do: nil, else: Installation.github_app_metadata()),
        class_form_errors: [],
        available_organizations: [],
        available_classroom_teachers: [],
@@ -917,11 +918,15 @@ defmodule GradePushWeb.TeacherLive do
         organizations = Enum.reject(organizations, &(&1.installation_id in connected_ids))
         {:noreply, assign(socket, available_organizations: organizations, error: nil)}
 
-      {:error, _reason} ->
+      {:error, reason} ->
         {:noreply,
          assign(socket,
            available_organizations: [],
-           error: gettext("Could not load GitHub organizations. Try again.")
+           error:
+             if(reason == :github_reauthorization_required,
+               do: AccountComponents.organization_error(reason),
+               else: gettext("Could not load GitHub organizations. Try again.")
+             )
          )}
     end
   end

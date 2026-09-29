@@ -2,6 +2,7 @@ defmodule GradePushWeb.OrganizationControllerTest do
   use GradePushWeb.ConnCase, async: true
 
   import GradePush.AccountsFixtures
+  import Phoenix.LiveViewTest
   alias GradePush.{Accounts, Classrooms}
   alias GradePush.GitHub.Fake
 
@@ -94,6 +95,29 @@ defmodule GradePushWeb.OrganizationControllerTest do
     response = conn |> log_in_user(student) |> get("/github/organizations/connect")
     assert redirected_to(response) == @settings
     assert is_nil(get_session(response, :organization_connection))
+  end
+
+  test "an inaccessible installation returns recovery links and a retry action", %{conn: conn} do
+    %{user: teacher} = configured_gradepush_fixture()
+    started = conn |> log_in_user(teacher) |> get("/github/organizations/connect")
+    state = get_session(started, :organization_connection)["state"]
+    Fake.set_installations([])
+    response = started |> recycle() |> get(callback_path(state))
+
+    assert redirected_to(response) == @settings
+    assert {:ok, []} = Classrooms.list_github_connections(teacher)
+    {:ok, view, _} = response |> recycle() |> live(@settings)
+
+    assert has_element?(view, "[data-ui=organization-connection-help]", "separate steps")
+
+    assert has_element?(
+             view,
+             "a[href='https://github.com/apps/gradepush-test/installations/new']"
+           )
+
+    assert has_element?(view, "a[href='https://github.com/settings/apps/authorizations']")
+    view |> element("button", "Retry loading organizations") |> render_click()
+    assert has_element?(view, "[data-ui=organization-connection]")
   end
 
   defp callback_path(state),

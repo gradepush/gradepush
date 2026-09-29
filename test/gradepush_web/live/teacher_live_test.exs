@@ -3,6 +3,13 @@ defmodule GradePushWeb.TeacherLiveTest do
 
   import Phoenix.LiveViewTest
 
+  test "preview does not offer real GitHub recovery actions", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/teacher/settings?section=organizations")
+    view |> element("button", "Already installed on GitHub?") |> render_click()
+    assert has_element?(view, "[data-ui=organization-connection]", "unavailable in demo mode")
+    refute has_element?(view, "[data-ui=organization-connection-help]")
+  end
+
   test "classroom term validation identifies both fields and returns focus", %{conn: conn} do
     {:ok, view, _} = live(conn, "/classrooms")
     view |> element("button", "Create a classroom") |> render_click()

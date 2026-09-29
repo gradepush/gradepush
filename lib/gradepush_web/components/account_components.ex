@@ -8,6 +8,7 @@ defmodule GradePushWeb.AccountComponents do
   attr :preview, :boolean, default: false
   attr :notice, :string, default: nil
   attr :error, :string, default: nil
+  attr :github_app, :map, default: nil
 
   def settings(assigns) do
     ~H"""
@@ -81,6 +82,12 @@ defmodule GradePushWeb.AccountComponents do
           <p>{gettext("Choose a connected organization when creating a classroom.")}</p>
         </.panel_heading>
         <.settings_feedback notice={@notice} error={@error} />
+        <div
+          :if={@error && !@preview && !GradePush.Demo.enabled?()}
+          class="px-[22px] pt-[16px] max-[760px]:px-[18px]"
+        >
+          <.organization_connection_help github_app={@github_app} />
+        </div>
         <div>
           <div :if={@organizations == []} class="p-[22px] max-[760px]:p-[18px]">
             <.notice
@@ -186,6 +193,47 @@ defmodule GradePushWeb.AccountComponents do
 
   defp organization_name(%{login: login}), do: login
   defp organization_name(name), do: name
+
+  attr :github_app, :map, default: nil
+
+  def organization_connection_help(assigns) do
+    ~H"""
+    <div
+      data-ui="organization-connection-help"
+      class="grid gap-[12px] rounded-[7px] border border-line p-[16px] text-[13px] leading-[1.65]"
+    >
+      <strong>{gettext("Organization missing or inaccessible?")}</strong>
+      <p class="text-muted">
+        {gettext(
+          "Installing GradePush on GitHub and authorizing your personal account are separate steps. An installation can succeed while your account still cannot access the organization."
+        )}
+      </p>
+      <p class="text-muted">
+        {gettext(
+          "Check that GradePush is installed on the organization and that your GitHub account is an organization owner. Review your account authorization, then sign out of GradePush and sign in with GitHub again if needed."
+        )}
+      </p>
+      <div class="flex flex-wrap items-center gap-[12px]">
+        <.button
+          :if={@github_app && @github_app.slug}
+          href={"https://github.com/apps/#{URI.encode(@github_app.slug)}/installations/new"}
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="text"
+        >{gettext("Check GitHub installation")}</.button>
+        <.button
+          href="https://github.com/settings/apps/authorizations"
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="text"
+        >{gettext("Review account authorization")}</.button>
+        <.button phx-click={JS.push("open", value: %{kind: "connect_organization"})}>
+          {gettext("Retry loading organizations")}
+        </.button>
+      </div>
+    </div>
+    """
+  end
 
   attr :notice, :string, default: nil
   attr :error, :string, default: nil

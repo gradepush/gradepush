@@ -21,6 +21,7 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
 
     view |> element("button", "Already installed on GitHub?") |> render_click()
     refute has_element?(view, "select[name=sharing_scope]")
+    refute has_element?(view, "[data-ui=organization-connection-help]")
 
     view
     |> element("button[phx-click=connect_organization][phx-value-organization='123']")
@@ -58,6 +59,85 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
              view,
              "[data-ui=organization-connection] a[href='/github/organizations/connect']"
            )
+
+    assert has_element?(view, "[data-ui=organization-connection-help]", "separate steps")
+
+    assert has_element?(
+             view,
+             "a[href='https://github.com/apps/gradepush-test/installations/new']"
+           )
+
+    assert has_element?(view, "a[href='https://github.com/settings/apps/authorizations']")
+  end
+
+  test "missing authorization explains recovery and retry reloads organizations", %{conn: conn} do
+    %{user: teacher} = configured_gradepush_fixture()
+    GradePush.Installation.revoke_user_authorization(teacher.github_id)
+
+    {:ok, view, _} =
+      conn |> log_in_user(teacher) |> live("/teacher/settings?section=organizations")
+
+    view |> element("button", "Already installed on GitHub?") |> render_click()
+    assert has_element?(view, "[role=alert]", "Sign out and sign in with GitHub again")
+    assert has_element?(view, "[data-ui=organization-connection-help]", "organization owner")
+
+    refute has_element?(
+             view,
+             "[data-ui=organization-connection]",
+             "No other installed organizations"
+           )
+
+    assert {:ok, _} = GradePush.Installation.authenticate_github_user("fake-code")
+    view |> element("button", "Retry loading organizations") |> render_click()
+
+    refute has_element?(view, "[data-ui=organization-connection-help]")
+    refute has_element?(view, "#class-modal-error")
+
+    assert has_element?(
+             view,
+             "button[phx-click=connect_organization][phx-value-organization='123']"
+           )
+
+    assert {:ok, []} = Classrooms.list_github_connections(teacher)
+  end
+
+  test "authorization lost after listing offers recovery without connecting the organization", %{
+    conn: conn
+  } do
+    %{user: teacher} = configured_gradepush_fixture()
+
+    {:ok, view, _} =
+      conn |> log_in_user(teacher) |> live("/teacher/settings?section=organizations")
+
+    view |> element("button", "Already installed on GitHub?") |> render_click()
+
+    teacher.id
+    |> then(&GradePush.Repo.get_by!(GradePush.Installation.GitHubUserCredentials, user_id: &1))
+    |> GradePush.Repo.delete!()
+
+    view |> element("button[phx-click=connect_organization]") |> render_click()
+
+    assert has_element?(view, "[data-ui=organization-connection-help]")
+    assert has_element?(view, "[role=alert]", "Sign out and sign in with GitHub again")
+    assert {:ok, []} = Classrooms.list_github_connections(teacher)
+  end
+
+  test "organization recovery is translated in French", %{conn: conn} do
+    %{user: teacher} = configured_gradepush_fixture()
+    GradePush.Installation.revoke_user_authorization(teacher.github_id)
+
+    {:ok, view, _} =
+      conn
+      |> log_in_user(teacher)
+      |> live("/teacher/settings?section=organizations&connect=true&locale=fr")
+
+    assert has_element?(
+             view,
+             "[data-ui=organization-connection-help]",
+             "Organisation absente ou inaccessible"
+           )
+
+    assert has_element?(view, "button", "Recharger les organisations")
   end
 
   test "teachers without classrooms see an empty state with a working create action", %{

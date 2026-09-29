@@ -36,7 +36,8 @@
             organizations={@organizations}
             preview={@preview?}
             notice={@notice}
-            error={@error}
+            error={if !@modal, do: @error}
+            github_app={@github_app}
           />
         <% @live_action == :signed_out -> %>
           <AccountComponents.signed_out preview={@preview?} />
@@ -630,13 +631,20 @@
             </li>
           </ul>
           <.empty_state :if={
-            @available_organizations == [] && !@preview? && !GradePush.Demo.enabled?()
+            @available_organizations == [] && !@error && !@preview? && !GradePush.Demo.enabled?()
           }>
             <.icon name="hero-building-office-2" class="size-6" />
             <p>
               {gettext("No other installed organizations are available for your GitHub account.")}
             </p>
           </.empty_state>
+          <AccountComponents.organization_connection_help
+            :if={
+              (@available_organizations == [] || @error) && !@preview? &&
+                !GradePush.Demo.enabled?()
+            }
+            github_app={@github_app}
+          />
           <.modal_actions>
             <.button phx-click="close">{gettext("Close")}</.button>
             <.button
