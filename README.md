@@ -13,6 +13,8 @@ GradePush Classroom is an open-source, self-hosted alternative to GitHub Classro
 
 ## Self-host with Docker
 
+For complete installation instructions, follow the [self-hosting installation guide](https://docs.gradepush.ca/self-hosting/installation/).
+
 Uses the published image with PostgreSQL and Caddy. No repository clone or build is required.
 
 1. Point your domain to the server's public IP and open ports **80** and **443**.
