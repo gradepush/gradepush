@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
     <.live_title
-      default="GradePush"
-      suffix={if assigns[:page_title], do: " | GradePush"}
+      default="GradePush Classroom"
+      suffix={if assigns[:page_title], do: " | GradePush Classroom"}
       phx-no-format
     >{assigns[:page_title]}</.live_title>
     <% metadata = GradePushWeb.Metadata.for_page(@conn, @locale) %>
     <meta name="description" content={metadata.description} />
     <meta name="robots" content={metadata.robots} />
-    <meta property="og:site_name" content="GradePush" />
+    <meta property="og:site_name" content="GradePush Classroom" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={metadata.title} />
     <meta property="og:description" content={metadata.description} />

@@ -16,8 +16,8 @@ defmodule GradePushWeb.MetadataTest do
       html = html_response(response, 200)
       assert get_resp_header(response, "x-robots-tag") == ["noindex"]
       assert attr(html, "meta[name=robots]", "content") == ["noindex"]
-      assert text(html, "title") =~ " | GradePush"
-      assert attr(html, "meta[property='og:title']", "content") == ["GradePush"]
+      assert text(html, "title") =~ " | GradePush Classroom"
+      assert attr(html, "meta[property='og:title']", "content") == ["GradePush Classroom"]
       assert attr(html, "meta[name='twitter:card']", "content") == ["summary_large_image"]
       assert attr(html, "link[rel=canonical]", "href") == []
       assert attr(html, "meta[property='og:url']", "content") == []
@@ -41,8 +41,12 @@ defmodule GradePushWeb.MetadataTest do
 
       assert get_resp_header(response, "x-robots-tag") == ["index, follow"]
       assert attr(html, "meta[name=robots]", "content") == ["index, follow"]
-      assert text(html, "title") == title <> " | GradePush"
-      assert attr(html, "meta[property='og:title']", "content") == [title <> " | GradePush"]
+      assert text(html, "title") == title <> " | GradePush Classroom"
+
+      assert attr(html, "meta[property='og:title']", "content") == [
+               title <> " | GradePush Classroom"
+             ]
+
       assert attr(html, "meta[property='og:locale']", "content") == [og_locale]
       assert [content] = attr(html, "meta[name=description]", "content")
       assert content =~ description
@@ -97,7 +101,7 @@ defmodule GradePushWeb.MetadataTest do
     enable_demo()
     response = conn |> init_test_session(locale: "fr") |> get("/demo?locale=unsupported")
     html = html_response(response, 200)
-    assert text(html, "title") == "Alternative à GitHub Classroom | GradePush"
+    assert text(html, "title") == "Alternative à GitHub Classroom | GradePush Classroom"
 
     assert attr(html, "link[rel=canonical]", "href") == [
              GradePushWeb.Endpoint.url() <> "/demo?locale=fr"
@@ -106,8 +110,8 @@ defmodule GradePushWeb.MetadataTest do
 
   test "LiveView supplies updated titles with a stable browser suffix", %{conn: conn} do
     {:ok, view, html} = live(conn, "/classrooms")
-    assert attr(html, "title", "data-suffix") == [" | GradePush"]
-    assert page_title(view) == "My classrooms | GradePush"
+    assert attr(html, "title", "data-suffix") == [" | GradePush Classroom"]
+    assert page_title(view) == "My classrooms | GradePush Classroom"
     render_patch(view, "/teacher/settings")
     assert page_title(view) == "Settings"
   end

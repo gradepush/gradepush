@@ -22,7 +22,7 @@ defmodule GradePushWeb.Metadata do
 
   def demo_description do
     gettext(
-      "GradePush is an open-source, self-hosted alternative to GitHub Classroom. Explore assignments, GitHub repositories, and automated grading without a GitHub account."
+      "GradePush Classroom is an open-source, self-hosted alternative to GitHub Classroom. Explore assignments, GitHub repositories, and automated grading without a GitHub account."
     )
   end
 
@@ -33,13 +33,14 @@ defmodule GradePushWeb.Metadata do
     %{
       public_demo?: public_demo,
       robots: if(public_demo, do: "index, follow", else: "noindex"),
-      title: if(public_demo, do: demo_title() <> " | GradePush", else: "GradePush"),
+      title:
+        if(public_demo, do: demo_title() <> " | GradePush Classroom", else: "GradePush Classroom"),
       description:
         if(public_demo,
           do: demo_description(),
           else:
             gettext(
-              "Manage programming assignments, GitHub repositories, and automated feedback with GradePush."
+              "GradePush Classroom is an open-source, self-hosted alternative to GitHub Classroom for managing programming assignments, repositories, and automated feedback."
             )
         ),
       image: origin <> "/images/og-image.png",

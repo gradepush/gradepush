@@ -3257,8 +3257,8 @@ msgstr "Alternative à GitHub Classroom"
 
 #: lib/gradepush_web/metadata.ex:24
 #, elixir-autogen, elixir-format
-msgid "GradePush is an open-source, self-hosted alternative to GitHub Classroom. Explore assignments, GitHub repositories, and automated grading without a GitHub account."
-msgstr "GradePush est une alternative libre et autohébergée à GitHub Classroom. Explorez les devoirs, les dépôts GitHub et la correction automatisée sans compte GitHub."
+msgid "GradePush Classroom is an open-source, self-hosted alternative to GitHub Classroom. Explore assignments, GitHub repositories, and automated grading without a GitHub account."
+msgstr "GradePush Classroom est une alternative libre et autohébergée à GitHub Classroom. Explorez les devoirs, les dépôts GitHub et la correction automatisée sans compte GitHub."
 
 #: lib/gradepush_web/metadata.ex:46
 #, elixir-autogen, elixir-format
@@ -3267,8 +3267,8 @@ msgstr "Logo GradePush"
 
 #: lib/gradepush_web/metadata.ex:41
 #, elixir-autogen, elixir-format
-msgid "Manage programming assignments, GitHub repositories, and automated feedback with GradePush."
-msgstr "Gérez les devoirs de programmation, les dépôts GitHub et la rétroaction automatisée avec GradePush."
+msgid "GradePush Classroom is an open-source, self-hosted alternative to GitHub Classroom for managing programming assignments, repositories, and automated feedback."
+msgstr "GradePush Classroom est une alternative libre et autohébergée à GitHub Classroom pour gérer les devoirs de programmation, les dépôts et la rétroaction automatisée."
 
 #: lib/gradepush_web/components/account_components.ex:223
 #, elixir-autogen, elixir-format
