@@ -15,7 +15,7 @@ defmodule GradePushWeb.NavigationComponents do
       data-ui="tabs"
       id={@id}
       class={[
-        "mt-[28px] flex border-b border-line",
+        "mt-[28px] flex w-fit max-w-full gap-[5px] overflow-x-auto rounded-[14px] border border-line bg-tab-track p-[5px]",
         @compact &&
           [
             "max-[760px]:grid max-[760px]:auto-cols-[minmax(max-content,1fr)] max-[760px]:grid-flow-col max-[760px]:overflow-x-auto",
@@ -40,9 +40,9 @@ defmodule GradePushWeb.NavigationComponents do
     ~H"""
     <.link
       class={[
-        "-mb-px flex items-center gap-[9px] rounded-t-lg border-b-2 px-[16px] py-[15px] font-[550] hover:border-[#9bb1fa] focus-visible:border-[#9bb1fa] max-[760px]:gap-[6px] max-[760px]:px-[12px] max-[760px]:text-[13px]",
-        @active && "is-active border-brand bg-surface-heading text-brand",
-        !@active && "border-transparent text-muted"
+        "flex min-h-[44px] shrink-0 items-center justify-center gap-[9px] whitespace-nowrap rounded-[10px] px-[16px] py-[11px] font-[550] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand max-[760px]:gap-[6px] max-[760px]:px-[12px] max-[760px]:text-[13px]",
+        @active && "is-active bg-white text-brand shadow-tab",
+        !@active && "text-muted hover:bg-white/60 hover:text-ink"
       ]}
       aria-current={if @active, do: "page"}
       {@rest}
