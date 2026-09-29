@@ -143,8 +143,8 @@
                 </.lead>
               </div>
               <.button
-                :if={repository_url(@repository)}
-                href={repository_url(@repository)}
+                :if={repository_access_url(@repository)}
+                href={repository_access_url(@repository)}
                 variant="primary"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -174,7 +174,7 @@
               </p>
             </div>
           </.panel>
-          <.panel :if={@subject && !repository_url(@repository)}>
+          <.panel :if={@subject && !repository_access_url(@repository)}>
             <div class="text-muted py-[20px] px-[22px] [&_p]:m-0 max-[760px]:p-[18px]">
               <p role="status">
                 {if repository_failed?(@repository),

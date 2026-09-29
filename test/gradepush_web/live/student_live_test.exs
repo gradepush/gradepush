@@ -206,7 +206,7 @@ defmodule GradePushWeb.StudentLiveTest do
 
     assert has_element?(
              detail,
-             "a[href='https://github.com/test-org/camille-work']",
+             "a[href='https://github.com/test-org/camille-work/invitations']",
              "Open repository"
            )
 

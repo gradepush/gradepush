@@ -204,10 +204,13 @@ defmodule GradePushWeb.StudentLive do
     end)
   end
 
-  defp repository_url(repository) do
+  defp repository_access_url(repository) do
     case repository do
-      %{html_url: "https://github.com/" <> _ = url} -> url
-      _ -> nil
+      %{html_url: "https://github.com/" <> _ = url} ->
+        String.trim_trailing(url, "/") <> "/invitations"
+
+      _ ->
+        nil
     end
   end
 
