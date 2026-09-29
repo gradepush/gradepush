@@ -20,7 +20,7 @@ Uses the published image with PostgreSQL and Caddy. No repository clone or build
 2. Download and run the installer on your Linux server or macOS:
 
    ```sh
-   curl -fsSLO https://raw.githubusercontent.com/gradepush/gradepush/main/install.sh
+   curl -fsSLO https://raw.githubusercontent.com/gradepush/gradepush/main/scripts/install.sh
    sh install.sh
    ```
 
@@ -66,7 +66,7 @@ For manual installation, use the [standalone Compose file](compose.self-host.yam
    Windows:
 
    ```sh
-   docker compose --env-file .env.example -p gradepush-demo -f compose.yaml -f compose.local.yaml -f compose.demo.yaml up -d --build --wait
+   docker compose --env-file .env.example -p gradepush-demo -f compose.yaml -f compose.demo.yaml up -d --build --wait
    ```
 
 3. Open [https://localhost:4000/demo](https://localhost:4000/demo) and choose a role.

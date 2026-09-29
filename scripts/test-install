@@ -52,7 +52,7 @@ fi
 
     def install(self, *args):
         return subprocess.run(
-            ["sh", str(ROOT / "install.sh"), "--domain", "grades.example.org", *args],
+            ["sh", str(ROOT / "scripts/install.sh"), "--domain", "grades.example.org", *args],
             cwd=self.work, env=self.env, text=True, capture_output=True,
         )
 
@@ -136,7 +136,7 @@ exec "$REAL_OPENSSL" "$@"
         master, slave = pty.openpty()
         try:
             with subprocess.Popen(
-                ["sh", str(ROOT / "install.sh")], cwd=self.work, env=self.env,
+                ["sh", str(ROOT / "scripts/install.sh")], cwd=self.work, env=self.env,
                 stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
             ) as process:
                 os.write(master, b"grades.example.org\n")
@@ -149,7 +149,7 @@ exec "$REAL_OPENSSL" "$@"
             os.close(slave)
 
     def test_compose_checksum_matches_repository(self):
-        expected = re.search(r"^compose_sha256=([a-f0-9]+)$", (ROOT / "install.sh").read_text(), re.M)[1]
+        expected = re.search(r"^compose_sha256=([a-f0-9]+)$", (ROOT / "scripts/install.sh").read_text(), re.M)[1]
         self.assertEqual(hashlib.sha256((ROOT / "compose.self-host.yaml").read_bytes()).hexdigest(), expected)
 
 

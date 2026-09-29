@@ -51,6 +51,7 @@ README.md
 docs/architecture.md
 Dockerfile
 compose.yaml
+scripts/install.sh
 unknown-directory/file.ex
 deps/package/source.ex
 _build/prod/release.tar

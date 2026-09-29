@@ -1,7 +1,7 @@
 services:
   local-https:
     extends:
-      file: compose.certs.yaml
+      file: compose.yaml
       service: local-https
 
   app:
@@ -65,6 +65,8 @@ services:
       POSTGRES_USER: gradepush
       POSTGRES_PASSWORD: gradepush
       POSTGRES_APP_CREATEDB: "true"
+    ports:
+      - "127.0.0.1:${DEV_DB_PORT:-54329}:5432"
 
 volumes:
   dev_deps:

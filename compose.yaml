@@ -1,9 +1,26 @@
 services:
+  local-https:
+    build:
+      context: .
+      target: local-https
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=8m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - local_certs:/certs
+
   app:
     image: ${GRADEPUSH_IMAGE:-gradepush:local}
     build: .
     init: true
     depends_on:
+      local-https:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     environment:
@@ -18,7 +35,9 @@ services:
       UI_PREVIEW: ${UI_PREVIEW:-false}
       DEMO_MODE: ${DEMO_MODE:-false}
       PHX_HOST: ${PHX_HOST:-localhost}
-      PHX_SCHEME: ${PHX_SCHEME:-http}
+      PHX_SCHEME: https
+      TLS_CERTFILE: /app/local-certs/localhost.pem
+      TLS_KEYFILE: /app/local-certs/localhost-key.pem
       PHX_URL_PORT: ${PHX_URL_PORT:-${HOST_PORT:-4000}}
       PORT: 4000
       POOL_SIZE: ${POOL_SIZE:-10}
@@ -35,6 +54,9 @@ services:
       - /tmp:mode=1777,size=64m
     volumes:
       - gradepush_data:/var/lib/gradepush
+      - local_certs:/app/local-certs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --cacert /app/local-certs/ca.pem https://localhost:$$PORT/health/ready > /dev/null"]
 
   db:
     image: postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650
@@ -56,3 +78,4 @@ services:
 volumes:
   gradepush_data:
   postgres_data:
+  local_certs:
