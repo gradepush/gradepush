@@ -2,7 +2,7 @@
 set -eu
 umask 077
 
-compose_ref=762cf1dc25e3e511648404ffd7845e43dbf3cb5c
+compose_ref=bfd90e5f2be420381b6d8159c1955df30a5ccbf0
 compose_sha256=9c95129740d2fc93ca638dd70c6de211c486e40b028a2887665b91b5e08489a0
 domain=
 directory=gradepush
