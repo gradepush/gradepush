@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${GRADEPUSH_IMAGE:-ghcr.io/gradepush/gradepush:0.1.6}
+    image: ${GRADEPUSH_IMAGE:-ghcr.io/gradepush/gradepush:0.1.7}
     init: true
     depends_on:
       db:
