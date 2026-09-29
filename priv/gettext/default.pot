@@ -265,7 +265,7 @@ msgid "Build a command-line parser that accepts a file path and a help flag. Sho
 msgstr ""
 
 #: lib/gradepush_web/components/assignment_components.ex:82
-#: lib/gradepush_web/live/student_live.ex:229
+#: lib/gradepush_web/live/student_live.ex:232
 #, elixir-autogen, elixir-format
 msgid "Due %{date}"
 msgstr ""
@@ -378,8 +378,8 @@ msgstr ""
 #: lib/gradepush_web/components/student_schedule_components.ex:96
 #: lib/gradepush_web/components/student_schedule_components.ex:108
 #: lib/gradepush_web/components/student_schedule_components.ex:165
-#: lib/gradepush_web/live/student_live.ex:225
 #: lib/gradepush_web/live/student_live.ex:228
+#: lib/gradepush_web/live/student_live.ex:231
 #: lib/gradepush_web/live/teacher_live.html.heex:211
 #, elixir-autogen, elixir-format
 msgid "No deadline"
