@@ -46,7 +46,22 @@ Uses the published image with PostgreSQL and Caddy. No repository clone or build
 
 5. Enter your institution name, create the GitHub App, and sign in with GitHub. Connect an organization in **Settings → Organizations** and create your first classroom.
 
-For manual installation, use the [standalone Compose file](compose.self-host.yaml) with `PHX_HOST`, `DB_PASSWORD`, and `SETUP_TOKEN` in `.env`.
+For manual installation, use the [standalone Compose file](compose.self-host.yaml) with `PHX_HOST` and `DB_PASSWORD` in `.env`.
+
+### Update an existing installation
+
+`install.sh` prepares a new installation and refuses to overwrite an existing directory. You do not need to download or run it again to update GradePush.
+
+1. Check the [latest release](https://github.com/gradepush/gradepush/releases/latest) and make a [backup](https://docs.gradepush.ca/self-hosting/maintenance/#make-a-backup).
+2. In your existing installation's `.env`, set `GRADEPUSH_IMAGE` and `GRADEPUSH_PROXY_IMAGE` to that release's image references. The [update guide](https://docs.gradepush.ca/self-hosting/maintenance/#update-gradepush) includes an example and the alternative of editing `compose.yaml` directly.
+3. From the same installation directory, apply the update:
+
+   ```sh
+   docker compose pull
+   docker compose up -d --wait
+   ```
+
+Keep your existing `.env`, Compose project and data volumes. Startup applies database migrations automatically; you do not repeat institution or GitHub setup.
 
 ## Try the demo locally
 
