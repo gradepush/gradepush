@@ -75,9 +75,8 @@ defmodule GradePush.Assignments do
   @doc "Creates and publishes an assignment with its immutable initial autograding test set."
   def create_assignment(%User{} = actor, classroom_id, attrs) do
     with {:ok, classroom} <- Classrooms.classroom_for_teacher(actor, classroom_id),
-         {:ok, _connection} <- active_classroom_connection(actor, classroom),
          attrs <- normalize_attrs(attrs),
-         :ok <- validate_template(actor, classroom.id, attrs[:template_repository]),
+         :ok <- validate_template(actor, classroom, attrs[:template_repository]),
          :ok <- validate_cutoff(attrs),
          :ok <- validate_tests(attrs),
          {:ok, slug} <- available_assignment_slug(classroom.id, attrs[:title]),
@@ -116,13 +115,12 @@ defmodule GradePush.Assignments do
   def update_assignment(%User{} = actor, assignment_id, attrs) when is_integer(assignment_id) do
     with %Assignment{} = found <- Repo.get(Assignment, assignment_id),
          {:ok, classroom} <- Classrooms.classroom_for_teacher(actor, found.classroom_id),
-         {:ok, _connection} <- active_classroom_connection(actor, classroom),
          attrs <- normalize_attrs(attrs),
          attrs <- preserve_empty_existing_tests(found, attrs),
          :ok <-
            validate_template(
              actor,
-             classroom.id,
+             classroom,
              Map.get(attrs, :template_repository, found.template_repository)
            ),
          :ok <- validate_cutoff(attrs),
@@ -959,12 +957,12 @@ defmodule GradePush.Assignments do
       else: :ok
   end
 
-  defp validate_template(_actor, _classroom_id, value) when value in [nil, ""], do: :ok
+  defp validate_template(actor, classroom, value) when value in [nil, ""] do
+    with {:ok, _connection} <- active_classroom_connection(actor, classroom), do: :ok
+  end
 
-  defp validate_template(actor, classroom_id, template) when is_binary(template),
-    do: Classrooms.template_repository_available?(actor, classroom_id, template)
-
-  defp validate_template(_, _, _), do: {:error, :invalid_template_repository}
+  defp validate_template(actor, classroom, template),
+    do: Classrooms.template_repository_available?(actor, classroom.id, template)
 
   defp locked_change?(assignment, attrs) do
     scalar_change? =

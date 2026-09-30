@@ -532,7 +532,9 @@ defmodule GradePushWeb.AssignmentComponents do
 
   defp dash(assigns) do
     ~H"""
-    <span data-ui="dash" class="text-muted" aria-label={@label}>—</span>
+    <span data-ui="dash" class="text-muted">
+      <span aria-hidden="true">—</span><span class="sr-only">{@label}</span>
+    </span>
     """
   end
 

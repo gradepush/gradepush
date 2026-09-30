@@ -273,14 +273,24 @@ defmodule GradePushWeb.TeacherLiveTest do
 
     assert has_element?(
              view,
-             "#submission-mia-leduc [data-ui~='push-cell'] [data-ui~='dash'][aria-label='No pushes']"
+             "#submission-mia-leduc [data-ui~='push-cell'] [data-ui~='dash'] > .sr-only",
+             "No pushes"
            )
+
+    assert has_element?(
+             view,
+             "#submission-mia-leduc [data-ui~='dash'] > span[aria-hidden='true']",
+             "—"
+           )
+
+    refute has_element?(view, "[data-ui~='dash'][aria-label], [data-ui~='dash'][aria-hidden]")
 
     refute has_element?(view, "#submission-mia-leduc button")
 
     assert has_element?(
              view,
-             "#submission-maude-gauthier [data-ui~='push-cell'] [data-ui~='dash'][aria-label='No pushes']"
+             "#submission-maude-gauthier [data-ui~='push-cell'] [data-ui~='dash'] > .sr-only",
+             "No pushes"
            )
 
     assert has_element?(view, "#submission-maude-gauthier button[disabled]")
@@ -291,6 +301,10 @@ defmodule GradePushWeb.TeacherLiveTest do
     view |> form("#submission-search", status: "all", query: "2601001") |> render_change()
     assert has_element?(view, "#submission-amelie-fortin")
     refute has_element?(view, "#submission-mia-leduc")
+
+    {:ok, french_view, _} = live(conn, "/classrooms/programming/assignments/cli?locale=fr")
+    assert has_element?(french_view, "[data-ui~='dash'] > .sr-only", "Aucun push")
+    assert has_element?(french_view, "[data-ui~='dash'] > .sr-only", "Non exécutés")
   end
 
   test "late work and team repositories use their own assignment data", %{conn: conn} do

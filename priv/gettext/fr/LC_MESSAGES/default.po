@@ -160,7 +160,7 @@ msgid "Individual"
 msgstr "Individuel"
 
 #: lib/gradepush_web/components/assignment_components.ex:315
-#: lib/gradepush_web/components/assignment_components.ex:587
+#: lib/gradepush_web/components/assignment_components.ex:589
 #, elixir-autogen, elixir-format
 msgid "Late"
 msgstr "En retard"
@@ -590,8 +590,8 @@ msgid "No matching results"
 msgstr "Aucun résultat"
 
 #: lib/gradepush_web/components/assignment_components.ex:310
-#: lib/gradepush_web/components/assignment_components.ex:555
-#: lib/gradepush_web/components/assignment_components.ex:588
+#: lib/gradepush_web/components/assignment_components.ex:557
+#: lib/gradepush_web/components/assignment_components.ex:590
 #, elixir-autogen, elixir-format
 msgid "No pushes"
 msgstr "Aucun push"
@@ -601,7 +601,7 @@ msgstr "Aucun push"
 msgid "No teams yet"
 msgstr "Aucune équipe pour le moment"
 
-#: lib/gradepush_web/components/assignment_components.ex:589
+#: lib/gradepush_web/components/assignment_components.ex:591
 #: lib/gradepush_web/live/student_live.html.heex:108
 #, elixir-autogen, elixir-format
 msgid "Not accepted"
@@ -640,7 +640,7 @@ msgstr "Rechercher par nom ou matricule"
 msgid "Share this link with your students. Accepting the assignment joins the classroom and creates their repository."
 msgstr "Partagez ce lien avec vos étudiants. En acceptant le devoir, ils rejoignent la classe et obtiennent leur dépôt."
 
-#: lib/gradepush_web/components/assignment_components.ex:599
+#: lib/gradepush_web/components/assignment_components.ex:601
 #, elixir-autogen, elixir-format
 msgid "Students will create or join a team when they accept the assignment."
 msgstr "Les étudiants créeront ou rejoindront une équipe en acceptant le devoir."
@@ -668,12 +668,12 @@ msgstr "Tests"
 msgid "Tests run on each push. Open GitHub Actions in your repository to see the results."
 msgstr "Les tests s’exécutent à chaque push. Consultez GitHub Actions dans votre dépôt pour voir les résultats."
 
-#: lib/gradepush_web/components/assignment_components.ex:601
+#: lib/gradepush_web/components/assignment_components.ex:603
 #, elixir-autogen, elixir-format
 msgid "Try another search or progress filter."
 msgstr "Essayez une autre recherche ou un autre filtre d’avancement."
 
-#: lib/gradepush_web/components/assignment_components.ex:586
+#: lib/gradepush_web/components/assignment_components.ex:588
 #, elixir-autogen, elixir-format
 msgid "Work pushed"
 msgstr "Travail poussé"
@@ -718,7 +718,7 @@ msgstr "Tests automatiques"
 msgid "Copy invitation link"
 msgstr "Copier le lien d’invitation"
 
-#: lib/gradepush_web/components/assignment_components.ex:613
+#: lib/gradepush_web/components/assignment_components.ex:615
 #, elixir-autogen, elixir-format
 msgid "Daily commits: %{counts}"
 msgstr "Commits par jour : %{counts}"
@@ -738,7 +738,7 @@ msgstr "Argument manquant"
 msgid "No automatic tests"
 msgstr "Aucun test automatique"
 
-#: lib/gradepush_web/components/assignment_components.ex:555
+#: lib/gradepush_web/components/assignment_components.ex:557
 #, elixir-autogen, elixir-format
 msgid "No commits"
 msgstr "Aucun commit"
@@ -974,7 +974,7 @@ msgstr "Rédiger"
 msgid "Write instructions to see the preview."
 msgstr "Rédigez des consignes pour voir l’aperçu."
 
-#: lib/gradepush_web/components/assignment_components.ex:596
+#: lib/gradepush_web/components/assignment_components.ex:598
 #, elixir-autogen, elixir-format
 msgid "No teams have been assigned yet."
 msgstr "Aucune équipe n’a encore été formée."
@@ -2115,7 +2115,7 @@ msgstr "L’accès étudiant n’a pas pu être ajouté sur GitHub. Relancez la 
 msgid "Student added to the team."
 msgstr "Étudiant ajouté à l’équipe."
 
-#: lib/gradepush_web/components/assignment_components.ex:593
+#: lib/gradepush_web/components/assignment_components.ex:595
 #, elixir-autogen, elixir-format
 msgid "Students will see their assigned team when they accept the assignment."
 msgstr "Les étudiants rejoindront leur équipe en acceptant le devoir."
@@ -2213,7 +2213,7 @@ msgstr "Continuer comme étudiant"
 msgid "Continue as a teacher"
 msgstr "Continuer comme enseignant"
 
-#: lib/gradepush_web/components/assignment_components.ex:614
+#: lib/gradepush_web/components/assignment_components.ex:616
 #, elixir-autogen, elixir-format
 msgid "Daily pushes: %{counts}"
 msgstr "Pushs par jour : %{counts}"
@@ -3255,20 +3255,10 @@ msgstr "La copie a échoué. Sélectionnez et copiez le texte manuellement."
 msgid "GitHub Classroom alternative"
 msgstr "Alternative à GitHub Classroom"
 
-#: lib/gradepush_web/metadata.ex:24
-#, elixir-autogen, elixir-format
-msgid "GradePush Classroom is an open-source, self-hosted alternative to GitHub Classroom. Explore assignments, GitHub repositories, and automated grading without a GitHub account."
-msgstr "GradePush Classroom est une alternative libre et autohébergée à GitHub Classroom. Explorez les devoirs, les dépôts GitHub et la correction automatisée sans compte GitHub."
-
-#: lib/gradepush_web/metadata.ex:46
+#: lib/gradepush_web/metadata.ex:47
 #, elixir-autogen, elixir-format
 msgid "GradePush logo"
 msgstr "Logo GradePush"
-
-#: lib/gradepush_web/metadata.ex:41
-#, elixir-autogen, elixir-format
-msgid "GradePush Classroom is an open-source, self-hosted alternative to GitHub Classroom for managing programming assignments, repositories, and automated feedback."
-msgstr "GradePush Classroom est une alternative libre et autohébergée à GitHub Classroom pour gérer les devoirs de programmation, les dépôts et la rétroaction automatisée."
 
 #: lib/gradepush_web/components/account_components.ex:223
 #, elixir-autogen, elixir-format
@@ -3299,3 +3289,13 @@ msgstr "Recharger les organisations"
 #, elixir-autogen, elixir-format
 msgid "Review account authorization"
 msgstr "Vérifier l’autorisation de mon compte"
+
+#: lib/gradepush_web/metadata.ex:42
+#, elixir-autogen, elixir-format
+msgid "GradePush Classroom is an open-source, self-hosted alternative to GitHub Classroom for managing programming assignments, repositories, and automated feedback."
+msgstr "GradePush Classroom est une alternative libre et autohébergée à GitHub Classroom pour gérer les devoirs de programmation, les dépôts et la rétroaction automatisée."
+
+#: lib/gradepush_web/metadata.ex:24
+#, elixir-autogen, elixir-format
+msgid "GradePush Classroom is an open-source, self-hosted alternative to GitHub Classroom. Explore assignments, GitHub repositories, and automated grading without a GitHub account."
+msgstr "GradePush Classroom est une alternative libre et autohébergée à GitHub Classroom. Explorez les devoirs, les dépôts GitHub et la correction automatisée sans compte GitHub."

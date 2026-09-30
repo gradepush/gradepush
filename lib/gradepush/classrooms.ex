@@ -824,12 +824,40 @@ defmodule GradePush.Classrooms do
 
   @doc "Lists starter repositories available in the selected organization."
   def list_templates(%User{} = actor, classroom_id) do
+    with {:ok, connection} <- classroom_template_connection(actor, classroom_id) do
+      connection_templates(connection)
+    end
+  end
+
+  def list_templates(_, _), do: {:error, :unauthorized}
+
+  @doc "Checks the teacher's current connection access and assignment template."
+  def template_repository_available?(%User{} = actor, classroom_id, full_name)
+      when is_integer(classroom_id) do
+    case classroom_template_connection(actor, classroom_id) do
+      {:ok, connection} -> validate_connection_template(connection, full_name)
+      {:error, _reason} -> {:error, :github_connection_unavailable}
+    end
+  end
+
+  def template_repository_available?(_, _, _), do: {:error, :invalid_template_repository}
+
+  defp classroom_template_connection(actor, classroom_id) do
     with :ok <- require_classroom_teacher(actor, classroom_id),
          %Classroom{github_connection_id: connection_id} when not is_nil(connection_id) <-
            Repo.get(Classroom, classroom_id),
          {:ok, %GitHubConnection{status: "active"} = connection} <-
-           get_github_connection(actor, connection_id),
-         {:ok, credentials} <- GradePush.Installation.github_app_credentials(),
+           get_github_connection(actor, connection_id) do
+      {:ok, connection}
+    else
+      nil -> {:error, :not_found}
+      %Classroom{} -> {:error, :github_connection_unavailable}
+      error -> error
+    end
+  end
+
+  defp connection_templates(connection) do
+    with {:ok, credentials} <- GradePush.Installation.github_app_credentials(),
          {:ok, token_response} <-
            GradePush.GitHub.installation_token(credentials, connection.installation_id),
          access_token when is_binary(access_token) <- field(token_response, :token),
@@ -845,20 +873,16 @@ defmodule GradePush.Classrooms do
        end)}
     else
       nil -> {:error, :not_found}
-      %Classroom{} -> {:error, :github_connection_unavailable}
       error -> error
     end
   end
 
-  def list_templates(_, _), do: {:error, :unauthorized}
-
-  def template_repository_available?(%User{} = actor, classroom_id, full_name)
-      when is_integer(classroom_id) and is_binary(full_name) do
+  defp validate_connection_template(connection, full_name) when is_binary(full_name) do
     candidate = String.downcase(String.trim(full_name))
 
     with [owner, repository] when owner != "" and repository != "" <-
            String.split(candidate, "/", parts: 2),
-         {:ok, templates} <- list_templates(actor, classroom_id),
+         {:ok, templates} <- connection_templates(connection),
          true <- Enum.any?(templates, &(String.downcase(&1.full_name) == candidate)) do
       :ok
     else
@@ -868,7 +892,7 @@ defmodule GradePush.Classrooms do
     end
   end
 
-  def template_repository_available?(_, _, _), do: {:error, :invalid_template_repository}
+  defp validate_connection_template(_, _), do: {:error, :invalid_template_repository}
 
   def authorized_connection?(actor, connection_id),
     do: match?({:ok, _}, get_github_connection(actor, connection_id))

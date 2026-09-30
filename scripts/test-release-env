@@ -38,6 +38,17 @@ export GRADEPUSH_DATA_DIR="$scratch/leading-plus"
 PATH="$scratch/bin:$PATH" SECRET_KEY_BASE=external-session CREDENTIAL_ENCRYPTION_KEY=external-credentials \
   sh -eu -c '. "$1"; case "$RELEASE_COOKIE" in gp_+*) ;; *) exit 1 ;; esac; erl -noshell -setcookie "$RELEASE_COOKIE" -eval "halt()."' sh "$release_env"
 
+export GRADEPUSH_DATA_DIR="$scratch/legacy"
+cp -R "$scratch/first" "$GRADEPUSH_DATA_DIR"
+printf '%s' '+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' > "$GRADEPUSH_DATA_DIR/release_cookie"
+cp -R "$GRADEPUSH_DATA_DIR" "$scratch/legacy-first"
+for attempt in 1 2; do
+  sh -eu -c '. "$1"; test "$RELEASE_COOKIE" = "gp_$(cat "$GRADEPUSH_DATA_DIR/release_cookie")"; erl -noshell -setcookie "$RELEASE_COOKIE" -eval "halt()."' sh "$release_env"
+done
+diff -r "$scratch/legacy-first" "$GRADEPUSH_DATA_DIR"
+printf '%s' 'legacy-safe-cookie' > "$GRADEPUSH_DATA_DIR/release_cookie"
+sh -eu -c '. "$1"; test "$RELEASE_COOKIE" = legacy-safe-cookie' sh "$release_env"
+
 export GRADEPUSH_DATA_DIR="$scratch/concurrent"
 sh -eu -c '. "$1"' sh "$release_env" &
 first=$!
@@ -47,4 +58,4 @@ wait "$first"
 wait "$second"
 test "$(find "$GRADEPUSH_DATA_DIR" -type f | wc -l | tr -d ' ')" = 3
 
-printf '%s\n' 'Release secrets: generation, permissions, reuse, overrides, leading-plus cookie and concurrent initialization passed.'
+printf '%s\n' 'Release secrets: generation, permissions, reuse, overrides, new and legacy cookies, and concurrent initialization passed.'
