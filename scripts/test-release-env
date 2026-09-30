@@ -22,6 +22,22 @@ SECRET_KEY_BASE=external-session CREDENTIAL_ENCRYPTION_KEY=external-credentials 
   sh -eu -c '. "$1"; test "$SECRET_KEY_BASE" = external-session; test "$CREDENTIAL_ENCRYPTION_KEY" = external-credentials; test "$RELEASE_COOKIE" = external-cookie' sh "$release_env"
 test ! -e "$GRADEPUSH_DATA_DIR"
 
+mkdir "$scratch/bin"
+cat > "$scratch/bin/head" <<'SH'
+#!/bin/sh
+test "$1" = -c
+test "$2" = 48
+i=0
+while [ "$i" -lt 48 ]; do
+  printf '\373'
+  i=$((i + 1))
+done
+SH
+chmod +x "$scratch/bin/head"
+export GRADEPUSH_DATA_DIR="$scratch/leading-plus"
+PATH="$scratch/bin:$PATH" SECRET_KEY_BASE=external-session CREDENTIAL_ENCRYPTION_KEY=external-credentials \
+  sh -eu -c '. "$1"; case "$RELEASE_COOKIE" in gp_+*) ;; *) exit 1 ;; esac; erl -noshell -setcookie "$RELEASE_COOKIE" -eval "halt()."' sh "$release_env"
+
 export GRADEPUSH_DATA_DIR="$scratch/concurrent"
 sh -eu -c '. "$1"' sh "$release_env" &
 first=$!
@@ -31,4 +47,4 @@ wait "$first"
 wait "$second"
 test "$(find "$GRADEPUSH_DATA_DIR" -type f | wc -l | tr -d ' ')" = 3
 
-printf '%s\n' 'Release secrets: generation, permissions, reuse, overrides and concurrent initialization passed.'
+printf '%s\n' 'Release secrets: generation, permissions, reuse, overrides, leading-plus cookie and concurrent initialization passed.'
