@@ -55,6 +55,7 @@ test('teacher saves an assignment and sees the persisted title after reloading',
 
   const saveTitle = async title => {
     await page.getByRole('link', {name: 'Edit assignment', exact: true}).click();
+    await expect(page.locator('.phx-connected')).toBeAttached();
     await page.getByRole('textbox', {name: 'Title', exact: true}).fill(title);
     await page.getByRole('button', {name: 'Save changes', exact: true}).click();
     await expect(page).toHaveURL(assignmentUrl);
