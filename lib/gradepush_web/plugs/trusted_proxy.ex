@@ -9,14 +9,26 @@ defmodule GradePushWeb.Plugs.TrustedProxy do
     proxies =
       Keyword.get(options, :proxies, Application.get_env(:gradepush, :trusted_proxies, []))
 
-    trusted = Enum.flat_map(proxies, &addresses/1)
-
     header =
       Keyword.get(
         options,
         :client_ip_header,
         Application.get_env(:gradepush, :trusted_proxy_client_ip_header, "x-forwarded-for")
       )
+
+    if forwarded_headers?(conn, header) do
+      accept_forwarding(conn, proxies, header)
+    else
+      conn
+    end
+  end
+
+  # Direct health checks must not wait for proxy DNS during container startup.
+  defp forwarded_headers?(conn, header),
+    do: get_req_header(conn, header) != [] or get_req_header(conn, "x-forwarded-proto") != []
+
+  defp accept_forwarding(conn, proxies, header) do
+    trusted = Enum.flat_map(proxies, &addresses/1)
 
     if trusted?(conn.remote_ip, trusted) do
       conn

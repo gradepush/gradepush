@@ -4,6 +4,12 @@ defmodule GradePushWeb.Plugs.TrustedProxyTest do
   import Plug.Test
   alias GradePushWeb.Plugs.TrustedProxy
 
+  test "direct health checks do not establish proxy trust without forwarding headers" do
+    request = %{conn(:get, "/health/ready") | remote_ip: {127, 0, 0, 1}}
+    assert TrustedProxy.call(request, proxies: ["127.0.0.1"]) == request
+    assert TrustedProxy.call(request, proxies: ["caddy"]) == request
+  end
+
   test "only a configured peer may supply the client address" do
     request =
       %{conn(:get, "/") | remote_ip: {192, 0, 2, 1}}
@@ -51,7 +57,11 @@ defmodule GradePushWeb.Plugs.TrustedProxyTest do
           {{172, 16, 0, 1}, "172.16.0.0/-1", false},
           {{127, 0, 0, 1}, "localhost/8", false}
         ] do
-      result = TrustedProxy.call(%{conn(:get, "/") | remote_ip: peer}, proxies: [range])
+      request =
+        %{conn(:get, "/") | remote_ip: peer}
+        |> put_req_header("x-forwarded-proto", "https")
+
+      result = TrustedProxy.call(request, proxies: [range])
       assert !!result.private[:trusted_proxy] == expected
     end
   end

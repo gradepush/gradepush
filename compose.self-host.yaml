@@ -73,7 +73,7 @@ services:
       - caddy_runtime_config:/caddy-config
 
   app:
-    image: ${GRADEPUSH_IMAGE:-ghcr.io/gradepush/gradepush:0.1.8}
+    image: ${GRADEPUSH_IMAGE:-ghcr.io/gradepush/gradepush:0.1.9}
     init: true
     depends_on:
       db:
@@ -164,7 +164,7 @@ services:
       - caddy_config:/config
 
   caddy:
-    image: ${GRADEPUSH_PROXY_IMAGE:-ghcr.io/gradepush/gradepush-caddy:0.1.8}
+    image: ${GRADEPUSH_PROXY_IMAGE:-ghcr.io/gradepush/gradepush-caddy:0.1.9}
     depends_on:
       app:
         condition: service_healthy
