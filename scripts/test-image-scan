@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+import copy
+import datetime
+import runpy
+import unittest
+from pathlib import Path
+
+check = runpy.run_path(str(Path(__file__).with_name("check-image-scan")))["unreviewed"]
+
+
+class ImageScanTest(unittest.TestCase):
+    def setUp(self):
+        self.today = datetime.date(2026, 9, 29)
+        self.report = {"ArtifactName": "pinned-image", "Results": [{
+            "Target": "database", "Class": "os-pkgs", "Vulnerabilities": [{
+                "Severity": "HIGH", "PkgName": "library", "InstalledVersion": "1.0", "VulnerabilityID": "CVE-known"
+            }]
+        }]}
+        self.policy = {"image": "pinned-image", "expires": "2026-10-29", "exceptions": [{
+            "target": "database", "packages": {"library": "1.0"}, "vulnerabilities": ["CVE-known"]
+        }]}
+
+    def test_exact_reviewed_finding(self):
+        self.assertEqual(check(self.report, self.policy, self.today), ([], 1))
+
+    def test_new_advisory_package_version_or_available_fix_fails(self):
+        for key, value in [("VulnerabilityID", "CVE-new"), ("InstalledVersion", "1.1"), ("PkgName", "other"), ("FixedVersion", "1.1")]:
+            report = copy.deepcopy(self.report)
+            report["Results"][0]["Vulnerabilities"][0][key] = value
+            self.assertEqual(len(check(report, self.policy, self.today)[0]), 1)
+
+    def test_expired_or_different_image_fails(self):
+        with self.assertRaises(ValueError):
+            check(self.report, self.policy, datetime.date(2026, 10, 29))
+        self.report["ArtifactName"] = "different-image"
+        with self.assertRaises(ValueError):
+            check(self.report, self.policy, self.today)
+
+    def test_gosu_findings_require_a_separate_successful_symbol_check(self):
+        self.policy["exceptions"][0]["requires_gosu_symbol_check"] = True
+        self.assertEqual(len(check(self.report, self.policy, self.today)[0]), 1)
+        self.assertEqual(check(self.report, self.policy, self.today, True), ([], 1))
+
+    def test_no_policy_does_not_ignore_high_findings(self):
+        self.assertEqual(len(check(self.report, None, self.today)[0]), 1)
+
+    def test_missing_component_results_fail_closed(self):
+        for report in [{}, {"Results": []}, {"Results": None}]:
+            with self.assertRaises(ValueError):
+                check(report, None, self.today)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -29,6 +29,9 @@
 !rel/setup.sh
 !deploy/local-https.sh
 !deploy/development-entrypoint.sh
+!deploy/caddy/go.mod
+!deploy/caddy/go.sum
+!deploy/caddy/main.go
 !test/**/*.ex
 !test/**/*.exs
 !scripts/test-release-env

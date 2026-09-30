@@ -76,7 +76,11 @@ config :gradepush, Oban,
   queues: [default: 10, github: 5, maintenance: 1],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 7 * 24 * 60 * 60},
-    {Oban.Plugins.Cron, crontab: [{"0 * * * *", GradePush.Workers.PruneGitHubDeliveries}]}
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"0 * * * *", GradePush.Workers.PruneGitHubDeliveries},
+       {"*/5 * * * *", GradePush.Workers.ReconcileGrading}
+     ]}
   ]
 
 import_config "#{config_env()}.exs"

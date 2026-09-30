@@ -6,6 +6,8 @@ defmodule GradePush.TeachingFixtures do
   alias GradePush.Assignments
   alias GradePush.Classrooms
   alias GradePush.Classrooms.GitHubConnection
+  alias GradePush.Crypto
+  alias GradePush.Installation.{GitHubApp, GitHubUserCredentials}
   alias GradePush.Repo
 
   def student_fixture(attrs \\ %{}) do
@@ -73,22 +75,45 @@ defmodule GradePush.TeachingFixtures do
   end
 
   defp connection_for(teacher) do
+    authorize_github_fixture(teacher)
+
     case Repo.get_by(GitHubConnection, connected_by_id: teacher.id) do
       %GitHubConnection{status: "active"} = connection ->
         connection
 
       _ ->
-        unique = System.unique_integer([:positive, :monotonic])
-
-        %GitHubConnection{}
-        |> GitHubConnection.changeset(%{
-          github_organization_id: unique,
-          login: "gradepush-test-#{unique}",
-          installation_id: unique,
-          status: "active",
-          connected_by_id: teacher.id
-        })
-        |> Repo.insert!()
+        {:ok, connection} = Classrooms.connect_github_organization(teacher, 123)
+        connection
     end
+  end
+
+  def authorize_github_fixture(teacher) do
+    unless Repo.exists?(GitHubApp) do
+      {:ok, secret} = Crypto.encrypt("test-client-secret", "github_app.client_secret")
+      {:ok, key} = Crypto.encrypt("test-private-key", "github_app.private_key")
+      {:ok, webhook} = Crypto.encrypt("test-webhook-secret", "github_app.webhook_secret")
+
+      Repo.insert!(%GitHubApp{
+        app_id: 456,
+        client_id: "test-client-id",
+        client_secret_encrypted: secret,
+        private_key_encrypted: key,
+        webhook_secret_encrypted: webhook,
+        slug: "gradepush-test",
+        html_url: "https://github.com/apps/gradepush-test"
+      })
+    end
+
+    unless Repo.get_by(GitHubUserCredentials, user_id: teacher.id) do
+      {:ok, token} = Crypto.encrypt("test-user-token", "github_user.#{teacher.id}.access_token")
+
+      Repo.insert!(%GitHubUserCredentials{
+        user_id: teacher.id,
+        access_token_encrypted: token,
+        scopes: []
+      })
+    end
+
+    :ok
   end
 end

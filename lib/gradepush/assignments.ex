@@ -683,9 +683,8 @@ defmodule GradePush.Assignments do
     with %Subject{} = subject <- Repo.get(Subject, subject_id),
          %Assignment{} = assignment <-
            Repo.get(Assignment, subject.assignment_id) |> preload_assignment(),
-         %Classroom{} = classroom <-
-           Repo.get(Classroom, assignment.classroom_id) |> Repo.preload(:github_connection),
-         %GitHubConnection{} = connection <- classroom.github_connection,
+         %Classroom{} = classroom <- Repo.get(Classroom, assignment.classroom_id),
+         {:ok, connection} <- Classrooms.classroom_github_connection(classroom),
          %Repository{} = repository <- Repo.get_by(Repository, subject_id: subject.id) do
       members = subject_recipients(subject)
 
@@ -729,6 +728,7 @@ defmodule GradePush.Assignments do
       end
     else
       nil -> {:error, :not_found}
+      {:error, _} = error -> error
       _ -> {:error, :incomplete_provisioning_intent}
     end
   end

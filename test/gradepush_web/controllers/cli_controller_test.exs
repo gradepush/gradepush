@@ -85,6 +85,23 @@ defmodule GradePushWeb.CLIControllerTest do
     assert json_response(rejected, 401) == %{"error" => "unauthorized"}
   end
 
+  test "clients behind a trusted proxy have separate quotas and spoofed prefixes cannot reset one" do
+    previous = Application.get_env(:gradepush, :trusted_proxies, [])
+    Application.put_env(:gradepush, :trusted_proxies, ["192.0.2.42"])
+    on_exit(fn -> Application.put_env(:gradepush, :trusted_proxies, previous) end)
+
+    request = fn header ->
+      %{build_conn() | remote_ip: {192, 0, 2, 42}}
+      |> put_req_header("x-forwarded-for", header)
+      |> post_json("/api/v1/cli/device", %{})
+    end
+
+    assert Enum.all?(1..60, fn _ -> request.("198.51.100.31").status == 200 end)
+    assert request.("198.51.100.31").status == 429
+    assert request.("203.0.113.88, 198.51.100.31").status == 429
+    assert request.("198.51.100.32").status == 200
+  end
+
   test "rejects malformed request bodies and disables every CLI API endpoint in demo mode", %{
     conn: conn
   } do

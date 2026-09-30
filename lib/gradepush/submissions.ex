@@ -231,7 +231,11 @@ defmodule GradePush.Submissions do
   end
 
   defp persist_grade(subject_id, repository_id, normalized) do
-    case Repo.get_by(Grade, repository_id: repository_id, run_id: normalized.run_id) do
+    case Repo.get_by(Grade,
+           repository_id: repository_id,
+           run_id: normalized.run_id,
+           run_attempt: normalized.run_attempt
+         ) do
       %Grade{commit_sha: commit_sha} = existing when commit_sha == normalized.commit_sha ->
         Repo.preload(existing, :tests)
 
@@ -247,7 +251,15 @@ defmodule GradePush.Submissions do
     grade =
       %Grade{subject_id: subject_id, repository_id: repository_id}
       |> Grade.changeset(
-        Map.take(normalized, [:commit_sha, :run_id, :status, :score, :max_score, :html_url])
+        Map.take(normalized, [
+          :commit_sha,
+          :run_id,
+          :run_attempt,
+          :status,
+          :score,
+          :max_score,
+          :html_url
+        ])
       )
       |> Repo.insert!()
 
@@ -261,12 +273,14 @@ defmodule GradePush.Submissions do
   defp normalize_untrusted_result(attrs) do
     with :ok <- validate_commit_sha(field(attrs, :commit_sha)),
          true <- positive_run_id?(field(attrs, :run_id)),
+         true <- positive_run_id?(run_attempt(attrs)),
          true <- field(attrs, :reason) == "workflow_modified",
          true <- optional_github_url?(field(attrs, :html_url)) do
       {:ok,
        %{
          commit_sha: String.downcase(field(attrs, :commit_sha)),
          run_id: field(attrs, :run_id),
+         run_attempt: run_attempt(attrs),
          status: "untrusted",
          score: Decimal.new(0),
          max_score: Decimal.new(0),
@@ -284,7 +298,11 @@ defmodule GradePush.Submissions do
   defp optional_github_url?(url), do: valid_github_url?(url)
 
   defp persist_untrusted_result(subject_id, repository_id, normalized) do
-    case Repo.get_by(Grade, repository_id: repository_id, run_id: normalized.run_id) do
+    case Repo.get_by(Grade,
+           repository_id: repository_id,
+           run_id: normalized.run_id,
+           run_attempt: normalized.run_attempt
+         ) do
       %Grade{commit_sha: commit_sha, status: "untrusted"} = grade
       when commit_sha == normalized.commit_sha ->
         {:ok, grade}
@@ -460,6 +478,7 @@ defmodule GradePush.Submissions do
   defp normalize_grade(attrs, assignment) do
     commit_sha = field(attrs, :commit_sha)
     run_id = field(attrs, :run_id)
+    run_attempt = run_attempt(attrs)
     status = field(attrs, :status)
     html_url = field(attrs, :html_url)
     tests = field(attrs, :tests) || []
@@ -467,6 +486,7 @@ defmodule GradePush.Submissions do
 
     with :ok <- validate_commit_sha(commit_sha),
          true <- is_integer(run_id) and run_id > 0,
+         true <- positive_run_id?(run_attempt),
          true <- status in ~w(success failure cancelled timed_out queued in_progress),
          true <- is_list(tests),
          {:ok, normalized_tests} <- normalize_grade_tests(tests, configured_tests),
@@ -480,6 +500,7 @@ defmodule GradePush.Submissions do
        %{
          commit_sha: String.downcase(commit_sha),
          run_id: run_id,
+         run_attempt: run_attempt,
          status: status,
          score: score,
          max_score: max_score,
@@ -628,7 +649,7 @@ defmodule GradePush.Submissions do
       join: push in subquery(latest_pushes),
       on: push.subject_id == grade.subject_id and push.commit_sha == grade.commit_sha,
       distinct: grade.subject_id,
-      order_by: [asc: grade.subject_id, desc: grade.inserted_at, desc: grade.id],
+      order_by: [asc: grade.subject_id, desc: grade.run_id, desc: grade.run_attempt],
       preload: [:tests]
     )
     |> Repo.all()
@@ -694,6 +715,8 @@ defmodule GradePush.Submissions do
 
   defp field(map, key) when is_map(map), do: Map.get(map, key, Map.get(map, Atom.to_string(key)))
   defp field(_, _), do: nil
+
+  defp run_attempt(attrs), do: Map.get(attrs, :run_attempt, Map.get(attrs, "run_attempt", 1))
 
   defp broadcast_submission(assignment, subject, event) do
     Phoenix.PubSub.broadcast(

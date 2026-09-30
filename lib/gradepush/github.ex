@@ -30,11 +30,11 @@ defmodule GradePush.GitHub do
               {:ok, map() | nil} | {:error, term()}
   @callback list_commits(String.t(), String.t(), String.t(), keyword()) ::
               {:ok, [map()]} | {:error, term()}
-  @callback get_workflow_run(String.t(), String.t(), String.t(), pos_integer()) ::
+  @callback get_workflow_run(String.t(), String.t(), String.t(), pos_integer(), pos_integer()) ::
               {:ok, map()} | {:error, term()}
   @callback get_repository_file(String.t(), String.t(), String.t(), String.t(), String.t()) ::
               {:ok, map()} | {:error, term()}
-  @callback list_workflow_jobs(String.t(), String.t(), String.t(), pos_integer()) ::
+  @callback list_workflow_jobs(String.t(), String.t(), String.t(), pos_integer(), pos_integer()) ::
               {:ok, [map()]} | {:error, term()}
   @callback install_autograding_workflow(String.t(), String.t(), String.t(), [map()]) ::
               {:ok, map()} | {:error, term()}
@@ -97,14 +97,14 @@ defmodule GradePush.GitHub do
   def list_commits(access_token, owner, repository, options \\ []),
     do: call(:list_commits, [access_token, owner, repository, options])
 
-  def get_workflow_run(access_token, owner, repository, run_id),
-    do: call(:get_workflow_run, [access_token, owner, repository, run_id])
+  def get_workflow_run(access_token, owner, repository, run_id, attempt),
+    do: call(:get_workflow_run, [access_token, owner, repository, run_id, attempt])
 
   def get_repository_file(access_token, owner, repository, path, ref),
     do: call(:get_repository_file, [access_token, owner, repository, path, ref])
 
-  def list_workflow_jobs(access_token, owner, repository, run_id),
-    do: call(:list_workflow_jobs, [access_token, owner, repository, run_id])
+  def list_workflow_jobs(access_token, owner, repository, run_id, attempt),
+    do: call(:list_workflow_jobs, [access_token, owner, repository, run_id, attempt])
 
   def install_autograding_workflow(access_token, owner, repository, tests),
     do: call(:install_autograding_workflow, [access_token, owner, repository, tests])

@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""Fail on unreviewed high/critical image findings; retain the complete scanner report."""
+import argparse
+import datetime
+import json
+import sys
+from pathlib import Path
+
+
+def unreviewed(report, policy, today, gosu_checked=False):
+    if not isinstance(report.get("Results"), list) or not report["Results"]:
+        raise ValueError("Image scan has no component results; refusing an incomplete report")
+    exceptions = []
+    if policy:
+        if policy["image"] != report["ArtifactName"]:
+            raise ValueError("Image differs from the reviewed PostgreSQL digest")
+        if datetime.date.fromisoformat(policy["expires"]) <= today:
+            raise ValueError("PostgreSQL security assessment expired; review it before renewing")
+        exceptions = policy["exceptions"]
+
+    failures = []
+    reviewed = 0
+    for result in report.get("Results", []):
+        for vulnerability in result.get("Vulnerabilities", []):
+            if vulnerability["Severity"] not in ("HIGH", "CRITICAL"):
+                continue
+            matched = any(
+                item["target"] == result["Target"]
+                and item["packages"].get(vulnerability["PkgName"]) == vulnerability["InstalledVersion"]
+                and vulnerability["VulnerabilityID"] in item["vulnerabilities"]
+                and (not item.get("requires_gosu_symbol_check") or gosu_checked)
+                # A vendor fix makes an OS exception due for review immediately.
+                and (result.get("Class") != "os-pkgs" or not vulnerability.get("FixedVersion"))
+                for item in exceptions
+            )
+            if matched:
+                reviewed += 1
+            else:
+                failures.append(f'{result["Target"]}: {vulnerability["PkgName"]} {vulnerability["VulnerabilityID"]}')
+    return failures, reviewed
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("report", type=Path)
+    parser.add_argument("--exceptions", type=Path)
+    parser.add_argument("--gosu-symbols-checked", action="store_true")
+    args = parser.parse_args()
+    try:
+        report = json.loads(args.report.read_text())
+        policy = json.loads(args.exceptions.read_text()) if args.exceptions else None
+        failures, reviewed = unreviewed(
+            report, policy, datetime.datetime.now(datetime.timezone.utc).date(), args.gosu_symbols_checked
+        )
+    except (OSError, ValueError, KeyError) as error:
+        print(error, file=sys.stderr)
+        return 1
+    print(f"Reviewed deployment-specific findings: {reviewed}. Unreviewed high/critical findings: {len(failures)}.")
+    for failure in failures:
+        print(failure, file=sys.stderr)
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

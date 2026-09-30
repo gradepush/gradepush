@@ -373,6 +373,12 @@ defmodule GradePush.Installation do
             from(credentials in GitHubUserCredentials, where: credentials.user_id == ^user.id)
           )
 
+          Repo.delete_all(
+            from(grant in GradePush.Classrooms.GitHubConnectionTeacher,
+              where: grant.user_id == ^user.id
+            )
+          )
+
           :ok
         end)
         |> case do

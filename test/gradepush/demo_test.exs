@@ -120,6 +120,23 @@ defmodule GradePush.DemoTest do
            end)
   end
 
+  test "upgrades existing demo grants without resetting classrooms or their edits" do
+    Application.put_env(:gradepush, :demo_mode, true)
+    assert :ok = Demo.initialize()
+    {:ok, teacher} = Demo.user_for_role(:teacher)
+    {:ok, classroom} = Classrooms.get_classroom(teacher, "programming")
+    Repo.update!(Ecto.Changeset.change(classroom, title: "Preserved demo edits"))
+    Repo.delete_all(GradePush.Installation.GitHubUserCredentials)
+    classroom_ids = Repo.all(from(c in Classroom, order_by: c.id, select: c.id))
+
+    assert :ok = Demo.initialize()
+    assert :ok = Demo.initialize()
+    assert Repo.all(from(c in Classroom, order_by: c.id, select: c.id)) == classroom_ids
+    assert Repo.get!(Classroom, classroom.id).title == "Preserved demo edits"
+    assert Repo.aggregate(GradePush.Installation.GitHubUserCredentials, :count) == 2
+    assert {:ok, _} = Classrooms.get_github_connection(teacher, classroom.github_connection_id)
+  end
+
   test "student can explore both team modes, extensions, passed and failed tests and an undated assignment" do
     Application.put_env(:gradepush, :demo_mode, true)
     assert :ok = Demo.initialize()

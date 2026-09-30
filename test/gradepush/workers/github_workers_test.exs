@@ -11,8 +11,10 @@ defmodule GradePush.Workers.GitHubWorkersTest do
   alias GradePush.Crypto
   alias GradePush.GitHub.Delivery
   alias GradePush.GitHub.Fake
+  alias GradePush.GitHub.Webhooks
   alias GradePush.Installation.GitHubApp
   alias GradePush.Repo
+  alias GradePush.Submissions
   alias GradePush.Submissions.{Grade, Push}
 
   alias GradePush.Workers.{
@@ -98,6 +100,10 @@ defmodule GradePush.Workers.GitHubWorkersTest do
     commit_sha = String.duplicate("a", 40)
     observed_at = ~U[2026-09-27 15:04:05.000000Z]
 
+    Fake.set_workflow_run(repository.owner_login, repository.name, 900, 1, %{
+      "actor" => %{"type" => "Bot", "login" => "gradepush-test[bot]"}
+    })
+
     setup_run =
       insert_delivery(
         "workflow_run",
@@ -173,12 +179,184 @@ defmodule GradePush.Workers.GitHubWorkersTest do
 
   test "exhausted setup jobs mark the repository failed with a sanitized error" do
     %{subject: subject} = accepted_subject()
+    Repo.delete_all(GitHubApp)
 
     assert {:discard, "github_unavailable"} =
              provision(subject.id, attempt: 10, max_attempts: 10)
 
     assert %Repository{state: "failed", last_error: "github_unavailable"} =
              Repo.get_by!(Repository, subject_id: subject.id)
+  end
+
+  test "a workflow received before its push is retried and recovered even after exhausted attempts" do
+    %{subject: subject} =
+      accepted_subject(
+        autograding_enabled: true,
+        tests: [%{name: "Smoke", type: "command", command: "true", points: 2}]
+      )
+
+    assert :ok = provision(subject.id)
+    repository = Repo.get_by!(Repository, subject_id: subject.id)
+    sha = String.duplicate("a", 40)
+    observed_at = ~U[2026-09-27 15:04:05.000000Z]
+
+    run =
+      insert_delivery(
+        "workflow_run",
+        "out-of-order",
+        workflow_payload(repository, 950, sha),
+        observed_at
+      )
+
+    assert {:error, "push_not_recorded"} = process_delivery(run)
+    assert Repo.get!(Delivery, run.id).status == "pending"
+
+    assert {:discard, "push_not_recorded"} =
+             ProcessGitHubDelivery.perform(%Oban.Job{
+               args: %{"delivery_id" => run.id},
+               attempt: 10,
+               max_attempts: 10
+             })
+
+    assert {:ok, 0} = Webhooks.reconcile_grading()
+
+    push =
+      insert_delivery(
+        "push",
+        "late-push",
+        %{
+          "repository_id" => repository.github_repository_id,
+          "commit_sha" => sha,
+          "branch" => "main"
+        },
+        observed_at
+      )
+
+    assert :ok = process_delivery(push)
+    assert {:ok, 1} = Webhooks.reconcile_grading()
+    assert {:ok, 0} = Webhooks.reconcile_grading()
+    assert :ok = process_delivery(Repo.get!(Delivery, run.id))
+    assert Repo.get!(Delivery, run.id).status == "processed"
+    assert Repo.get_by!(Grade, repository_id: repository.id, run_id: 950).status == "success"
+    assert Repo.get_by!(Push, delivery_id: "late-push").observed_at == observed_at
+  end
+
+  test "reruns preserve attempts and older deliveries cannot replace the latest result" do
+    %{subject: subject} =
+      accepted_subject(
+        autograding_enabled: true,
+        tests: [%{name: "Smoke", type: "command", command: "true", points: 2}]
+      )
+
+    assert :ok = provision(subject.id)
+    repository = Repo.get_by!(Repository, subject_id: subject.id)
+    sha = String.duplicate("a", 40)
+    now = DateTime.utc_now()
+
+    push =
+      insert_delivery(
+        "push",
+        "rerun-push",
+        %{
+          "repository_id" => repository.github_repository_id,
+          "commit_sha" => sha,
+          "branch" => "main"
+        },
+        now
+      )
+
+    assert :ok = process_delivery(push)
+
+    for {attempt, conclusion} <- [{2, "success"}, {1, "failure"}, {2, "success"}, {3, "failure"}] do
+      Fake.set_workflow_run(repository.owner_login, repository.name, 951, attempt, %{
+        "conclusion" => conclusion
+      })
+
+      payload = Map.put(workflow_payload(repository, 951, sha), "run_attempt", attempt)
+
+      run =
+        insert_delivery(
+          "workflow_run",
+          "rerun-#{System.unique_integer([:positive])}",
+          payload,
+          now
+        )
+
+      assert :ok = process_delivery(run)
+      [enriched] = Submissions.enrich_subjects([subject])
+      assert enriched.latest_grade.run_attempt == max(2, attempt)
+      assert enriched.latest_grade.status == if(attempt == 3, do: "failure", else: "success")
+    end
+
+    assert Repo.aggregate(from(g in Grade, where: g.repository_id == ^repository.id), :count) == 3
+
+    assert Repo.get_by!(Grade, repository_id: repository.id, run_id: 951, run_attempt: 1).status ==
+             "failure"
+
+    assert Repo.get_by!(Grade, repository_id: repository.id, run_id: 951, run_attempt: 2).status ==
+             "success"
+  end
+
+  test "rerunning only failed jobs carries forward successful jobs from an earlier attempt" do
+    %{subject: subject} =
+      accepted_subject(
+        autograding_enabled: true,
+        tests: [
+          %{name: "First", type: "command", command: "true", points: 2},
+          %{name: "Second", type: "command", command: "true", points: 3}
+        ]
+      )
+
+    assert :ok = provision(subject.id)
+    repository = Repo.get_by!(Repository, subject_id: subject.id)
+    {:ok, target} = Submissions.workflow_target(repository.github_repository_id)
+    [first, second] = target.tests
+
+    job = fn definition, conclusion ->
+      %{
+        "name" => "GradePush test [gp-test-#{definition.id}] #{definition.name}",
+        "conclusion" => conclusion
+      }
+    end
+
+    Fake.set_workflow_jobs(repository.owner_login, repository.name, 952, 1, [
+      job.(first, "success"),
+      job.(second, "failure")
+    ])
+
+    Fake.set_workflow_jobs(repository.owner_login, repository.name, 952, 2, [
+      job.(second, "success")
+    ])
+
+    sha = String.duplicate("a", 40)
+    now = DateTime.utc_now()
+
+    assert :ok =
+             process_delivery(
+               insert_delivery(
+                 "push",
+                 "partial-rerun-push",
+                 %{
+                   "repository_id" => repository.github_repository_id,
+                   "commit_sha" => sha,
+                   "branch" => "main"
+                 },
+                 now
+               )
+             )
+
+    run =
+      insert_delivery(
+        "workflow_run",
+        "partial-rerun",
+        Map.put(workflow_payload(repository, 952, sha), "run_attempt", 2),
+        now
+      )
+
+    assert :ok = process_delivery(run)
+    grade = Repo.get_by!(Grade, repository_id: repository.id, run_id: 952, run_attempt: 2)
+    assert Decimal.equal?(grade.score, Decimal.new(5))
+    assert length(Repo.preload(grade, :tests).tests) == 2
   end
 
   test "setup bot pushes are ignored while other bot pushes remain recorded" do

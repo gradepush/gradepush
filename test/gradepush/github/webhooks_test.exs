@@ -135,6 +135,33 @@ defmodule GradePush.GitHub.WebhooksPersistenceTest do
     })
   end
 
+  test "workflow normalization preserves a positive attempt and rejects malformed attempts" do
+    payload = %{
+      action: "completed",
+      repository: %{id: 99},
+      workflow_run: %{
+        id: 90,
+        workflow_id: 42,
+        status: "completed",
+        head_sha: String.duplicate("a", 40),
+        run_attempt: 3
+      }
+    }
+
+    body = Jason.encode!(payload)
+
+    assert {:ok, :accepted} =
+             Webhooks.receive(body, signed_headers("attempt-3", "workflow_run", body))
+
+    assert Repo.get_by!(Delivery, delivery_id: "attempt-3").payload["run_attempt"] == 3
+
+    for attempt <- [0, -1, nil, false, "2"] do
+      body = Jason.encode!(put_in(payload, [:workflow_run, :run_attempt], attempt))
+      id = "invalid-attempt-#{inspect(attempt)}"
+      assert {:ok, :ignored} = Webhooks.receive(body, signed_headers(id, "workflow_run", body))
+    end
+  end
+
   defp signed_headers(id, event, body) do
     signature =
       :crypto.mac(:hmac, :sha256, "test-webhook-secret", body) |> Base.encode16(case: :lower)

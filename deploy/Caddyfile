@@ -1,3 +1,9 @@
+{
+	admin off
+	http_port 8080
+	https_port 8443
+}
+
 {$PHX_HOST} {
 	reverse_proxy app:4000
 }

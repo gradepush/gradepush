@@ -1,5 +1,5 @@
 defmodule GradePush.Workers.GitHubDeliveryRetentionTest do
-  use GradePush.DataCase, async: true
+  use GradePush.DataCase, async: true, group: :institution
 
   import Ecto.Query
 

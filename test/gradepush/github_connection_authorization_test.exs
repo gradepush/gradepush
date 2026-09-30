@@ -8,6 +8,7 @@ defmodule GradePush.GitHubConnectionAuthorizationTest do
   alias GradePush.Classrooms.GitHubConnection
   alias GradePush.GitHub.Fake
   alias GradePush.Installation.GitHubApp
+  alias GradePush.Workers.ProvisionAssignmentRepository
 
   setup do
     previous = Application.get_env(:gradepush, GradePush.GitHub, [])
@@ -151,6 +152,90 @@ defmodule GradePush.GitHubConnectionAuthorizationTest do
 
     assert {:error, :not_found} = Classrooms.get_github_connection(colleague, connection.id)
     assert {:ok, []} = Classrooms.list_github_connections(colleague)
+  end
+
+  test "role loss revokes only that teacher's grant and cannot fall back to the creator" do
+    %{user: owner} = configured_gradepush_fixture()
+    {:ok, connection} = Classrooms.connect_github_organization(owner, 123)
+    classroom = classroom_fixture(owner)
+    colleague = user_fixture()
+    teacher_membership_fixture(colleague)
+    authorize_github(colleague)
+    {:ok, _} = Classrooms.connect_github_organization(colleague, 123)
+    {:ok, _} = Classrooms.add_teacher(owner, classroom.id, colleague.id)
+
+    Fake.set_organization_membership("test-user-token", "gradepush-test", %{
+      "state" => "active",
+      "role" => "member"
+    })
+
+    assert {:error, :organization_owner_required} =
+             Classrooms.check_github_connection(owner, connection.id)
+
+    assert {:error, :not_found} = Classrooms.get_github_connection(owner, connection.id)
+    refute Classrooms.authorized_connection?(owner, connection.id)
+
+    assert {:error, :invalid_connection} =
+             Classrooms.create_classroom(owner, %{
+               title: "Revoked",
+               code: "NO",
+               github_connection_id: connection.id
+             })
+
+    assert {:error, :github_connection_unavailable} =
+             Assignments.create_assignment(owner, classroom.id, %{title: "Revoked"})
+
+    assert {:ok, []} = Classrooms.list_github_connections(owner)
+    assert {:ok, _} = Classrooms.get_github_connection(colleague, connection.id)
+    assert {:ok, _} = Classrooms.classroom_github_connection(classroom)
+  end
+
+  test "queued repository writes recheck teacher grants after role loss or token revocation" do
+    %{user: teacher} = configured_gradepush_fixture()
+    {:ok, _} = Classrooms.connect_github_organization(teacher, 123)
+    classroom = classroom_fixture(teacher)
+    assignment = assignment_fixture(teacher, classroom)
+    {:ok, invitation} = Assignments.create_assignment_invitation(teacher, assignment.id)
+
+    {:ok, %{subject: subject}} =
+      Assignments.accept_assignment_invitation(user_fixture(), invitation.token, %{
+        name: "Student",
+        student_id: "revoked-owner"
+      })
+
+    Fake.set_organization_membership("gradepush-test", %{
+      "state" => "inactive",
+      "role" => "member"
+    })
+
+    assert {:error, :github_connection_unavailable} = Assignments.provisioning_intent(subject.id)
+
+    assert {:error, :github_connection_unavailable} =
+             ProvisionAssignmentRepository.perform(%Oban.Job{
+               args: %{"subject_id" => subject.id},
+               attempt: 1,
+               max_attempts: 10
+             })
+
+    repository = Repo.get_by!(GradePush.Assignments.Repository, subject_id: subject.id)
+    assert is_nil(repository.github_repository_id)
+
+    Fake.set_organization_membership("gradepush-test", %{"state" => "active", "role" => "admin"})
+    {:ok, connection} = Classrooms.connect_github_organization(teacher, 123)
+    assert :ok = Installation.revoke_user_authorization(teacher.github_id)
+    assert {:error, :not_found} = Classrooms.get_github_connection(teacher, connection.id)
+    assert {:error, :github_connection_unavailable} = Assignments.provisioning_intent(subject.id)
+  end
+
+  test "a transient verification failure denies the operation without deleting the grant" do
+    %{user: teacher} = configured_gradepush_fixture()
+    {:ok, connection} = Classrooms.connect_github_organization(teacher, 123)
+    Fake.fail_next(:get_user_organization_membership, {:github_unavailable, 503})
+
+    assert {:error, {:github_unavailable, 503}} =
+             Classrooms.get_github_connection(teacher, connection.id)
+
+    assert {:ok, _} = Classrooms.get_github_connection(teacher, connection.id)
   end
 
   defp authorize_github(user) do

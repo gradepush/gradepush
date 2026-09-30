@@ -4,7 +4,7 @@ defmodule GradePush.MixProject do
   def project do
     [
       app: :gradepush,
-      version: "0.1.7",
+      version: "0.1.8",
       elixir: "~> 1.20.4",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -70,7 +70,7 @@ defmodule GradePush.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
-      {:mdex, "~> 0.13.5"},
+      {:mdex, "~> 0.14.0"},
       {:oban, "~> 2.24"},
       {:tz, "~> 0.28.4"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

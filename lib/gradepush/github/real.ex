@@ -197,10 +197,10 @@ defmodule GradePush.GitHub.Real do
   end
 
   @impl true
-  def get_workflow_run(access_token, owner, repository, run_id) do
+  def get_workflow_run(access_token, owner, repository, run_id, attempt) do
     request(
       :get,
-      "#{repo_path(owner, repository)}/actions/runs/#{id(run_id)}",
+      "#{repo_path(owner, repository)}/actions/runs/#{id(run_id)}/attempts/#{id(attempt)}",
       access_token,
       nil
     )
@@ -219,10 +219,10 @@ defmodule GradePush.GitHub.Real do
   end
 
   @impl true
-  def list_workflow_jobs(access_token, owner, repository, run_id) do
+  def list_workflow_jobs(access_token, owner, repository, run_id, attempt) do
     request(
       :get,
-      "#{repo_path(owner, repository)}/actions/runs/#{id(run_id)}/jobs?per_page=100",
+      "#{repo_path(owner, repository)}/actions/runs/#{id(run_id)}/attempts/#{id(attempt)}/jobs?per_page=100",
       access_token,
       nil
     )

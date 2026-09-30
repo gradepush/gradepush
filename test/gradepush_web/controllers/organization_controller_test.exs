@@ -1,5 +1,5 @@
 defmodule GradePushWeb.OrganizationControllerTest do
-  use GradePushWeb.ConnCase, async: true
+  use GradePushWeb.ConnCase, async: true, group: :institution
 
   import GradePush.AccountsFixtures
   import Phoenix.LiveViewTest

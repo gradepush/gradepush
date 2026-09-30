@@ -1,5 +1,5 @@
 defmodule GradePushWeb.SetupControllerTest do
-  use GradePushWeb.ConnCase, async: true
+  use GradePushWeb.ConnCase, async: true, group: :institution
 
   import ExUnit.CaptureLog
 

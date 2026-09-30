@@ -34,6 +34,13 @@ defmodule GradePush.GitHub.Fake do
     :ok
   end
 
+  def set_organization_membership(access_token, organization, membership) do
+    memberships = Process.get(@membership_key, %{})
+    key = {access_token, String.downcase(organization)}
+    Process.put(@membership_key, Map.put(memberships, key, membership))
+    :ok
+  end
+
   def fail_next(operation, reason) when is_atom(operation) do
     state = Process.get(@test_state_key, %{})
     faults = Map.put(Map.get(state, :faults, %{}), operation, reason)
@@ -51,6 +58,20 @@ defmodule GradePush.GitHub.Fake do
     state = Process.get(@test_state_key, %{})
     shas = Map.put(Map.get(state, :workflow_file_shas, %{}), {owner, repository}, sha)
     Process.put(@test_state_key, Map.put(state, :workflow_file_shas, shas))
+    :ok
+  end
+
+  def set_workflow_run(owner, repository, run_id, attempt, attrs) do
+    state = Process.get(@test_state_key, %{})
+    runs = Map.put(Map.get(state, :runs, %{}), {owner, repository, run_id, attempt}, attrs)
+    Process.put(@test_state_key, Map.put(state, :runs, runs))
+    :ok
+  end
+
+  def set_workflow_jobs(owner, repository, run_id, attempt, jobs) do
+    state = Process.get(@test_state_key, %{})
+    results = Map.put(Map.get(state, :jobs, %{}), {owner, repository, run_id, attempt}, jobs)
+    Process.put(@test_state_key, Map.put(state, :jobs, results))
     :ok
   end
 
@@ -106,8 +127,20 @@ defmodule GradePush.GitHub.Fake do
   def get_user_installation(_access_token, installation_id),
     do: find_installation(installation_id)
 
-  defp installations,
-    do: Map.get(Process.get(@test_state_key, %{}), :installations, [@installation])
+  defp installations do
+    installation =
+      if Application.get_env(:gradepush, :demo_mode, false) do
+        Map.put(@installation, "account", %{
+          "id" => 9_000_000_789,
+          "login" => "gradepush-demo",
+          "type" => "Organization"
+        })
+      else
+        @installation
+      end
+
+    Map.get(Process.get(@test_state_key, %{}), :installations, [installation])
+  end
 
   defp find_installation(id) do
     case Enum.find(installations(), &(&1["id"] == id)) do
@@ -117,12 +150,17 @@ defmodule GradePush.GitHub.Fake do
   end
 
   @impl true
-  def get_user_organization_membership(_access_token, organization) do
-    membership =
-      Process.get(@membership_key, %{})
-      |> Map.get(String.downcase(organization), default_membership(organization))
+  def get_user_organization_membership(access_token, organization) do
+    memberships = Process.get(@membership_key, %{})
 
-    {:ok, membership}
+    membership =
+      Map.get(memberships, {access_token, String.downcase(organization)}) ||
+        Map.get(memberships, String.downcase(organization), default_membership(organization))
+
+    case take_fault(:get_user_organization_membership) do
+      nil -> {:ok, membership}
+      error -> error
+    end
   end
 
   @impl true
@@ -211,21 +249,25 @@ defmodule GradePush.GitHub.Fake do
   def list_commits(_access_token, _owner, _repository, _options \\ []), do: {:ok, []}
 
   @impl true
-  def get_workflow_run(_access_token, owner, repository, run_id) do
+  def get_workflow_run(_access_token, owner, repository, run_id, attempt) do
     with {:ok, _repository} <- get_repository("test-installation-token", owner, repository),
          tests when is_list(tests) <-
            Store.get({:workflow, owner, repository}) do
       {:ok,
-       %{
-         "id" => run_id,
-         "workflow_id" => 1122,
-         "path" => ".github/workflows/gradepush.yml@refs/heads/main",
-         "event" => "push",
-         "status" => "completed",
-         "conclusion" => "success",
-         "head_sha" => String.duplicate("a", 40),
-         "html_url" => "https://github.com/#{owner}/#{repository}/actions/runs/#{run_id}"
-       }}
+       Map.merge(
+         %{
+           "id" => run_id,
+           "run_attempt" => attempt,
+           "workflow_id" => 1122,
+           "path" => ".github/workflows/gradepush.yml@refs/heads/main",
+           "event" => "push",
+           "status" => "completed",
+           "conclusion" => "success",
+           "head_sha" => String.duplicate("a", 40),
+           "html_url" => "https://github.com/#{owner}/#{repository}/actions/runs/#{run_id}"
+         },
+         workflow_run_attrs(owner, repository, run_id, attempt)
+       )}
     else
       nil -> {:error, :not_found}
       {:error, _reason} = error -> error
@@ -250,20 +292,40 @@ defmodule GradePush.GitHub.Fake do
   end
 
   @impl true
-  def list_workflow_jobs(_access_token, owner, repository, _run_id) do
+  def list_workflow_jobs(_access_token, owner, repository, run_id, attempt) do
+    case Process.get(@test_state_key, %{})
+         |> Map.get(:jobs, %{})
+         |> Map.fetch({owner, repository, run_id, attempt}) do
+      {:ok, jobs} -> {:ok, jobs}
+      :error -> default_workflow_jobs(owner, repository, run_id, attempt)
+    end
+  end
+
+  defp default_workflow_jobs(owner, repository, run_id, attempt) do
     case Store.get({:workflow, owner, repository}) do
       tests when is_list(tests) ->
         {:ok,
          Enum.map(tests, fn test ->
            %{
              "name" => "GradePush test [gp-test-#{field(test, :id)}] #{field(test, :name)}",
-             "conclusion" => "success"
+             "conclusion" =>
+               Map.get(
+                 workflow_run_attrs(owner, repository, run_id, attempt),
+                 "conclusion",
+                 "success"
+               )
            }
          end)}
 
       nil ->
         {:error, :not_found}
     end
+  end
+
+  defp workflow_run_attrs(owner, repository, run_id, attempt) do
+    Process.get(@test_state_key, %{})
+    |> Map.get(:runs, %{})
+    |> Map.get({owner, repository, run_id, attempt}, %{})
   end
 
   @impl true
@@ -330,6 +392,7 @@ defmodule GradePush.GitHub.Fake do
   end
 
   defp default_membership("gradepush-test"), do: %{"state" => "active", "role" => "admin"}
+  defp default_membership("gradepush-demo"), do: %{"state" => "active", "role" => "admin"}
   defp default_membership(_organization), do: %{"state" => "active", "role" => "member"}
 
   defp field(map, key) when is_map(map),

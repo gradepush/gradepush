@@ -11,7 +11,7 @@ defmodule GradePushWeb.Plugs.SecureTransport do
       options =
         Plug.SSL.init(
           host: url[:host],
-          rewrite_on: [:x_forwarded_proto],
+          rewrite_on: if(conn.private[:trusted_proxy], do: [:x_forwarded_proto], else: []),
           exclude: [paths: ["/health", "/health/ready"]]
         )
 

@@ -19,6 +19,12 @@ class InstallerTest(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.work = Path(self.temporary.name)
+        # The published installer keeps its immutable release pin until publication.
+        # Exercise its download verification against our controlled current-file fixture.
+        self.installer = self.work / "install.sh"
+        source = (ROOT / "scripts/install.sh").read_text()
+        digest = hashlib.sha256((ROOT / "compose.self-host.yaml").read_bytes()).hexdigest()
+        self.installer.write_text(re.sub(r"(?m)^compose_sha256=[a-f0-9]+$", f"compose_sha256={digest}", source))
         self.bin = self.work / "bin"
         self.bin.mkdir()
         self.env = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}")
@@ -52,7 +58,7 @@ fi
 
     def install(self, *args):
         return subprocess.run(
-            ["sh", str(ROOT / "scripts/install.sh"), "--domain", "grades.example.org", *args],
+            ["sh", str(self.installer), "--domain", "grades.example.org", *args],
             cwd=self.work, env=self.env, text=True, capture_output=True,
         )
 
@@ -136,7 +142,7 @@ exec "$REAL_OPENSSL" "$@"
         master, slave = pty.openpty()
         try:
             with subprocess.Popen(
-                ["sh", str(ROOT / "scripts/install.sh")], cwd=self.work, env=self.env,
+                ["sh", str(self.installer)], cwd=self.work, env=self.env,
                 stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
             ) as process:
                 os.write(master, b"grades.example.org\n")
@@ -148,9 +154,20 @@ exec "$REAL_OPENSSL" "$@"
             os.close(master)
             os.close(slave)
 
-    def test_compose_checksum_matches_repository(self):
-        expected = re.search(r"^compose_sha256=([a-f0-9]+)$", (ROOT / "scripts/install.sh").read_text(), re.M)[1]
-        self.assertEqual(hashlib.sha256((ROOT / "compose.self-host.yaml").read_bytes()).hexdigest(), expected)
+    def test_reviewed_local_configuration_uses_the_real_installer_without_download(self):
+        result = subprocess.run(
+            ["sh", str(ROOT / "scripts/install.sh"), "--domain", "grades.example.org",
+             "--compose-file", str(ROOT / "compose.self-host.yaml")],
+            cwd=self.work, env=self.env, text=True, capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((self.work / "download-args").exists())
+        self.assertEqual((self.work / "gradepush/compose.yaml").read_bytes(),
+                         (ROOT / "compose.self-host.yaml").read_bytes())
+
+    def test_missing_local_configuration_leaves_no_installation(self):
+        self.assertNotEqual(self.install("--compose-file", "missing.yaml").returncode, 0)
+        self.assert_no_installation()
 
 
 if __name__ == "__main__":

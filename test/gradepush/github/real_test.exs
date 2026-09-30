@@ -63,6 +63,20 @@ defmodule GradePush.GitHub.RealTest do
     refute Enum.any?(headers, fn {_key, value} -> String.contains?(value, "client-secret") end)
   end
 
+  test "workflow results and jobs are fetched for the exact attempt" do
+    queue_response(response(200, %{"id" => 90, "run_attempt" => 2}))
+    queue_response(response(200, %{"jobs" => [%{"id" => 91}]}))
+    assert {:ok, %{"run_attempt" => 2}} = Real.get_workflow_run("token", "school", "lab", 90, 2)
+    assert {:ok, [%{"id" => 91}]} = Real.list_workflow_jobs("token", "school", "lab", 90, 2)
+
+    assert_received {:github_request, :get,
+                     "https://api.github.com/repos/school/lab/actions/runs/90/attempts/2", _, nil}
+
+    assert_received {:github_request, :get,
+                     "https://api.github.com/repos/school/lab/actions/runs/90/attempts/2/jobs?per_page=100",
+                     _, nil}
+  end
+
   test "user installation lookup paginates the installations wrapper and finds the requested ID" do
     first_page = Enum.map(1..100, &%{"id" => &1, "account" => %{"login" => "org-#{&1}"}})
     second_page = [%{"id" => 101, "account" => %{"login" => "final-org"}}]

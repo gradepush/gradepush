@@ -1,5 +1,5 @@
 defmodule GradePushWeb.InvitationLoggingTest do
-  use GradePushWeb.ConnCase, async: true
+  use GradePushWeb.ConnCase, async: true, group: :institution
 
   import ExUnit.CaptureLog
 

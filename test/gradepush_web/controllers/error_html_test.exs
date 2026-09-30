@@ -1,5 +1,5 @@
 defmodule GradePushWeb.ErrorHTMLTest do
-  use GradePushWeb.ConnCase, async: true
+  use GradePushWeb.ConnCase, async: true, group: :institution
 
   # Bring render_to_string/4 for testing custom views
   import Phoenix.Template, only: [render_to_string: 4]

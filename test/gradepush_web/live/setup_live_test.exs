@@ -12,8 +12,15 @@ defmodule GradePushWeb.SetupLiveTest do
 
   setup %{conn: conn} do
     original = for {key, value} <- :ets.tab2list(Endpoint), do: {key, value}
+    proxies = Application.get_env(:gradepush, :trusted_proxies, [])
+    Application.put_env(:gradepush, :trusted_proxies, ["127.0.0.1"])
     set_endpoint_url(original, "grades.example")
-    on_exit(fn -> Endpoint.config_change([{Endpoint, original}], []) end)
+
+    on_exit(fn ->
+      Endpoint.config_change([{Endpoint, original}], [])
+      Application.put_env(:gradepush, :trusted_proxies, proxies)
+    end)
+
     {:ok, conn: put_req_header(conn, "x-forwarded-proto", "https"), endpoint_config: original}
   end
 

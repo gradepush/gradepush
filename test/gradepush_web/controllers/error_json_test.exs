@@ -1,5 +1,5 @@
 defmodule GradePushWeb.ErrorJSONTest do
-  use GradePushWeb.ConnCase, async: true
+  use GradePushWeb.ConnCase, async: true, group: :institution
 
   test "renders 404" do
     assert GradePushWeb.ErrorJSON.render("404.json", %{}) == %{errors: %{detail: "Not Found"}}

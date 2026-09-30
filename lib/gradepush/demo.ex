@@ -27,7 +27,7 @@ defmodule GradePush.Demo do
   alias GradePush.Demo.{Catalog, InstanceMode}
   alias GradePush.GitHub.Fake
   alias GradePush.GitHub.Fake.Store
-  alias GradePush.Installation.GitHubApp
+  alias GradePush.Installation.{GitHubApp, GitHubUserCredentials}
   alias GradePush.Repo
   alias GradePush.Submissions.{Grade, GradeTest, Push}
 
@@ -328,6 +328,10 @@ defmodule GradePush.Demo do
   defp seed_demo! do
     cond do
       Repo.get_by(User, login: "demo-teacher") && complete_seed?() ->
+        from(grant in GitHubConnectionTeacher, distinct: grant.user_id, select: grant.user_id)
+        |> Repo.all()
+        |> Enum.each(&ensure_demo_credentials!/1)
+
         :ok
 
       Enum.any?(@instance_tables -- [@bootstrap_table], &table_has_rows?/1) ->
@@ -489,7 +493,21 @@ defmodule GradePush.Demo do
   end
 
   defp insert_connection_teacher!(connection_id, user_id) do
+    ensure_demo_credentials!(user_id)
+
     Repo.insert!(%GitHubConnectionTeacher{connection_id: connection_id, user_id: user_id})
+  end
+
+  defp ensure_demo_credentials!(user_id) do
+    unless Repo.get_by(GitHubUserCredentials, user_id: user_id) do
+      {:ok, token} = Crypto.encrypt("demo-user-token", "github_user.#{user_id}.access_token")
+
+      Repo.insert!(%GitHubUserCredentials{
+        user_id: user_id,
+        access_token_encrypted: token,
+        scopes: []
+      })
+    end
   end
 
   defp insert_classroom!(teacher, connection, attrs) do

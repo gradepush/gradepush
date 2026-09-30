@@ -6,6 +6,7 @@ compose_ref=572d1c214b5b5d86d13d3bf9b581fed5e77e1d8e
 compose_sha256=d7c0016179056d266943b3dee2a7540b4687626532d82924a883cec6eb6c009a
 domain=
 directory=gradepush
+compose_file=
 
 fail() {
   printf 'Error: %s\n' "$*" >&2
@@ -14,17 +15,19 @@ fail() {
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --domain|--directory)
+    --domain|--directory|--compose-file)
       [ "$#" -ge 2 ] || fail "Missing value for $1."
       case "$1" in
         --domain) domain=$2 ;;
         --directory) directory=$2 ;;
+        --compose-file) compose_file=$2 ;;
       esac
       shift 2
       ;;
     --help|-h)
-      printf '%s\n' 'Usage: sh install.sh [--domain grades.example.org] [--directory gradepush]' \
-        'Prepares a new Docker Compose installation. Does not start services.'
+      printf '%s\n' 'Usage: sh install.sh [--domain grades.example.org] [--directory gradepush] [--compose-file path]' \
+        'Prepares a new Docker Compose installation. Does not start services.' \
+        'Use --compose-file only for a local configuration you have reviewed.'
       exit 0
       ;;
     *) fail "Unknown option: $1" ;;
@@ -73,13 +76,18 @@ scratch=$(mktemp -d "$parent/.gradepush-install.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
 trap 'exit 1' HUP INT TERM
 
-printf 'Downloading the installation configuration...\n'
-curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
-  --connect-timeout 15 --max-time 120 \
-  "https://raw.githubusercontent.com/gradepush/gradepush/$compose_ref/compose.self-host.yaml" \
-  -o "$scratch/compose.yaml" || fail 'Download failed. Run the installer again.'
-actual_sha256=$(openssl dgst -sha256 "$scratch/compose.yaml" | awk '{print $NF}')
-[ "$actual_sha256" = "$compose_sha256" ] || fail 'The downloaded configuration failed verification. Nothing was installed.'
+if [ -n "$compose_file" ]; then
+  [ -f "$compose_file" ] || fail 'The local Compose file does not exist.'
+  cp -- "$compose_file" "$scratch/compose.yaml" || fail 'Could not read the local Compose file.'
+else
+  printf 'Downloading the installation configuration...\n'
+  curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+    --connect-timeout 15 --max-time 120 \
+    "https://raw.githubusercontent.com/gradepush/gradepush/$compose_ref/compose.self-host.yaml" \
+    -o "$scratch/compose.yaml" || fail 'Download failed. Run the installer again.'
+  actual_sha256=$(openssl dgst -sha256 "$scratch/compose.yaml" | awk '{print $NF}')
+  [ "$actual_sha256" = "$compose_sha256" ] || fail 'The downloaded configuration failed verification. Nothing was installed.'
+fi
 
 db_password=$(openssl rand -hex 32)
 setup_token=$(openssl rand -hex 32)

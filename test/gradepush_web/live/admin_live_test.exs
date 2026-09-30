@@ -1,5 +1,5 @@
 defmodule GradePushWeb.AdminLiveTest do
-  use GradePushWeb.ConnCase, async: true
+  use GradePushWeb.ConnCase, async: true, group: :institution
   import Phoenix.LiveViewTest
 
   test "contexts are reachable without a sign-in screen and locale survives navigation", %{

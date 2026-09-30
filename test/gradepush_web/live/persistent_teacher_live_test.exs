@@ -1,5 +1,5 @@
 defmodule GradePushWeb.PersistentTeacherLiveTest do
-  use GradePushWeb.ConnCase, async: true
+  use GradePushWeb.ConnCase, async: true, group: :institution
 
   import Phoenix.LiveViewTest
   import GradePush.AccountsFixtures

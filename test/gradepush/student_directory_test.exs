@@ -1,5 +1,5 @@
 defmodule GradePush.StudentDirectoryTest do
-  use GradePush.DataCase, async: true
+  use GradePush.DataCase, async: true, group: :institution
 
   import GradePush.AccountsFixtures
   import GradePush.TeachingFixtures

@@ -36,6 +36,35 @@ defmodule GradePush.GitHub.Webhooks do
 
   def receive(_raw_body, _headers), do: {:error, :invalid_webhook}
 
+  @doc "Requeues exhausted grading deliveries once their server-observed push exists."
+  def reconcile_grading do
+    Repo.transaction(fn ->
+      deliveries =
+        from(delivery in Delivery,
+          join: repository in GradePush.Assignments.Repository,
+          on:
+            fragment("?->>'repository_id'", delivery.payload) ==
+              fragment("?::text", repository.github_repository_id),
+          join: push in GradePush.Submissions.Push,
+          on:
+            push.repository_id == repository.id and
+              push.commit_sha == fragment("?->>'commit_sha'", delivery.payload),
+          where:
+            delivery.event == "workflow_run" and delivery.status == "failed" and
+              delivery.last_error == "push_not_recorded",
+          order_by: delivery.id,
+          limit: 100,
+          lock: fragment("FOR UPDATE OF ? SKIP LOCKED", delivery),
+          select: delivery
+        )
+        |> Repo.all()
+        |> Enum.uniq_by(& &1.id)
+
+      Enum.each(deliveries, &recover_failed_delivery/1)
+      length(deliveries)
+    end)
+  end
+
   def verify_signature(raw_body, signature, secret)
       when is_binary(raw_body) and is_binary(signature) and is_binary(secret) and
              byte_size(secret) > 0 do
@@ -163,6 +192,7 @@ defmodule GradePush.GitHub.Webhooks do
 
     if payload["action"] == "completed" and run["status"] == "completed" and
          positive_integer?(repository["id"]) and positive_integer?(run["id"]) and
+         positive_integer?(Map.get(run, "run_attempt", 1)) and
          valid_sha?(run["head_sha"]) do
       {"pending",
        %{
@@ -170,6 +200,7 @@ defmodule GradePush.GitHub.Webhooks do
          "owner_login" => bounded(get_in(repository, ["owner", "login"]), 100),
          "repository_name" => bounded(repository["name"], 100),
          "run_id" => run["id"],
+         "run_attempt" => Map.get(run, "run_attempt", 1),
          "workflow_id" => positive_integer(run["workflow_id"]),
          "workflow_path" => bounded(run["path"], 255),
          "commit_sha" => String.downcase(run["head_sha"]),

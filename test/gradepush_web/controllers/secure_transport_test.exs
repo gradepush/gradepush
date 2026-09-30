@@ -16,6 +16,7 @@ defmodule GradePushWeb.SecureTransportTest do
     conn =
       conn(:get, "/classrooms")
       |> put_req_header("x-forwarded-proto", "https")
+      |> put_private(:trusted_proxy, true)
       |> SecureTransport.call(@https)
       |> put_resp_cookie("test", "value")
 
@@ -23,6 +24,16 @@ defmodule GradePushWeb.SecureTransportTest do
     assert conn.scheme == :https
     assert conn.resp_cookies["test"].secure
     assert get_resp_header(conn, "strict-transport-security") != []
+  end
+
+  test "an untrusted client cannot suppress the HTTPS redirect with forwarding headers" do
+    conn =
+      conn(:get, "/classrooms")
+      |> put_req_header("x-forwarded-proto", "https")
+      |> SecureTransport.call(@https)
+
+    assert conn.halted
+    assert conn.scheme == :http
   end
 
   test "local HTTP development and container health checks remain reachable" do

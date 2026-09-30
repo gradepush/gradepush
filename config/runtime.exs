@@ -2,6 +2,20 @@ import Config
 
 config :gradepush, :start_endpoint, System.get_env("START_ENDPOINT", "true") == "true"
 
+config :gradepush,
+       :trusted_proxies,
+       System.get_env("TRUSTED_PROXY_HOSTS", "")
+       |> String.split(",", trim: true)
+       |> Enum.map(&String.trim/1)
+
+proxy_client_ip_header = System.get_env("TRUSTED_PROXY_CLIENT_IP_HEADER", "x-forwarded-for")
+
+unless proxy_client_ip_header in ["x-forwarded-for", "fly-client-ip"] do
+  raise "TRUSTED_PROXY_CLIENT_IP_HEADER must be x-forwarded-for or fly-client-ip"
+end
+
+config :gradepush, :trusted_proxy_client_ip_header, proxy_client_ip_header
+
 setup_token =
   case System.get_env("SETUP_TOKEN") do
     value when value in [nil, ""] -> nil
@@ -22,6 +36,7 @@ if demo_mode do
       {Oban.Plugins.Cron,
        crontab: [
          {"0 * * * *", GradePush.Workers.PruneGitHubDeliveries},
+         {"*/5 * * * *", GradePush.Workers.ReconcileGrading},
          {"0 4 * * *", GradePush.Workers.ResetDemo}
        ]}
     ]

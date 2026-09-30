@@ -1,5 +1,5 @@
 defmodule GradePush.BootstrapCredentialTest do
-  use GradePush.DataCase, async: true
+  use GradePush.DataCase, async: true, group: :institution
 
   import ExUnit.CaptureLog
 

@@ -722,9 +722,9 @@ defmodule GradePush.Classrooms do
     if instructional_member?(actor) do
       connections =
         from(c in GitHubConnection,
-          left_join: s in GitHubConnectionTeacher,
+          join: s in GitHubConnectionTeacher,
           on: s.connection_id == c.id and s.user_id == ^user_id,
-          where: c.connected_by_id == ^user_id or not is_nil(s.user_id),
+          where: c.status == "active",
           order_by: [asc: c.login]
         )
         |> Repo.all()
@@ -743,7 +743,7 @@ defmodule GradePush.Classrooms do
     if instructional_member?(actor) do
       case authorized_connection_query(user_id, connection_id) |> Repo.one() do
         nil -> {:error, :not_found}
-        connection -> {:ok, connection}
+        connection -> verify_connection(actor, connection)
       end
     else
       {:error, :unauthorized}
@@ -751,6 +751,52 @@ defmodule GradePush.Classrooms do
   end
 
   def get_github_connection(_, _), do: {:error, :unauthorized}
+
+  defp verify_connection(actor, connection) do
+    case GradePush.Installation.verify_user_installation(actor, connection.installation_id) do
+      {:ok, %{account: %{id: organization_id}}}
+      when organization_id == connection.github_organization_id ->
+        {:ok, connection}
+
+      {:ok, _} ->
+        {:error, :connection_unavailable}
+
+      {:error, :installation_not_authorized} ->
+        {:error, :connection_unavailable}
+
+      {:error, reason} = error ->
+        if reason in [:organization_owner_required, :github_reauthorization_required] do
+          Repo.delete_all(
+            from(grant in GitHubConnectionTeacher,
+              where: grant.connection_id == ^connection.id and grant.user_id == ^actor.id
+            )
+          )
+        end
+
+        error
+    end
+  end
+
+  @doc "Revalidates a current classroom teacher's organization grant before background writes."
+  def classroom_github_connection(%Classroom{archived_at: nil} = classroom) do
+    teachers =
+      from(user in User,
+        join: teacher in ClassroomTeacher,
+        on: teacher.user_id == user.id,
+        where: teacher.classroom_id == ^classroom.id,
+        order_by: user.id
+      )
+      |> Repo.all()
+
+    Enum.reduce_while(teachers, {:error, :github_connection_unavailable}, fn teacher, error ->
+      case get_github_connection(teacher, classroom.github_connection_id) do
+        {:ok, connection} -> {:halt, {:ok, connection}}
+        {:error, _} -> {:cont, error}
+      end
+    end)
+  end
+
+  def classroom_github_connection(_), do: {:error, :github_connection_unavailable}
 
   @doc "Checks the installation and token access for a connection the teacher may use."
   def check_github_connection(actor, connection_id) do
@@ -824,11 +870,8 @@ defmodule GradePush.Classrooms do
 
   def template_repository_available?(_, _, _), do: {:error, :invalid_template_repository}
 
-  def authorized_connection?(%User{id: user_id}, connection_id) when is_integer(user_id) do
-    not is_nil(authorized_connection_query(user_id, connection_id) |> Repo.one())
-  end
-
-  def authorized_connection?(_, _), do: false
+  def authorized_connection?(actor, connection_id),
+    do: match?({:ok, _}, get_github_connection(actor, connection_id))
 
   defp set_classroom_archive(actor, classroom_id, archived_at) do
     with :ok <- require_classroom_teacher(actor, classroom_id),
@@ -1085,12 +1128,11 @@ defmodule GradePush.Classrooms do
 
   defp authorized_connection_query(user_id, connection_id) do
     from(c in GitHubConnection,
-      left_join: s in GitHubConnectionTeacher,
+      join: s in GitHubConnectionTeacher,
       on: s.connection_id == c.id and s.user_id == ^user_id,
       where:
         c.id == ^connection_id and
-          c.status == "active" and
-          (c.connected_by_id == ^user_id or not is_nil(s.user_id))
+          c.status == "active"
     )
   end
 

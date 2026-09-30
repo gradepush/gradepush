@@ -1,0 +1,238 @@
+{
+  "image": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650",
+  "reviewed": "2026-09-29",
+  "expires": "2026-10-29",
+  "scope": "Only the bundled self-hosted topology, with no public DB port, SCRAM authentication, private volumes, and no student SQL or code execution. These are deployment-specific risk assessments, not vendor fixes.",
+  "exceptions": [
+    {
+      "reason": "The database has no SYS_ADMIN capability, host mounts, host PID namespace, or exposed mount/nsenter operations.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "bsdutils": "1:2.38.1-5+deb12u3",
+        "libblkid1": "2.38.1-5+deb12u3",
+        "libmount1": "2.38.1-5+deb12u3",
+        "libsmartcols1": "2.38.1-5+deb12u3",
+        "libuuid1": "2.38.1-5+deb12u3",
+        "mount": "2.38.1-5+deb12u3",
+        "util-linux": "2.38.1-5+deb12u3",
+        "util-linux-extra": "2.38.1-5+deb12u3"
+      },
+      "vulnerabilities": [
+        "CVE-2026-53613",
+        "CVE-2026-76642",
+        "CVE-2026-78408",
+        "CVE-2026-78409",
+        "CVE-2026-78410"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-53613",
+        "https://security-tracker.debian.org/tracker/CVE-2026-76642",
+        "https://security-tracker.debian.org/tracker/CVE-2026-78408",
+        "https://security-tracker.debian.org/tracker/CVE-2026-78409",
+        "https://security-tracker.debian.org/tracker/CVE-2026-78410"
+      ]
+    },
+    {
+      "reason": "The service does not decompress untrusted LZH archives. Backup restoration is an operator-only action using trusted backups.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "gzip": "1.12-1"
+      },
+      "vulnerabilities": [
+        "CVE-2026-41992"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-41992"
+      ]
+    },
+    {
+      "reason": "No untrusted paths or filesystem ACL operations are exposed through GradePush; the database only mounts its private volume and tmpfs.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "libacl1": "2.3.1-3"
+      },
+      "vulnerabilities": [
+        "CVE-2026-54369"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-54369"
+      ]
+    },
+    {
+      "reason": "GradePush uses SCRAM database authentication, not LDAP. The database is isolated and has no published port.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "libldap-2.5-0": "2.5.13+dfsg-5"
+      },
+      "vulnerabilities": [
+        "CVE-2023-2953"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://security-tracker.debian.org/tracker/CVE-2023-2953"
+      ]
+    },
+    {
+      "reason": "Terminal database inputs are controlled by the operator. Student input is not sent to terminal parsers.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "libncursesw6": "6.4-4",
+        "libtinfo6": "6.4-4",
+        "ncurses-base": "6.4-4",
+        "ncurses-bin": "6.4-4"
+      },
+      "vulnerabilities": [
+        "CVE-2025-69720"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://security-tracker.debian.org/tracker/CVE-2025-69720"
+      ]
+    },
+    {
+      "reason": "GradePush does not run Perl or expose Perl regex, archive, serialization, or compression operations. No PL/Perl extension is enabled.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "libperl5.36": "5.36.0-7+deb12u3",
+        "perl": "5.36.0-7+deb12u3",
+        "perl-base": "5.36.0-7+deb12u3",
+        "perl-modules-5.36": "5.36.0-7+deb12u3"
+      },
+      "vulnerabilities": [
+        "CVE-2026-13221",
+        "CVE-2026-42496",
+        "CVE-2026-42497",
+        "CVE-2026-48962",
+        "CVE-2026-57432",
+        "CVE-2026-57433",
+        "CVE-2026-8376",
+        "CVE-2026-9538"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-13221",
+        "https://security-tracker.debian.org/tracker/CVE-2026-42496",
+        "https://security-tracker.debian.org/tracker/CVE-2026-42497",
+        "https://security-tracker.debian.org/tracker/CVE-2026-48962",
+        "https://security-tracker.debian.org/tracker/CVE-2026-57432",
+        "https://security-tracker.debian.org/tracker/CVE-2026-57433",
+        "https://security-tracker.debian.org/tracker/CVE-2026-8376",
+        "https://security-tracker.debian.org/tracker/CVE-2026-9538"
+      ]
+    },
+    {
+      "reason": "GradePush and its PostgreSQL queries do not open SQLite databases or expose FTS5 operations.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "libsqlite3-0": "3.40.1-2+deb12u2"
+      },
+      "vulnerabilities": [
+        "CVE-2025-7458",
+        "CVE-2026-11822",
+        "CVE-2026-11824"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://security-tracker.debian.org/tracker/CVE-2025-7458",
+        "https://security-tracker.debian.org/tracker/CVE-2026-11822",
+        "https://security-tracker.debian.org/tracker/CVE-2026-11824"
+      ]
+    },
+    {
+      "reason": "The container does not run systemd-homed; the report is attached to its source package through libsystemd.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "libsystemd0": "252.39-1~deb12u2",
+        "libudev1": "252.39-1~deb12u2"
+      },
+      "vulnerabilities": [
+        "CVE-2026-16742"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-16742"
+      ]
+    },
+    {
+      "reason": "GradePush stores student content as text and does not expose SQL XML/XPath functions or Python XML bindings. The database has no published port.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "libxml2": "2.9.14+dfsg-1.3~deb12u6"
+      },
+      "vulnerabilities": [
+        "CVE-2026-6653",
+        "CVE-2026-74860",
+        "CVE-2026-86138",
+        "CVE-2026-86139",
+        "CVE-2026-86140",
+        "CVE-2026-86142",
+        "CVE-2026-86143",
+        "CVE-2026-86144"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-6653",
+        "https://security-tracker.debian.org/tracker/CVE-2026-74860",
+        "https://security-tracker.debian.org/tracker/CVE-2026-86138",
+        "https://security-tracker.debian.org/tracker/CVE-2026-86139",
+        "https://security-tracker.debian.org/tracker/CVE-2026-86140",
+        "https://security-tracker.debian.org/tracker/CVE-2026-86142",
+        "https://security-tracker.debian.org/tracker/CVE-2026-86143",
+        "https://security-tracker.debian.org/tracker/CVE-2026-86144"
+      ]
+    },
+    {
+      "reason": "Debian excludes the affected contrib/minizip code from this binary package; see the Debian tracker.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "zlib1g": "1:1.2.13.dfsg-1"
+      },
+      "vulnerabilities": [
+        "CVE-2023-45853"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://security-tracker.debian.org/tracker/CVE-2023-45853"
+      ]
+    },
+    {
+      "reason": "The pinned Linux gosu binary has zero vulnerable symbols reported by govulncheck v1.8.0. Repeat this symbol check before accepting these module-level alerts.",
+      "target": "usr/local/bin/gosu",
+      "packages": {
+        "stdlib": "v1.24.6"
+      },
+      "vulnerabilities": [
+        "CVE-2025-61726",
+        "CVE-2025-61729",
+        "CVE-2025-68121",
+        "CVE-2026-25679",
+        "CVE-2026-27145",
+        "CVE-2026-32280",
+        "CVE-2026-32281",
+        "CVE-2026-32283",
+        "CVE-2026-33811",
+        "CVE-2026-33814",
+        "CVE-2026-33818",
+        "CVE-2026-39820",
+        "CVE-2026-39821",
+        "CVE-2026-39822",
+        "CVE-2026-39836",
+        "CVE-2026-42499",
+        "CVE-2026-42504",
+        "CVE-2026-56853",
+        "CVE-2026-56858",
+        "CVE-2026-56859",
+        "CVE-2026-56860",
+        "CVE-2026-56862"
+      ],
+      "requires_gosu_symbol_check": true,
+      "sources": [
+        "https://github.com/tianon/gosu",
+        "https://go.dev/doc/tutorial/govulncheck"
+      ]
+    }
+  ]
+}

@@ -10,6 +10,8 @@ defmodule GradePush.Workers.ProcessGitHubDelivery do
   alias GradePush.Repo
   alias GradePush.Submissions
 
+  @max_job_attempts 20
+
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"delivery_id" => delivery_id}} = job) do
     case Repo.get(Delivery, delivery_id) do
@@ -49,7 +51,8 @@ defmodule GradePush.Workers.ProcessGitHubDelivery do
              token,
              value(target, :owner_login),
              value(target, :repository_name),
-             run_id
+             run_id,
+             payload["run_attempt"] || 1
            ) do
       process_workflow_run(token, target, run, payload)
     else
@@ -150,15 +153,33 @@ defmodule GradePush.Workers.ProcessGitHubDelivery do
     workflow_path = if is_binary(path), do: path |> String.split("@", parts: 2) |> hd()
 
     cond do
-      not run_id_matches?(run, payload) -> :ignored
-      not workflow_id_matches?(run, target, payload) -> :ignored
-      not grading_run?(run, payload) -> :ignored
-      workflow_path != value(target, :workflow_path) -> {:error, :workflow_modified}
-      true -> {:ok, run}
+      app_authored_push?(%{
+        "sender_type" => get_in(run, ["actor", "type"]),
+        "sender_login" => get_in(run, ["actor", "login"])
+      }) ->
+        :ignored
+
+      not run_id_matches?(run, payload) ->
+        :ignored
+
+      not workflow_id_matches?(run, target, payload) ->
+        :ignored
+
+      not grading_run?(run, payload) ->
+        :ignored
+
+      workflow_path != value(target, :workflow_path) ->
+        {:error, :workflow_modified}
+
+      true ->
+        {:ok, run}
     end
   end
 
-  defp run_id_matches?(run, payload), do: value(run, :id) == payload["run_id"]
+  defp run_id_matches?(run, payload),
+    do:
+      value(run, :id) == payload["run_id"] and
+        value(run, :run_attempt) == (payload["run_attempt"] || 1)
 
   defp workflow_id_matches?(run, target, payload) do
     workflow_id = value(target, :workflow_id)
@@ -195,14 +216,8 @@ defmodule GradePush.Workers.ProcessGitHubDelivery do
   end
 
   defp record_grade(token, target, run) do
-    with {:ok, jobs} <-
-           GitHub.list_workflow_jobs(
-             token,
-             value(target, :owner_login),
-             value(target, :repository_name),
-             value(run, :id)
-           ),
-         {:ok, grading} <- Actions.job_results(jobs, value(target, :tests)),
+    with {:ok, grading} <-
+           attempt_results(token, target, run, value(run, :run_attempt), [], @max_job_attempts),
          {:ok, _grade} <-
            Submissions.record_grade(
              value(target, :assignment_id),
@@ -212,9 +227,31 @@ defmodule GradePush.Workers.ProcessGitHubDelivery do
       :ok
     else
       {:error, :not_found} -> :ignored
-      {:error, :push_not_recorded} -> :ignored
       {:error, reason} -> {:error, reason}
       _ -> {:error, :invalid_grading_result}
+    end
+  end
+
+  # GitHub may rerun only failed jobs. Newer attempts take precedence, while
+  # successful jobs omitted from that attempt retain their earlier result.
+  defp attempt_results(token, target, run, attempt, newer_jobs, remaining) do
+    with {:ok, jobs} <-
+           GitHub.list_workflow_jobs(
+             token,
+             value(target, :owner_login),
+             value(target, :repository_name),
+             value(run, :id),
+             attempt
+           ) do
+      combined = newer_jobs ++ jobs
+
+      case Actions.job_results(combined, value(target, :tests)) do
+        {:error, :incomplete_workflow_results} when attempt > 1 and remaining > 1 ->
+          attempt_results(token, target, run, attempt - 1, combined, remaining - 1)
+
+        result ->
+          result
+      end
     end
   end
 
@@ -225,6 +262,7 @@ defmodule GradePush.Workers.ProcessGitHubDelivery do
            %{
              commit_sha: value(run, :head_sha),
              run_id: value(run, :id),
+             run_attempt: value(run, :run_attempt),
              html_url: github_url(value(run, :html_url)),
              reason: "workflow_modified"
            }
@@ -239,6 +277,7 @@ defmodule GradePush.Workers.ProcessGitHubDelivery do
     %{
       commit_sha: value(run, :head_sha),
       run_id: value(run, :id),
+      run_attempt: value(run, :run_attempt),
       status: run_status(value(run, :conclusion)),
       score: grading.score,
       max_score: grading.max_score,
@@ -295,7 +334,8 @@ defmodule GradePush.Workers.ProcessGitHubDelivery do
               :rate_limited,
               :submission_update_failed,
               :transport,
-              :github_unavailable
+              :github_unavailable,
+              :push_not_recorded
             ],
        do: Atom.to_string(reason)
 

@@ -6,6 +6,8 @@ on:
   pull_request:
   workflow_dispatch:
   workflow_call:
+  schedule:
+    - cron: '17 7 * * 1'
 
 permissions:
   contents: read
@@ -15,6 +17,54 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  postgres-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve the pinned database image
+        id: database
+        run: |
+          image=$(python3 -c 'import json; print(json.load(open("security/postgres-exceptions.json"))["image"])')
+          grep -F "image: $image" compose.self-host.yaml
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/security-reports"
+
+      - name: Scan every database image component
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.74.0
+          image-ref: ${{ steps.database.outputs.image }}
+          scanners: vuln
+          format: json
+          output: ${{ runner.temp }}/security-reports/postgres.json
+          exit-code: '0'
+
+      - name: Check gosu symbols and reviewed database findings
+        env:
+          DATABASE_IMAGE: ${{ steps.database.outputs.image }}
+        run: |
+          scratch=$(mktemp -d)
+          container=$(docker create "$DATABASE_IMAGE")
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true; rm -rf "$scratch"' EXIT
+          docker cp "$container:/usr/local/bin/gosu" "$scratch/gosu"
+          docker run --rm -e GOTOOLCHAIN=local -v "$scratch:/scan:ro" \
+            golang:1.27.1-alpine3.24@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 \
+            go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 -mode=binary /scan/gosu \
+            > "$RUNNER_TEMP/security-reports/gosu-symbols.log" 2>&1
+          python3 scripts/test-image-scan
+          python3 scripts/check-image-scan "$RUNNER_TEMP/security-reports/postgres.json" \
+            --exceptions security/postgres-exceptions.json --gosu-symbols-checked
+
+      - name: Retain the full database security report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: postgres-security
+          path: ${{ runner.temp }}/security-reports/
+          retention-days: 30
+
   development:
     runs-on: ubuntu-latest
     steps:
@@ -97,6 +147,14 @@ jobs:
       - name: Fetch locked dependencies
         run: mix deps.get --check-locked
 
+      - name: Audit Hex dependencies
+        run: mix hex.audit
+
+      - name: Report available dependency updates
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        run: mix hex.outdated --all
+
       - name: Check translation catalogs
         run: mix gettext.extract --check-up-to-date
 
@@ -128,8 +186,18 @@ jobs:
           config = json.loads(subprocess.check_output([
               "docker", "compose", "-f", "compose.self-host.yaml", "config", "--format", "json"
           ]))
-          for name, source in [("postgres_init", "deploy/postgres-init.sh"), ("caddyfile", "deploy/Caddyfile")]:
-              actual = config["configs"][name]["content"].replace("$$", "$")
+          assert config["networks"]["database"]["internal"] is True
+          database = config["services"]["db"]
+          assert set(database["networks"]) == {"database"}
+          assert set(database["cap_add"]) == {"CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"}
+          assert config["services"]["app"]["environment"]["TRUSTED_PROXY_HOSTS"] == "caddy"
+          for service in ("app", "db", "caddy"):
+              settings = config["services"][service]
+              assert settings["read_only"] and settings["mem_limit"] and settings["pids_limit"]
+              assert settings["cap_drop"] == ["ALL"]
+              assert "no-new-privileges:true" in settings["security_opt"]
+          for name, source in [("GRADEPUSH_POSTGRES_INIT", "deploy/postgres-init.sh"), ("GRADEPUSH_CADDYFILE", "deploy/Caddyfile")]:
+              actual = config["services"]["runtime-config-init"]["environment"][name].replace("$$", "$")
               assert actual == Path(source).read_text().expandtabs(4), f"{name} differs from {source}"
           for name, service in config["services"].items():
               assert "build" not in service, f"{name} requires a source build"
@@ -203,6 +271,32 @@ jobs:
           docker compose -f compose.yaml -f compose.trusted.yaml up -d --wait --wait-timeout 120
           curl --fail --silent https://localhost:4000/health/ready
 
+      - name: Set up browser test runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.8.1
+          cache: npm
+          cache-dependency-path: test/browser/package-lock.json
+
+      - name: Check browser security and GitHub setup form
+        run: |
+          npm ci --ignore-scripts --prefix test/browser
+          npm audit --prefix test/browser
+          PHX_HOST=grades.example HOST_PORT=4002 GRADEPUSH_IMAGE=gradepush:local \
+            docker compose -p gradepush-browser-setup -f compose.yaml up -d --build --wait --wait-timeout 120
+          cd test/browser
+          npx playwright install --with-deps chromium
+          setup_link=$(docker compose -p gradepush-browser-setup -f ../../compose.yaml exec -T app gradepush-setup)
+          export GRADEPUSH_TEST_SETUP_TOKEN=${setup_link##*setup_token=}
+          echo "::add-mask::$GRADEPUSH_TEST_SETUP_TOKEN"
+          GRADEPUSH_TEST_URL=https://grades.example:4002 npm test
+
+      - name: Check teacher and student browser security
+        run: |
+          HOST_PORT=4001 GRADEPUSH_IMAGE=gradepush:local DEMO_MODE=true \
+            docker compose -p gradepush-browser-demo -f compose.yaml up -d --build --wait --wait-timeout 120
+          GRADEPUSH_TEST_MODE=demo GRADEPUSH_TEST_URL=https://localhost:4001 npm test --prefix test/browser
+
       - name: Scan runtime image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -212,6 +306,29 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: '1'
 
+      - name: Build TLS proxy image
+        run: docker build -f deploy/caddy/Dockerfile -t gradepush-caddy:local .
+
+      - name: Check reachable TLS proxy vulnerabilities
+        run: |
+          docker run --rm -e GOTOOLCHAIN=local -v "$PWD/deploy/caddy:/source:ro" -w /source \
+            golang:1.27.1-alpine3.24@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 \
+            go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
+      - name: Scan TLS proxy image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.74.0
+          image-ref: gradepush-caddy:local
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
       - name: Remove Compose smoke-test services
         if: always()
-        run: docker compose -f compose.yaml down --volumes --remove-orphans
+        run: |
+          docker compose -f compose.yaml down --volumes --remove-orphans
+          HOST_PORT=4001 GRADEPUSH_IMAGE=gradepush:local DEMO_MODE=true \
+            docker compose -p gradepush-browser-demo -f compose.yaml down --volumes --remove-orphans
+          PHX_HOST=grades.example HOST_PORT=4002 GRADEPUSH_IMAGE=gradepush:local \
+            docker compose -p gradepush-browser-setup -f compose.yaml down --volumes --remove-orphans
