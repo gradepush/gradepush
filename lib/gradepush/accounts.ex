@@ -368,18 +368,15 @@ defmodule GradePush.Accounts do
     user_ids = users |> Enum.map(& &1.id) |> Enum.filter(&is_integer/1) |> Enum.uniq()
 
     profiles =
-      case {institution_id(), user_ids} do
-        {nil, _ids} ->
+      case user_ids do
+        [] ->
           %{}
 
-        {_institution_id, []} ->
-          %{}
-
-        {institution_id, ids} ->
+        ids ->
           from(membership in InstitutionMembership,
-            where:
-              membership.institution_id == ^institution_id and membership.user_id in ^ids and
-                membership.role == :student,
+            join: institution in Institution,
+            on: institution.id == membership.institution_id,
+            where: membership.user_id in ^ids and membership.role == :student,
             select: {membership.user_id, membership.student_name, membership.student_id}
           )
           |> Repo.all()
@@ -1107,16 +1104,13 @@ defmodule GradePush.Accounts do
   end
 
   defp has_role?(%User{id: user_id}, role) when is_integer(user_id) do
-    institution_id = institution_id()
-
-    not is_nil(institution_id) and
-      Repo.exists?(
-        from(membership in InstitutionMembership,
-          where:
-            membership.institution_id == ^institution_id and membership.user_id == ^user_id and
-              membership.role == ^role
-        )
+    Repo.exists?(
+      from(membership in InstitutionMembership,
+        join: institution in Institution,
+        on: institution.id == membership.institution_id,
+        where: membership.user_id == ^user_id and membership.role == ^role
       )
+    )
   end
 
   defp has_role?(_actor, _role), do: false
@@ -1128,36 +1122,25 @@ defmodule GradePush.Accounts do
   defp teacher_or_admin?(actor), do: has_role?(actor, :teacher) or has_role?(actor, :admin)
 
   defp membership_roles(%User{id: user_id}) when is_integer(user_id) do
-    case institution_id() do
-      nil ->
-        []
-
-      institution_id ->
-        from(membership in InstitutionMembership,
-          where: membership.institution_id == ^institution_id and membership.user_id == ^user_id,
-          select: membership.role
-        )
-        |> Repo.all()
-    end
+    from(membership in InstitutionMembership,
+      join: institution in Institution,
+      on: institution.id == membership.institution_id,
+      where: membership.user_id == ^user_id,
+      select: membership.role
+    )
+    |> Repo.all()
   end
 
   defp membership_roles(_actor), do: []
 
   defp student_membership(%User{id: user_id}) when is_integer(user_id) do
-    case institution_id() do
-      nil ->
-        nil
-
-      institution_id ->
-        Repo.one(
-          from(membership in InstitutionMembership,
-            where:
-              membership.institution_id == ^institution_id and
-                membership.user_id == ^user_id and membership.role == :student,
-            limit: 1
-          )
-        )
-    end
+    from(membership in InstitutionMembership,
+      join: institution in Institution,
+      on: institution.id == membership.institution_id,
+      where: membership.user_id == ^user_id and membership.role == :student,
+      limit: 1
+    )
+    |> Repo.one()
   end
 
   defp student_membership(_actor), do: nil

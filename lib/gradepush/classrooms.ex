@@ -27,16 +27,7 @@ defmodule GradePush.Classrooms do
 
   def list_classrooms(%User{id: user_id} = actor, opts) when is_integer(user_id) do
     if instructional_member?(actor) do
-      include_archived? = Keyword.get(opts, :include_archived, false)
-
-      classrooms =
-        from(c in Classroom,
-          join: t in ClassroomTeacher,
-          on: t.classroom_id == c.id and t.user_id == ^user_id,
-          where: ^include_archived? or is_nil(c.archived_at),
-          order_by: [asc: c.title]
-        )
-        |> Repo.all()
+      classrooms = teacher_classrooms(user_id, Keyword.get(opts, :include_archived, false))
 
       {:ok, hydrate_classrooms(classrooms)}
     else
@@ -45,6 +36,52 @@ defmodule GradePush.Classrooms do
   end
 
   def list_classrooms(_, _), do: {:error, :unauthorized}
+
+  @doc "Loads the teacher's navigation and selected classroom under current institution and classroom access."
+  def teacher_workspace(%User{id: user_id} = actor, slug) when is_integer(user_id) do
+    if instructional_member?(actor) do
+      classes = teacher_classrooms(user_id, false)
+
+      selected =
+        Enum.find(classes, &(&1.slug == slug)) || selected_teacher_classroom(user_id, slug)
+
+      records = if selected && selected.archived_at, do: classes ++ [selected], else: classes
+      hydrated = Map.new(hydrate_classrooms(records), &{&1.id, &1})
+
+      {:ok,
+       %{
+         classes: Enum.map(classes, &Map.fetch!(hydrated, &1.id)),
+         classroom: selected && Map.fetch!(hydrated, selected.id),
+         students: if(selected, do: classroom_students(selected.id, false), else: []),
+         connections: actor_connections(user_id)
+       }}
+    else
+      {:error, :unauthorized}
+    end
+  end
+
+  def teacher_workspace(_, _), do: {:error, :unauthorized}
+
+  defp teacher_classrooms(user_id, include_archived?) do
+    from(c in Classroom,
+      join: t in ClassroomTeacher,
+      on: t.classroom_id == c.id and t.user_id == ^user_id,
+      where: ^include_archived? or is_nil(c.archived_at),
+      order_by: [asc: c.title]
+    )
+    |> Repo.all()
+  end
+
+  defp selected_teacher_classroom(user_id, slug) when is_binary(slug) do
+    from(c in Classroom,
+      join: t in ClassroomTeacher,
+      on: t.classroom_id == c.id and t.user_id == ^user_id,
+      where: c.slug == ^slug
+    )
+    |> Repo.one()
+  end
+
+  defp selected_teacher_classroom(_, _), do: nil
 
   @doc "Lists classroom metadata for institution administrators without exposing student identities or assignment content."
   def list_admin_classrooms(%User{} = actor) do
@@ -74,10 +111,11 @@ defmodule GradePush.Classrooms do
 
   def get_classroom(_, _), do: {:error, :not_found}
 
+  @doc "Fetches the authorized classroom record without loading display summaries or associations."
   def classroom_for_teacher(%User{} = actor, classroom_id) when is_integer(classroom_id) do
     with :ok <- require_classroom_teacher(actor, classroom_id),
          %Classroom{} = classroom <- Repo.get(Classroom, classroom_id) do
-      {:ok, hydrate_classroom(classroom)}
+      {:ok, classroom}
     else
       nil -> {:error, :not_found}
       error -> error
@@ -231,24 +269,26 @@ defmodule GradePush.Classrooms do
 
   def list_students(%User{} = actor, classroom_id, opts) do
     with :ok <- require_classroom_teacher(actor, classroom_id) do
-      include_removed? = Keyword.get(opts, :include_removed, false)
-
-      rows =
-        from(m in ClassroomStudent,
-          where: m.classroom_id == ^classroom_id,
-          where: ^include_removed? or is_nil(m.removed_at),
-          order_by: [asc: m.joined_at],
-          preload: [:user]
-        )
-        |> Repo.all()
-
-      users = Accounts.with_student_profiles(Enum.map(rows, & &1.user))
-      profiles = Map.new(users, &{&1.id, &1})
-      {:ok, Enum.map(rows, &%{&1 | user: Map.fetch!(profiles, &1.user_id)})}
+      {:ok, classroom_students(classroom_id, Keyword.get(opts, :include_removed, false))}
     end
   end
 
   def list_students(_, _, _), do: {:error, :unauthorized}
+
+  defp classroom_students(classroom_id, include_removed?) do
+    rows =
+      from(m in ClassroomStudent,
+        where: m.classroom_id == ^classroom_id,
+        where: ^include_removed? or is_nil(m.removed_at),
+        order_by: [asc: m.joined_at],
+        preload: [:user]
+      )
+      |> Repo.all()
+
+    users = Accounts.with_student_profiles(Enum.map(rows, & &1.user))
+    profiles = Map.new(users, &{&1.id, &1})
+    Enum.map(rows, &%{&1 | user: Map.fetch!(profiles, &1.user_id)})
+  end
 
   @doc "Removes a student from a classroom without revoking access to accepted assignment repositories."
   def remove_student(%User{} = actor, classroom_id, student_user_id)
@@ -720,16 +760,7 @@ defmodule GradePush.Classrooms do
   @doc "Lists organization connections the actor may use."
   def list_github_connections(%User{id: user_id} = actor) when is_integer(user_id) do
     if instructional_member?(actor) do
-      connections =
-        from(c in GitHubConnection,
-          join: s in GitHubConnectionTeacher,
-          on: s.connection_id == c.id and s.user_id == ^user_id,
-          where: c.status == "active",
-          order_by: [asc: c.login]
-        )
-        |> Repo.all()
-
-      {:ok, connections}
+      {:ok, actor_connections(user_id)}
     else
       {:error, :unauthorized}
     end
@@ -737,9 +768,25 @@ defmodule GradePush.Classrooms do
 
   def list_github_connections(_), do: {:error, :unauthorized}
 
+  defp actor_connections(user_id) do
+    from(c in GitHubConnection,
+      join: s in GitHubConnectionTeacher,
+      on: s.connection_id == c.id and s.user_id == ^user_id,
+      where: c.status == "active",
+      order_by: [asc: c.login]
+    )
+    |> Repo.all()
+  end
+
   @doc "Returns one organization connection only when the actor may use it."
-  def get_github_connection(%User{id: user_id} = actor, connection_id)
-      when is_integer(user_id) and is_integer(connection_id) do
+  def get_github_connection(actor, connection_id) do
+    with {:ok, {connection, _credentials}} <- verified_github_connection(actor, connection_id) do
+      {:ok, connection}
+    end
+  end
+
+  defp verified_github_connection(%User{id: user_id} = actor, connection_id)
+       when is_integer(user_id) and is_integer(connection_id) do
     if instructional_member?(actor) do
       case authorized_connection_query(user_id, connection_id) |> Repo.one() do
         nil -> {:error, :not_found}
@@ -750,13 +797,16 @@ defmodule GradePush.Classrooms do
     end
   end
 
-  def get_github_connection(_, _), do: {:error, :unauthorized}
+  defp verified_github_connection(_, _), do: {:error, :unauthorized}
 
   defp verify_connection(actor, connection) do
-    case GradePush.Installation.verify_user_installation(actor, connection.installation_id) do
-      {:ok, %{account: %{id: organization_id}}}
+    case GradePush.Installation.verify_user_installation_with_credentials(
+           actor,
+           connection.installation_id
+         ) do
+      {:ok, %{installation: %{account: %{id: organization_id}}, credentials: credentials}}
       when organization_id == connection.github_organization_id ->
-        {:ok, connection}
+        {:ok, {connection, credentials}}
 
       {:ok, _} ->
         {:error, :connection_unavailable}
@@ -824,8 +874,8 @@ defmodule GradePush.Classrooms do
 
   @doc "Lists starter repositories available in the selected organization."
   def list_templates(%User{} = actor, classroom_id) do
-    with {:ok, connection} <- classroom_template_connection(actor, classroom_id) do
-      connection_templates(connection)
+    with {:ok, {connection, credentials}} <- classroom_template_connection(actor, classroom_id) do
+      connection_templates(connection, credentials)
     end
   end
 
@@ -835,8 +885,11 @@ defmodule GradePush.Classrooms do
   def template_repository_available?(%User{} = actor, classroom_id, full_name)
       when is_integer(classroom_id) do
     case classroom_template_connection(actor, classroom_id) do
-      {:ok, connection} -> validate_connection_template(connection, full_name)
-      {:error, _reason} -> {:error, :github_connection_unavailable}
+      {:ok, {connection, credentials}} ->
+        validate_connection_template(connection, credentials, full_name)
+
+      {:error, _reason} ->
+        {:error, :github_connection_unavailable}
     end
   end
 
@@ -846,9 +899,9 @@ defmodule GradePush.Classrooms do
     with :ok <- require_classroom_teacher(actor, classroom_id),
          %Classroom{github_connection_id: connection_id} when not is_nil(connection_id) <-
            Repo.get(Classroom, classroom_id),
-         {:ok, %GitHubConnection{status: "active"} = connection} <-
-           get_github_connection(actor, connection_id) do
-      {:ok, connection}
+         {:ok, {%GitHubConnection{status: "active"}, _credentials} = verified} <-
+           verified_github_connection(actor, connection_id) do
+      {:ok, verified}
     else
       nil -> {:error, :not_found}
       %Classroom{} -> {:error, :github_connection_unavailable}
@@ -856,9 +909,8 @@ defmodule GradePush.Classrooms do
     end
   end
 
-  defp connection_templates(connection) do
-    with {:ok, credentials} <- GradePush.Installation.github_app_credentials(),
-         {:ok, token_response} <-
+  defp connection_templates(connection, credentials) do
+    with {:ok, token_response} <-
            GradePush.GitHub.installation_token(credentials, connection.installation_id),
          access_token when is_binary(access_token) <- field(token_response, :token),
          {:ok, repositories} <-
@@ -877,12 +929,13 @@ defmodule GradePush.Classrooms do
     end
   end
 
-  defp validate_connection_template(connection, full_name) when is_binary(full_name) do
+  defp validate_connection_template(connection, credentials, full_name)
+       when is_binary(full_name) do
     candidate = String.downcase(String.trim(full_name))
 
     with [owner, repository] when owner != "" and repository != "" <-
            String.split(candidate, "/", parts: 2),
-         {:ok, templates} <- connection_templates(connection),
+         {:ok, templates} <- connection_templates(connection, credentials),
          true <- Enum.any?(templates, &(String.downcase(&1.full_name) == candidate)) do
       :ok
     else
@@ -892,7 +945,7 @@ defmodule GradePush.Classrooms do
     end
   end
 
-  defp validate_connection_template(_, _), do: {:error, :invalid_template_repository}
+  defp validate_connection_template(_, _, _), do: {:error, :invalid_template_repository}
 
   def authorized_connection?(actor, connection_id),
     do: match?({:ok, _}, get_github_connection(actor, connection_id))
@@ -935,7 +988,7 @@ defmodule GradePush.Classrooms do
   end
 
   defp instructional_member?(actor),
-    do: Accounts.teacher?(actor) or Accounts.admin?(actor)
+    do: Enum.any?(Accounts.institution_roles(actor), &(&1 in [:teacher, :admin]))
 
   defp eligible_teacher?(user_id) when is_integer(user_id) do
     case Accounts.get_user(user_id) do

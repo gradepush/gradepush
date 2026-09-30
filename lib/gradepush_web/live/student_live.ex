@@ -140,37 +140,26 @@ defmodule GradePushWeb.StudentLive do
   defp load_classroom(socket, params) do
     actor = socket.assigns.current_user
 
-    with {:ok, classroom} <- Classrooms.get_student_classroom(actor, params["slug"]),
-         {:ok, assignments} <- Assignments.list_student_assignments(actor, classroom.id) do
-      result =
-        if is_binary(params["assignment"]),
-          do: Assignments.get_student_assignment(actor, classroom.id, params["assignment"]),
-          else: {:error, :not_found}
+    case Assignments.student_classroom_workspace(actor, params["slug"], params["assignment"]) do
+      {:ok, %{classroom: classroom, assignments: assignments, details: details}} ->
+        assignment = details.assignment
 
-      details =
-        case result do
-          {:ok, details} -> details
-          _ -> %{assignment: nil, subject: nil, repository: nil, latest_push: nil}
-        end
+        {:noreply,
+         socket
+         |> assign(
+           classroom: classroom,
+           assignments: assignments,
+           assignment: assignment,
+           subject: details.subject,
+           repository: details.repository,
+           latest_push: details.latest_push,
+           page_title: if(assignment, do: assignment.title, else: classroom.title)
+         )
+         |> subscribe_to(
+           ["user:#{actor.id}", "classroom:#{classroom.id}"] ++
+             submission_topics(if(assignment, do: [details], else: assignments))
+         )}
 
-      assignment = details.assignment
-
-      {:noreply,
-       socket
-       |> assign(
-         classroom: classroom,
-         assignments: assignments,
-         assignment: assignment,
-         subject: details.subject,
-         repository: details.repository,
-         latest_push: details.latest_push,
-         page_title: if(assignment, do: assignment.title, else: classroom.title)
-       )
-       |> subscribe_to(
-         ["user:#{actor.id}", "classroom:#{classroom.id}"] ++
-           submission_topics(if(assignment, do: [details], else: assignments))
-       )}
-    else
       _ ->
         {:noreply,
          socket

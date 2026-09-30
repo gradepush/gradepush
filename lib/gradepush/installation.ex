@@ -415,7 +415,15 @@ defmodule GradePush.Installation do
     end
   end
 
-  def verify_user_installation(%User{} = actor, installation_id)
+  def verify_user_installation(actor, installation_id) do
+    with {:ok, %{installation: installation}} <-
+           verify_user_installation_with_credentials(actor, installation_id) do
+      {:ok, installation}
+    end
+  end
+
+  @doc "Verifies current installation access and returns App credentials for use in the same operation."
+  def verify_user_installation_with_credentials(%User{} = actor, installation_id)
       when is_integer(installation_id) do
     with true <- Accounts.teacher?(actor),
          {:ok, access_token} <- user_access_token(actor),
@@ -425,10 +433,15 @@ defmodule GradePush.Installation do
          {:ok, app_installation} <-
            GradePush.GitHub.get_installation(app_credentials, installation_id),
          {:ok, verified} <-
-           verified_installation(user_installation, app_installation, installation_id),
+           verified_installation(
+             user_installation,
+             app_installation,
+             installation_id,
+             app_credentials.app_id
+           ),
          {:ok, membership} <- organization_membership(access_token, verified.account.login),
          :ok <- require_organization_owner(membership) do
-      {:ok, verified}
+      {:ok, %{installation: verified, credentials: app_credentials}}
     else
       false -> {:error, :unauthorized}
       {:error, _reason} = error -> error
@@ -436,7 +449,8 @@ defmodule GradePush.Installation do
     end
   end
 
-  def verify_user_installation(_actor, _installation_id), do: {:error, :invalid_installation}
+  def verify_user_installation_with_credentials(_actor, _installation_id),
+    do: {:error, :invalid_installation}
 
   def user_installations(%User{} = actor), do: list_user_organizations(actor)
   def user_installations(_actor), do: {:error, :unauthorized}
@@ -841,11 +855,17 @@ defmodule GradePush.Installation do
     end
   end
 
-  defp verified_installation(user_installation, app_installation, requested_id) do
+  defp verified_installation(user_installation, app_installation, requested_id, expected_app_id) do
     user_account = field(user_installation, :account) || %{}
     app_account = field(app_installation, :account) || %{}
 
-    with :ok <- validate_installation_ids(user_installation, app_installation, requested_id),
+    with :ok <-
+           validate_installation_ids(
+             user_installation,
+             app_installation,
+             requested_id,
+             expected_app_id
+           ),
          {:ok, account} <- verified_organization_account(user_account, app_account),
          :ok <- validate_installation_permissions(app_installation) do
       {:ok,
@@ -860,10 +880,15 @@ defmodule GradePush.Installation do
     end
   end
 
-  defp validate_installation_ids(user_installation, app_installation, requested_id) do
+  defp validate_installation_ids(
+         user_installation,
+         app_installation,
+         requested_id,
+         expected_app_id
+       ) do
     if integer_field(user_installation, :id) == requested_id and
          integer_field(app_installation, :id) == requested_id and
-         integer_field(app_installation, :app_id) == app_id(),
+         integer_field(app_installation, :app_id) == expected_app_id,
        do: :ok,
        else: {:error, :installation_not_authorized}
   end

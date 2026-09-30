@@ -95,8 +95,8 @@ defmodule GradePush.Assignments do
   end
 
   defp create_assignment_locked!(classroom, changeset, attrs) do
-    Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom.id])
-    locked_classroom = Repo.get!(Classroom, classroom.id)
+    locked_classroom =
+      Repo.one!(from(c in Classroom, where: c.id == ^classroom.id, lock: "FOR UPDATE"))
 
     if locked_classroom.github_connection_id != classroom.github_connection_id do
       Repo.rollback(:organization_changed)
@@ -141,8 +141,9 @@ defmodule GradePush.Assignments do
   end
 
   defp update_assignment_locked!(assignment_id, attrs) do
-    Repo.query!("SELECT id FROM assignments WHERE id = $1 FOR UPDATE", [assignment_id])
-    assignment = Repo.get!(Assignment, assignment_id)
+    assignment =
+      Repo.one!(from(a in Assignment, where: a.id == ^assignment_id, lock: "FOR UPDATE"))
+
     accepted? = Repo.exists?(from(s in Subject, where: s.assignment_id == ^assignment_id))
 
     if accepted? and locked_change?(assignment, attrs), do: Repo.rollback(:assignment_locked)
@@ -439,31 +440,7 @@ defmodule GradePush.Assignments do
       when is_integer(user_id) and is_integer(classroom_id) do
     with true <- Accounts.student?(actor),
          true <- active_student?(classroom_id, user_id) do
-      assignments =
-        from(a in Assignment,
-          where:
-            a.classroom_id == ^classroom_id and is_nil(a.archived_at) and
-              not is_nil(a.published_at),
-          order_by: [asc: a.deadline_at, asc: a.title],
-          preload: [:tests]
-        )
-        |> Repo.all()
-
-      subjects = student_subjects(user_id, Enum.map(assignments, & &1.id))
-
-      enriched =
-        Map.new(
-          subjects |> enrich_subject_profiles() |> Submissions.enrich_subjects(),
-          &{&1.id, &1}
-        )
-
-      by_assignment = Map.new(subjects, &{&1.assignment_id, Map.get(enriched, &1.id)})
-
-      {:ok,
-       Enum.map(assignments, fn assignment ->
-         subject = Map.get(by_assignment, assignment.id)
-         student_assignment(assignment, subject)
-       end)}
+      {:ok, student_assignments(user_id, classroom_id)}
     else
       false -> {:error, :not_found}
       _ -> {:error, :unauthorized}
@@ -471,6 +448,49 @@ defmodule GradePush.Assignments do
   end
 
   def list_student_assignments(_, _), do: {:error, :unauthorized}
+
+  @doc "Loads a student's classroom, published assignments and selected detail under current enrollment."
+  def student_classroom_workspace(%User{id: user_id} = actor, slug, assignment_slug)
+      when is_integer(user_id) and is_binary(slug) do
+    with {:ok, classroom} <- Classrooms.get_student_classroom(actor, slug) do
+      assignments = student_assignments(user_id, classroom.id)
+
+      details =
+        Enum.find(assignments, &(&1.assignment.slug == assignment_slug)) ||
+          %{assignment: nil, subject: nil, repository: nil, latest_push: nil, latest_grade: nil}
+
+      {:ok, %{classroom: classroom, assignments: assignments, details: details}}
+    end
+  end
+
+  def student_classroom_workspace(_, _, _), do: {:error, :unauthorized}
+
+  defp student_assignments(user_id, classroom_id) do
+    assignments =
+      from(a in Assignment,
+        where:
+          a.classroom_id == ^classroom_id and is_nil(a.archived_at) and
+            not is_nil(a.published_at),
+        order_by: [asc: a.deadline_at, asc: a.title],
+        preload: [:tests]
+      )
+      |> Repo.all()
+
+    subjects = student_subjects(user_id, Enum.map(assignments, & &1.id))
+
+    enriched =
+      Map.new(
+        subjects |> enrich_subject_profiles() |> Submissions.enrich_subjects(),
+        &{&1.id, &1}
+      )
+
+    by_assignment = Map.new(subjects, &{&1.assignment_id, Map.get(enriched, &1.id)})
+
+    Enum.map(assignments, fn assignment ->
+      subject = Map.get(by_assignment, assignment.id)
+      student_assignment(assignment, subject)
+    end)
+  end
 
   @doc "Lists published assignments across active student enrollments with personal or team deadlines."
   def list_student_schedule(%User{id: user_id} = actor) when is_integer(user_id) do

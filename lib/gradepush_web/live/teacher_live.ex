@@ -177,8 +177,6 @@ defmodule GradePushWeb.TeacherLive do
     assigns =
       Map.merge(classroom_state, assignment_state)
       |> Map.merge(%{
-        classes: real_classrooms(actor),
-        organizations: real_organizations(actor),
         assignments:
           Enum.map(
             classroom_state.assignment_records,
@@ -220,12 +218,16 @@ defmodule GradePushWeb.TeacherLive do
   end
 
   defp real_classroom_state(actor, slug) do
-    classroom_record = if slug, do: unwrap(Classrooms.get_classroom(actor, slug), nil)
+    workspace =
+      unwrap(Classrooms.teacher_workspace(actor, slug), %{
+        classes: [],
+        classroom: nil,
+        students: [],
+        connections: []
+      })
 
-    enrollments =
-      if classroom_record,
-        do: unwrap(Classrooms.list_students(actor, classroom_record.id), []),
-        else: []
+    classroom_record = workspace.classroom
+    enrollments = workspace.students
 
     classroom = if classroom_record, do: TeacherWorkspace.classroom(classroom_record, enrollments)
     members = if classroom, do: classroom.members, else: []
@@ -239,7 +241,9 @@ defmodule GradePushWeb.TeacherLive do
       classroom_record: classroom_record,
       classroom: classroom,
       members: members,
-      assignment_records: assignment_records
+      assignment_records: assignment_records,
+      classes: Enum.map(workspace.classes, &TeacherWorkspace.classroom/1),
+      organizations: Enum.map(workspace.connections, &Map.from_struct/1)
     }
   end
 
@@ -1226,20 +1230,6 @@ defmodule GradePushWeb.TeacherLive do
       end
 
     assign(socket, assignment_details: details)
-  end
-
-  defp real_classrooms(actor) do
-    actor
-    |> Classrooms.list_classrooms()
-    |> unwrap([])
-    |> Enum.map(&TeacherWorkspace.classroom/1)
-  end
-
-  defp real_organizations(actor) do
-    actor
-    |> Classrooms.list_github_connections()
-    |> unwrap([])
-    |> Enum.map(&Map.from_struct/1)
   end
 
   defp classroom_organizations(organizations) do

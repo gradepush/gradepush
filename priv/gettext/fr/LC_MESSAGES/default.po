@@ -112,7 +112,7 @@ msgid "Classrooms"
 msgstr "Classes"
 
 #: lib/gradepush_web/components/account_components.ex:142
-#: lib/gradepush_web/live/teacher_live.ex:1519
+#: lib/gradepush_web/live/teacher_live.ex:1509
 #, elixir-autogen, elixir-format
 msgid "Connect an organization"
 msgstr "Connecter une organisation"
@@ -129,7 +129,7 @@ msgstr "Connexion établie"
 msgid "Create assignment"
 msgstr "Créer le devoir"
 
-#: lib/gradepush_web/live/teacher_live.ex:659
+#: lib/gradepush_web/live/teacher_live.ex:663
 #, elixir-autogen, elixir-format
 msgid "Enter a classroom name."
 msgstr "Saisissez un nom pour la classe."
@@ -177,7 +177,7 @@ msgstr "Navigation principale"
 #: lib/gradepush_web/live/student_live.html.heex:25
 #: lib/gradepush_web/live/student_live.html.heex:51
 #: lib/gradepush_web/live/teacher_live.ex:36
-#: lib/gradepush_web/live/teacher_live.ex:1481
+#: lib/gradepush_web/live/teacher_live.ex:1471
 #: lib/gradepush_web/live/teacher_live.html.heex:49
 #: lib/gradepush_web/live/teacher_live.html.heex:301
 #, elixir-autogen, elixir-format
@@ -186,7 +186,7 @@ msgstr "Mes classes"
 
 #: lib/gradepush_web/components/assignment_editor.ex:29
 #: lib/gradepush_web/components/assignment_editor.ex:293
-#: lib/gradepush_web/live/teacher_live.ex:1464
+#: lib/gradepush_web/live/teacher_live.ex:1454
 #: lib/gradepush_web/live/teacher_live.html.heex:182
 #, elixir-autogen, elixir-format
 msgid "New assignment"
@@ -211,13 +211,13 @@ msgstr "Dépôt"
 #: lib/gradepush_web/components/workspace_layout.ex:96
 #: lib/gradepush_web/components/workspace_layout.ex:147
 #: lib/gradepush_web/live/admin_live.html.heex:61
-#: lib/gradepush_web/live/teacher_live.ex:1466
+#: lib/gradepush_web/live/teacher_live.ex:1456
 #, elixir-autogen, elixir-format
 msgid "Settings"
 msgstr "Paramètres"
 
 #: lib/gradepush_web/components/assignment_components.ex:68
-#: lib/gradepush_web/live/teacher_live.ex:1517
+#: lib/gradepush_web/live/teacher_live.ex:1507
 #, elixir-autogen, elixir-format
 msgid "Share assignment"
 msgstr "Partager le devoir"
@@ -265,7 +265,7 @@ msgid "Build a command-line parser that accepts a file path and a help flag. Sho
 msgstr "Créez un analyseur de ligne de commande qui accepte un chemin de fichier et une option d’aide. Affichez un message utile si la saisie est invalide."
 
 #: lib/gradepush_web/components/assignment_components.ex:82
-#: lib/gradepush_web/live/student_live.ex:232
+#: lib/gradepush_web/live/student_live.ex:221
 #, elixir-autogen, elixir-format
 msgid "Due %{date}"
 msgstr "À remettre le %{date}"
@@ -317,7 +317,7 @@ msgstr "Classe introuvable"
 msgid "Close"
 msgstr "Fermer"
 
-#: lib/gradepush_web/live/teacher_live.ex:1512
+#: lib/gradepush_web/live/teacher_live.ex:1502
 #: lib/gradepush_web/live/teacher_live.html.heex:56
 #: lib/gradepush_web/live/teacher_live.html.heex:78
 #, elixir-autogen, elixir-format
@@ -349,7 +349,7 @@ msgstr "Date de remise"
 msgid "Description (optional)"
 msgstr "Description (facultative)"
 
-#: lib/gradepush_web/live/teacher_live.ex:1513
+#: lib/gradepush_web/live/teacher_live.ex:1503
 #: lib/gradepush_web/live/teacher_live.html.heex:127
 #, elixir-autogen, elixir-format
 msgid "Edit classroom"
@@ -362,13 +362,13 @@ msgstr "Modifier la classe"
 msgid "Example link only. Invitations are not active in this preview."
 msgstr "Lien d’exemple. Les invitations sont désactivées dans cet aperçu."
 
-#: lib/gradepush_web/live/teacher_live.ex:1514
+#: lib/gradepush_web/live/teacher_live.ex:1504
 #: lib/gradepush_web/live/teacher_live.html.heex:254
 #, elixir-autogen, elixir-format
 msgid "Invite students"
 msgstr "Inviter des étudiants"
 
-#: lib/gradepush_web/live/teacher_live.ex:1515
+#: lib/gradepush_web/live/teacher_live.ex:1505
 #: lib/gradepush_web/live/teacher_live.html.heex:143
 #, elixir-autogen, elixir-format
 msgid "Manage teachers"
@@ -378,8 +378,8 @@ msgstr "Gérer les enseignants"
 #: lib/gradepush_web/components/student_schedule_components.ex:96
 #: lib/gradepush_web/components/student_schedule_components.ex:108
 #: lib/gradepush_web/components/student_schedule_components.ex:165
-#: lib/gradepush_web/live/student_live.ex:228
-#: lib/gradepush_web/live/student_live.ex:231
+#: lib/gradepush_web/live/student_live.ex:217
+#: lib/gradepush_web/live/student_live.ex:220
 #: lib/gradepush_web/live/teacher_live.html.heex:212
 #, elixir-autogen, elixir-format
 msgid "No deadline"
@@ -415,7 +415,7 @@ msgid "Remove from classroom"
 msgstr "Retirer de la classe"
 
 #: lib/gradepush_web/live/admin_live.ex:461
-#: lib/gradepush_web/live/teacher_live.ex:1516
+#: lib/gradepush_web/live/teacher_live.ex:1506
 #, elixir-autogen, elixir-format
 msgid "Remove student?"
 msgstr "Retirer cet étudiant?"
@@ -451,7 +451,7 @@ msgstr "Partagez le lien de la classe pour permettre à vos étudiants de la rej
 msgid "Student ID"
 msgstr "Matricule"
 
-#: lib/gradepush_web/live/teacher_live.ex:790
+#: lib/gradepush_web/live/teacher_live.ex:794
 #, elixir-autogen, elixir-format
 msgid "Student removed from this preview."
 msgstr "Étudiant retiré dans cet aperçu."
@@ -820,7 +820,7 @@ msgstr "Échéance (facultative)"
 #: lib/gradepush_web/components/assignment_components.ex:63
 #: lib/gradepush_web/components/assignment_editor.ex:29
 #: lib/gradepush_web/components/assignment_editor.ex:290
-#: lib/gradepush_web/live/teacher_live.ex:1470
+#: lib/gradepush_web/live/teacher_live.ex:1460
 #, elixir-autogen, elixir-format
 msgid "Edit assignment"
 msgstr "Modifier le devoir"
@@ -1025,7 +1025,7 @@ msgid "Continue on GitHub"
 msgstr "Continuer sur GitHub"
 
 #: lib/gradepush_web/components/account_components.ex:174
-#: lib/gradepush_web/live/teacher_live.ex:1467
+#: lib/gradepush_web/live/teacher_live.ex:1457
 #, elixir-autogen, elixir-format
 msgid "See you soon"
 msgstr "À bientôt"
@@ -1569,7 +1569,7 @@ msgstr "Vérifiez les renseignements saisis et réessayez."
 msgid "Choose a team or enter a new team name."
 msgstr "Choisissez une équipe ou entrez le nom d’une nouvelle équipe."
 
-#: lib/gradepush_web/live/teacher_live.ex:1111
+#: lib/gradepush_web/live/teacher_live.ex:1115
 #, elixir-autogen, elixir-format
 msgid "Choose a valid local deadline."
 msgstr "Choisissez une date et une heure d’échéance valides."
@@ -1594,38 +1594,38 @@ msgstr "Connectez une organisation GitHub avant de créer une classe."
 msgid "Connect a GitHub organization in settings before creating a classroom."
 msgstr "Connectez une organisation GitHub dans les paramètres avant de créer une classe."
 
-#: lib/gradepush_web/live/teacher_live.ex:1013
+#: lib/gradepush_web/live/teacher_live.ex:1017
 #, elixir-autogen, elixir-format
 msgid "Could not add this teacher. Try again."
 msgstr "Impossible d’ajouter cet enseignant. Réessayez."
 
-#: lib/gradepush_web/live/teacher_live.ex:898
-#: lib/gradepush_web/live/teacher_live.ex:903
+#: lib/gradepush_web/live/teacher_live.ex:902
+#: lib/gradepush_web/live/teacher_live.ex:907
 #, elixir-autogen, elixir-format
 msgid "Could not create this invitation. Try again."
 msgstr "Impossible de créer cette invitation. Réessayez."
 
-#: lib/gradepush_web/live/teacher_live.ex:928
+#: lib/gradepush_web/live/teacher_live.ex:932
 #, elixir-autogen, elixir-format
 msgid "Could not load GitHub organizations. Try again."
 msgstr "Impossible de charger les organisations GitHub. Réessayez."
 
-#: lib/gradepush_web/live/teacher_live.ex:987
+#: lib/gradepush_web/live/teacher_live.ex:991
 #, elixir-autogen, elixir-format
 msgid "Could not remove this student. Try again."
 msgstr "Impossible de retirer cet étudiant. Réessayez."
 
-#: lib/gradepush_web/live/teacher_live.ex:1032
+#: lib/gradepush_web/live/teacher_live.ex:1036
 #, elixir-autogen, elixir-format
 msgid "Could not remove this teacher. At least one teacher must remain."
 msgstr "Impossible de retirer cet enseignant. La classe doit conserver au moins un enseignant."
 
-#: lib/gradepush_web/live/teacher_live.ex:971
+#: lib/gradepush_web/live/teacher_live.ex:975
 #, elixir-autogen, elixir-format
 msgid "Could not save classroom. Check the form and try again."
 msgstr "Impossible d’enregistrer la classe. Vérifiez le formulaire et réessayez."
 
-#: lib/gradepush_web/live/teacher_live.ex:1099
+#: lib/gradepush_web/live/teacher_live.ex:1103
 #, elixir-autogen, elixir-format
 msgid "Could not save the assignment. Check the form and try again."
 msgstr "Impossible d’enregistrer le devoir. Vérifiez le formulaire et réessayez."
@@ -1829,12 +1829,12 @@ msgstr "La configuration n’a pas pu démarrer. Vérifiez le jeton et réessaye
 msgid "Setup is already in progress in another browser."
 msgstr "La configuration est déjà en cours dans un autre navigateur."
 
-#: lib/gradepush_web/live/teacher_live.ex:984
+#: lib/gradepush_web/live/teacher_live.ex:988
 #, elixir-autogen, elixir-format
 msgid "Student removed from this classroom."
 msgstr "Étudiant retiré de cette classe."
 
-#: lib/gradepush_web/live/teacher_live.ex:1010
+#: lib/gradepush_web/live/teacher_live.ex:1014
 #, elixir-autogen, elixir-format
 msgid "Teacher added to this classroom."
 msgstr "Enseignant ajouté à cette classe."
@@ -1849,7 +1849,7 @@ msgstr "Enseignant invité"
 msgid "Teacher joined the institution"
 msgstr "Enseignant inscrit à l’établissement"
 
-#: lib/gradepush_web/live/teacher_live.ex:1027
+#: lib/gradepush_web/live/teacher_live.ex:1031
 #, elixir-autogen, elixir-format
 msgid "Teacher removed from this classroom."
 msgstr "Enseignant retiré de cette classe."
@@ -1881,7 +1881,7 @@ msgstr "Cette installation est déjà configurée."
 msgid "This invitation has expired or is no longer available. Ask your teacher for a new link."
 msgstr "Cette invitation a expiré ou n’est plus disponible. Demandez un nouveau lien à votre enseignant."
 
-#: lib/gradepush_web/live/student_live.ex:184
+#: lib/gradepush_web/live/student_live.ex:173
 #: lib/gradepush_web/live/student_live.html.heex:51
 #, elixir-autogen, elixir-format
 msgid "This page is not available."
@@ -1988,12 +1988,12 @@ msgstr "Modifier l’échéance"
 msgid "Check the GradePush GitHub App permissions, then retry repository setup."
 msgstr "Vérifiez les permissions de l’application GitHub GradePush, puis réessayez de configurer le dépôt."
 
-#: lib/gradepush_web/live/teacher_live.ex:512
+#: lib/gradepush_web/live/teacher_live.ex:516
 #, elixir-autogen, elixir-format
 msgid "Choose a deadline later than the assignment deadline."
 msgstr "Choisissez une date après l’échéance du devoir."
 
-#: lib/gradepush_web/live/teacher_live.ex:474
+#: lib/gradepush_web/live/teacher_live.ex:478
 #, elixir-autogen, elixir-format
 msgid "Choose an available student and team."
 msgstr "Choisissez un étudiant et une équipe disponibles."
@@ -2003,27 +2003,27 @@ msgstr "Choisissez un étudiant et une équipe disponibles."
 msgid "Clear extension and use the assignment deadline"
 msgstr "Retirer la prolongation et utiliser l’échéance du devoir"
 
-#: lib/gradepush_web/live/teacher_live.ex:476
+#: lib/gradepush_web/live/teacher_live.ex:480
 #, elixir-autogen, elixir-format
 msgid "Could not add this student to the team."
 msgstr "Impossible d’ajouter cet étudiant à l’équipe."
 
-#: lib/gradepush_web/live/teacher_live.ex:554
+#: lib/gradepush_web/live/teacher_live.ex:558
 #, elixir-autogen, elixir-format
 msgid "Could not reset this submission deadline. Try again."
 msgstr "Impossible de retirer la prolongation. Réessayez."
 
-#: lib/gradepush_web/live/teacher_live.ex:423
+#: lib/gradepush_web/live/teacher_live.ex:427
 #, elixir-autogen, elixir-format
 msgid "Could not retry repository setup. Check the GitHub connection and try again."
 msgstr "Impossible de relancer la configuration du dépôt. Vérifiez la connexion GitHub et réessayez."
 
-#: lib/gradepush_web/live/teacher_live.ex:1414
+#: lib/gradepush_web/live/teacher_live.ex:1404
 #, elixir-autogen, elixir-format
 msgid "Could not update teams. Check the selection and try again."
 msgstr "Impossible de modifier les équipes. Vérifiez votre sélection et réessayez."
 
-#: lib/gradepush_web/live/teacher_live.ex:529
+#: lib/gradepush_web/live/teacher_live.ex:533
 #, elixir-autogen, elixir-format
 msgid "Could not update this submission deadline. Try again."
 msgstr "Impossible de modifier cette échéance. Réessayez."
@@ -2038,8 +2038,8 @@ msgstr "Créer une équipe"
 msgid "Done"
 msgstr "Terminé"
 
-#: lib/gradepush_web/live/teacher_live.ex:439
-#: lib/gradepush_web/live/teacher_live.ex:1407
+#: lib/gradepush_web/live/teacher_live.ex:443
+#: lib/gradepush_web/live/teacher_live.ex:1397
 #, elixir-autogen, elixir-format
 msgid "Enter a team name."
 msgstr "Saisissez un nom d’équipe."
@@ -2055,7 +2055,7 @@ msgid "GitHub could not create the repository. Check the connection and retry."
 msgstr "GitHub n’a pas pu créer le dépôt. Vérifiez la connexion et réessayez."
 
 #: lib/gradepush_web/components/assignment_components.ex:215
-#: lib/gradepush_web/live/teacher_live.ex:1520
+#: lib/gradepush_web/live/teacher_live.ex:1510
 #, elixir-autogen, elixir-format
 msgid "Manage teams"
 msgstr "Gérer les équipes"
@@ -2070,7 +2070,7 @@ msgstr "Aucune équipe pour le moment. Créez une équipe pour y ajouter des ét
 msgid "Repository is being created."
 msgstr "Création du dépôt en cours."
 
-#: lib/gradepush_web/live/teacher_live.ex:411
+#: lib/gradepush_web/live/teacher_live.ex:415
 #, elixir-autogen, elixir-format
 msgid "Repository setup has been queued again."
 msgstr "La configuration du dépôt a été relancée."
@@ -2090,7 +2090,7 @@ msgstr "Réessayer"
 msgid "Revise deadline for %{name}"
 msgstr "Modifier l’échéance de %{name}"
 
-#: lib/gradepush_web/live/teacher_live.ex:1522
+#: lib/gradepush_web/live/teacher_live.ex:1512
 #, elixir-autogen, elixir-format
 msgid "Revise submission deadline"
 msgstr "Modifier l’échéance de remise"
@@ -2110,7 +2110,7 @@ msgstr "Enregistrer l’échéance"
 msgid "Student access could not be added to GitHub. Retry repository setup."
 msgstr "L’accès étudiant n’a pas pu être ajouté sur GitHub. Relancez la configuration du dépôt."
 
-#: lib/gradepush_web/live/teacher_live.ex:472
+#: lib/gradepush_web/live/teacher_live.ex:476
 #, elixir-autogen, elixir-format
 msgid "Student added to the team."
 msgstr "Étudiant ajouté à l’équipe."
@@ -2120,17 +2120,17 @@ msgstr "Étudiant ajouté à l’équipe."
 msgid "Students will see their assigned team when they accept the assignment."
 msgstr "Les étudiants rejoindront leur équipe en acceptant le devoir."
 
-#: lib/gradepush_web/live/teacher_live.ex:549
+#: lib/gradepush_web/live/teacher_live.ex:553
 #, elixir-autogen, elixir-format
 msgid "Submission deadline reset."
 msgstr "Prolongation retirée."
 
-#: lib/gradepush_web/live/teacher_live.ex:501
+#: lib/gradepush_web/live/teacher_live.ex:505
 #, elixir-autogen, elixir-format
 msgid "Submission deadline updated."
 msgstr "Échéance de remise modifiée."
 
-#: lib/gradepush_web/live/teacher_live.ex:447
+#: lib/gradepush_web/live/teacher_live.ex:451
 #, elixir-autogen, elixir-format
 msgid "Team created."
 msgstr "Équipe créée."
@@ -2150,39 +2150,39 @@ msgstr "L’organisation GitHub ne peut plus être changée après la création 
 msgid "The automatic tests could not be copied to GitHub. Retry repository setup."
 msgstr "Les tests automatisés n’ont pas pu être copiés sur GitHub. Relancez la configuration du dépôt."
 
-#: lib/gradepush_web/live/teacher_live.ex:507
+#: lib/gradepush_web/live/teacher_live.ex:511
 #, elixir-autogen, elixir-format
 msgid "This assignment needs a deadline before it can be extended."
 msgstr "Ajoutez une échéance au devoir avant de la prolonger."
 
-#: lib/gradepush_web/live/teacher_live.ex:524
+#: lib/gradepush_web/live/teacher_live.ex:528
 #, elixir-autogen, elixir-format
 msgid "This local time does not exist when clocks change. Choose another time."
 msgstr "Cette heure n’existe pas lors du changement d’heure. Choisissez une autre heure."
 
-#: lib/gradepush_web/live/teacher_live.ex:517
+#: lib/gradepush_web/live/teacher_live.ex:521
 #, elixir-autogen, elixir-format
 msgid "This local time occurs twice when clocks change. Choose another time."
 msgstr "Cette heure est ambiguë lors du changement d’heure. Choisissez une autre heure."
 
-#: lib/gradepush_web/live/teacher_live.ex:1409
+#: lib/gradepush_web/live/teacher_live.ex:1399
 #, elixir-autogen, elixir-format
 msgid "This student already belongs to a team."
 msgstr "Cet étudiant fait déjà partie d’une équipe."
 
-#: lib/gradepush_web/live/teacher_live.ex:1412
+#: lib/gradepush_web/live/teacher_live.ex:1402
 #, elixir-autogen, elixir-format
 msgid "This student is no longer in the classroom."
 msgstr "Cet étudiant ne fait plus partie de la classe."
 
-#: lib/gradepush_web/live/teacher_live.ex:417
+#: lib/gradepush_web/live/teacher_live.ex:421
 #: lib/gradepush_web/live/teacher_live.html.heex:351
 #: lib/gradepush_web/live/teacher_live.html.heex:804
 #, elixir-autogen, elixir-format
 msgid "This submission is no longer available."
 msgstr "Cette remise n’est plus disponible."
 
-#: lib/gradepush_web/live/teacher_live.ex:1408
+#: lib/gradepush_web/live/teacher_live.ex:1398
 #: lib/gradepush_web/live/teacher_live.html.heex:741
 #, elixir-autogen, elixir-format
 msgid "This team has reached its member limit."
@@ -2230,7 +2230,7 @@ msgstr "Mode démo · Les données sont réinitialisées régulièrement."
 
 #: lib/gradepush_web/admin_workspace.ex:45
 #: lib/gradepush_web/live/admin_live.html.heex:135
-#: lib/gradepush_web/live/teacher_live.ex:895
+#: lib/gradepush_web/live/teacher_live.ex:899
 #: lib/gradepush_web/live/teacher_live.html.heex:249
 #, elixir-autogen, elixir-format
 msgid "Invitations are disabled in demo mode."
@@ -2267,7 +2267,7 @@ msgid "Assessed commit"
 msgstr "Commit évalué"
 
 #: lib/gradepush_web/components/grading_components.ex:34
-#: lib/gradepush_web/live/teacher_live.ex:1521
+#: lib/gradepush_web/live/teacher_live.ex:1511
 #, elixir-autogen, elixir-format
 msgid "Automatic test results"
 msgstr "Résultats des tests automatiques"
@@ -2390,7 +2390,7 @@ msgstr "Hiver"
 msgid "Year (optional)"
 msgstr "Année (facultative)"
 
-#: lib/gradepush_web/live/teacher_live.ex:675
+#: lib/gradepush_web/live/teacher_live.ex:679
 #, elixir-autogen, elixir-format
 msgid "Choose both a semester and a year, or leave both empty."
 msgstr "Choisissez une session et une année, ou laissez les deux champs vides."
@@ -2406,7 +2406,7 @@ msgid "August"
 msgstr "août"
 
 #: lib/gradepush_web/components/assignment_components.ex:211
-#: lib/gradepush_web/live/teacher_live.ex:1518
+#: lib/gradepush_web/live/teacher_live.ex:1508
 #: lib/gradepush_web/live/teacher_live.html.heex:175
 #, elixir-autogen, elixir-format
 msgid "Clone all locally"
@@ -2472,7 +2472,7 @@ msgstr "Indisponible en mode démo"
 msgid "Course code"
 msgstr "Code du cours"
 
-#: lib/gradepush_web/live/teacher_live.ex:665
+#: lib/gradepush_web/live/teacher_live.ex:669
 #, elixir-autogen, elixir-format
 msgid "Enter a course code."
 msgstr "Saisissez un code de cours."
@@ -2827,12 +2827,12 @@ msgstr "Vérifier la connexion"
 msgid "No other teachers to share with. An institution administrator can invite colleagues."
 msgstr "Aucun autre enseignant avec qui partager. Un administrateur de l’établissement peut inviter des collègues."
 
-#: lib/gradepush_web/live/teacher_live.ex:708
+#: lib/gradepush_web/live/teacher_live.ex:712
 #, elixir-autogen
 msgid "GitHub connection checked successfully."
 msgstr "La connexion GitHub a été vérifiée avec succès."
 
-#: lib/gradepush_web/live/teacher_live.ex:714
+#: lib/gradepush_web/live/teacher_live.ex:718
 #, elixir-autogen
 msgid "Could not verify this connection. Check the GitHub App installation and permissions, then try again."
 msgstr "Impossible de vérifier cette connexion. Vérifiez l’installation et les permissions de l’application GitHub, puis réessayez."
@@ -3094,7 +3094,7 @@ msgid "An organization owner must approve the GitHub App installation. Once appr
 msgstr "Un propriétaire de l’organisation doit approuver l’installation de l’application GitHub. Après son approbation, connectez-la avec « Déjà installée sur GitHub? »."
 
 #: lib/gradepush_web/controllers/organization_controller.ex:59
-#: lib/gradepush_web/live/teacher_live.ex:1044
+#: lib/gradepush_web/live/teacher_live.ex:1048
 #, elixir-autogen
 msgid "%{organization} is connected to your account."
 msgstr "%{organization} est connectée à votre compte."
