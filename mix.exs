@@ -4,7 +4,7 @@ defmodule GradePush.MixProject do
   def project do
     [
       app: :gradepush,
-      version: "0.1.10",
+      version: "0.1.11",
       elixir: "~> 1.20.4",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
