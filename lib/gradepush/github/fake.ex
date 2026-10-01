@@ -188,8 +188,14 @@ defmodule GradePush.GitHub.Fake do
   @impl true
   def get_repository(_access_token, owner, repository) do
     case Store.get({:repository, owner, repository}) do
-      nil -> {:error, {:http_error, 404}}
-      value -> {:ok, value}
+      nil when repository == "starter" ->
+        {:ok, template_repository(owner, repository, true)}
+
+      nil ->
+        {:error, {:http_error, 404}}
+
+      value ->
+        {:ok, value}
     end
   end
 
@@ -388,8 +394,15 @@ defmodule GradePush.GitHub.Fake do
   end
 
   defp template_repository(organization, name, private) do
+    owner =
+      Enum.find_value(installations(), %{id: 789, login: organization}, fn installation ->
+        if installation["account"]["login"] == organization, do: installation["account"]
+      end)
+
     %{
       id: repository_id(organization, name),
+      is_template: true,
+      owner: owner,
       name: name,
       full_name: "#{organization}/#{name}",
       description: "GradePush demo starter template",

@@ -1011,11 +1011,20 @@ defmodule GradePush.Classrooms do
 
     with [owner, repository] when owner != "" and repository != "" <-
            String.split(candidate, "/", parts: 2),
-         {:ok, templates} <- connection_templates(connection, credentials),
-         true <- Enum.any?(templates, &(String.downcase(&1.full_name) == candidate)) do
+         true <- owner == String.downcase(connection.login),
+         {:ok, token_response} <-
+           GradePush.GitHub.installation_token(credentials, connection.installation_id),
+         access_token when is_binary(access_token) <- field(token_response, :token),
+         {:ok, template} <- GradePush.GitHub.get_repository(access_token, owner, repository),
+         true <- field(template, :is_template) == true,
+         full_name when is_binary(full_name) <- field(template, :full_name),
+         true <- String.downcase(full_name) == candidate,
+         %{} = repository_owner <- field(template, :owner),
+         true <- field(repository_owner, :id) == connection.github_organization_id do
       :ok
     else
       false -> {:error, :template_not_available}
+      {:error, {:http_error, 404}} -> {:error, :template_not_available}
       {:error, _reason} = error -> error
       _parts -> {:error, :invalid_template_repository}
     end

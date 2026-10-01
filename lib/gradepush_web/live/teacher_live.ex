@@ -68,6 +68,7 @@ defmodule GradePushWeb.TeacherLive do
        subscribed_topics: [],
        refresh_pending?: false,
        templates: [],
+       templates_status: :idle,
        invitation_url: nil,
        submission_filter: "all",
        assignment_tab: "submissions",
@@ -216,7 +217,7 @@ defmodule GradePushWeb.TeacherLive do
         error: Phoenix.Flash.get(socket.assigns.flash, :error)
       })
 
-    socket = assign(socket, assigns)
+    socket = socket |> cancel_async(:assignment_templates) |> assign(assigns) |> load_templates()
 
     if socket.assigns.live_action == :settings and params["connect"] == "true" do
       socket
@@ -267,7 +268,6 @@ defmodule GradePushWeb.TeacherLive do
 
     editor_state =
       assignment_editor_state(
-        actor,
         classroom_state.classroom_record,
         assignment_record,
         socket.assigns.live_action
@@ -290,10 +290,14 @@ defmodule GradePushWeb.TeacherLive do
     )
   end
 
-  defp assignment_editor_state(actor, classroom_record, assignment_record, action) do
+  defp assignment_editor_state(classroom_record, assignment_record, action) do
     editor? = action in [:new_assignment, :edit_assignment] and not is_nil(classroom_record)
 
-    templates = if editor?, do: assignment_templates(actor, classroom_record.id), else: []
+    templates =
+      if (editor? and assignment_record) && assignment_record.template_repository,
+        do: [assignment_record.template_repository],
+        else: []
+
     params = TeacherWorkspace.assignment_params(assignment_record)
 
     form =
@@ -308,12 +312,44 @@ defmodule GradePushWeb.TeacherLive do
     %{templates: templates, assignment_params: params, assignment_form: form}
   end
 
-  defp assignment_templates(actor, classroom_id) do
-    actor
-    |> then(&Classrooms.list_templates(&1, classroom_id))
-    |> unwrap([])
-    |> Enum.map(&template_name/1)
+  defp load_templates(socket) do
+    if socket.assigns.assignment_form &&
+         socket.assigns.live_action in [:new_assignment, :edit_assignment] &&
+         (is_nil(socket.assigns.assignment_record) or
+            socket.assigns.assignment_record.submissions_count == 0) do
+      actor = socket.assigns.current_user
+      classroom_id = socket.assigns.classroom_record.id
+
+      socket
+      |> assign(templates_status: :loading)
+      |> start_async(:assignment_templates, fn ->
+        Classrooms.list_templates(actor, classroom_id)
+      end)
+    else
+      assign(socket, templates_status: :idle)
+    end
   end
+
+  @impl true
+  def handle_async(:assignment_templates, {:exit, {:shutdown, :cancel}}, socket),
+    do: {:noreply, socket}
+
+  def handle_async(:assignment_templates, {:ok, {:ok, templates}}, socket) do
+    templates = Enum.map(templates, &template_name/1)
+
+    socket =
+      socket
+      |> assign(templates: templates, templates_status: :ready)
+      |> assign_real_assignment_form(
+        socket.assigns.assignment_params,
+        socket.assigns.assignment_form.source.action
+      )
+
+    {:noreply, socket}
+  end
+
+  def handle_async(:assignment_templates, _failure, socket),
+    do: {:noreply, assign(socket, templates_status: :error)}
 
   defp include_locked_template(templates, %{submissions_count: count, template_repository: repo})
        when count > 0 and is_binary(repo),
@@ -711,6 +747,12 @@ defmodule GradePushWeb.TeacherLive do
     else
       {:noreply, socket}
     end
+  end
+
+  def handle_event("retry_assignment_templates", _, socket) do
+    if not socket.assigns.preview? and socket.assigns.templates_status == :error,
+      do: {:noreply, load_templates(socket)},
+      else: {:noreply, socket}
   end
 
   def handle_event("toggle_instructions_preview", _, socket) do

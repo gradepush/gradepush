@@ -96,6 +96,23 @@ defmodule GradePush.GitHub.RealTest do
     refute Enum.any?(headers, fn {_key, value} -> String.contains?(value, "client-secret") end)
   end
 
+  test "selected template lookup uses one repository request and retains its identity" do
+    template = %{
+      "full_name" => "org/starter",
+      "is_template" => true,
+      "owner" => %{"id" => 789, "login" => "org"}
+    }
+
+    queue_response(response(200, template))
+    assert {:ok, ^template} = Real.get_repository("installation-token", "org", "starter")
+
+    assert_received {:github_request, :get, "https://api.github.com/repos/org/starter", headers,
+                     nil}
+
+    assert {"authorization", "Bearer installation-token"} in headers
+    refute_received {:github_request, _, _, _, _}
+  end
+
   test "workflow results and jobs are fetched for the exact attempt" do
     queue_response(response(200, %{"id" => 90, "run_attempt" => 2}))
     queue_response(response(200, %{"jobs" => [%{"id" => 91}]}))

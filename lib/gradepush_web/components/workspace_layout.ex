@@ -233,6 +233,8 @@ defmodule GradePushWeb.WorkspaceLayout do
   attr :links, :map, default: %{}
 
   def footer(assigns) do
+    assigns = assign(assigns, :version, Application.spec(:gradepush, :vsn) |> to_string())
+
     ~H"""
     <footer class="bg-white border-t border-t-[#dce3ef] text-muted text-[12px]">
       <div class={[
@@ -242,12 +244,15 @@ defmodule GradePushWeb.WorkspaceLayout do
         "max-[760px]:[&:has([data-ui~=footer-links]_a:nth-child(2))]:flex-col",
         "max-[760px]:[&:has([data-ui~=footer-links]_a:nth-child(2))]:gap-[8px]"
       ]}>
-        <.link
-          {workspace_link(@context, "/classrooms")}
-          class="flex items-center shrink-0 min-h-[44px] [&_img]:w-[96px] [&_img]:h-auto"
-        >
-          <img src={~p"/images/logo.svg"} width="96" alt="GradePush" />
-        </.link>
+        <div class="flex items-center gap-[12px] shrink-0">
+          <.link
+            {workspace_link(@context, "/classrooms")}
+            class="flex items-center min-h-[44px] [&_img]:w-[96px] [&_img]:h-auto"
+          >
+            <img src={~p"/images/logo.svg"} width="96" alt="GradePush" />
+          </.link>
+          <span data-ui="app-version">v{@version}</span>
+        </div>
         <nav
           data-ui="footer-links"
           class={[

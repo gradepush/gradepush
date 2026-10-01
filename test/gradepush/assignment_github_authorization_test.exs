@@ -17,9 +17,15 @@ defmodule GradePush.AssignmentGitHubAuthorizationTest do
       def unquote(name)(unquote_splicing(args)) do
         calls = Process.get(:assignment_github_calls, %{})
         Process.put(:assignment_github_calls, Map.update(calls, unquote(name), 1, &(&1 + 1)))
-        apply(Fake, unquote(name), [unquote_splicing(args)])
+
+        response(unquote(name), [unquote_splicing(args)])
       end
     end
+
+    defp response(:get_repository, args),
+      do: Process.get(:assignment_template_response) || apply(Fake, :get_repository, args)
+
+    defp response(name, args), do: apply(Fake, name, args)
   end
 
   setup do
@@ -97,6 +103,49 @@ defmodule GradePush.AssignmentGitHubAuthorizationTest do
     assert {:ok, []} = Classrooms.list_github_connections(teacher)
   end
 
+  test "a selected template must belong to the connected organization and be a real template", %{
+    teacher: teacher,
+    classroom: classroom
+  } do
+    {:ok, template} = Fake.get_repository("unused", "gradepush-test", "starter")
+
+    for invalid <- [
+          Map.put(template, :is_template, false),
+          Map.delete(template, :is_template),
+          Map.put(template, :full_name, "another-org/starter"),
+          Map.put(template, :owner, %{id: 999_999, login: "gradepush-test"}),
+          Map.delete(template, :owner)
+        ] do
+      Process.put(:assignment_template_response, {:ok, invalid})
+
+      assert {:error, _} =
+               Assignments.create_assignment(teacher, classroom.id, %{
+                 title: "Rejected template",
+                 template_repository: "gradepush-test/starter"
+               })
+    end
+
+    Process.delete(:assignment_template_response)
+    Process.put(:assignment_github_calls, %{})
+
+    assert {:error, :template_not_available} =
+             Classrooms.template_repository_available?(
+               teacher,
+               classroom.id,
+               "another-org/starter"
+             )
+
+    refute Map.has_key?(Process.get(:assignment_github_calls), :get_repository)
+    assert Repo.aggregate(Assignment, :count) == 0
+
+    assert :ok =
+             Classrooms.template_repository_available?(
+               teacher,
+               classroom.id,
+               "GradePush-Test/Starter"
+             )
+  end
+
   test "transient verification errors deny saving and leave the grant usable", context do
     %{teacher: teacher, classroom: classroom} = context
     assignment = assignment_fixture(teacher, classroom)
@@ -120,7 +169,7 @@ defmodule GradePush.AssignmentGitHubAuthorizationTest do
 
     expected =
       if template?,
-        do: Map.merge(expected, %{installation_token: 1, list_template_repositories: 1}),
+        do: Map.merge(expected, %{installation_token: 1, get_repository: 1}),
         else: expected
 
     assert Process.get(:assignment_github_calls) == expected

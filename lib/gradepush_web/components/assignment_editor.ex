@@ -9,6 +9,7 @@ defmodule GradePushWeb.AssignmentEditor do
   attr :assignment, :any, default: nil
   attr :locale, :string, required: true
   attr :templates, :list, required: true
+  attr :templates_status, :atom, default: :ready
   attr :preview, :boolean, default: false
   attr :demo, :boolean, default: true
 
@@ -143,9 +144,34 @@ defmodule GradePushWeb.AssignmentEditor do
             list="assignment-templates"
             placeholder={gettext("Search templates in this organization")}
             disabled={@locked}
+            aria-busy={@templates_status == :loading}
+            aria-describedby={if @templates_status in [:loading, :error], do: "template-status"}
             autocomplete="off"
           />
           <datalist id="assignment-templates"><option :for={template <- @templates} value={template} /></datalist>
+          <p
+            :if={@templates_status == :loading}
+            id="template-status"
+            data-ui="template-status"
+            role="status"
+            class="text-sm text-muted mb-[18px]"
+          >
+            {gettext("Loading starter templates. You can keep editing the assignment.")}
+          </p>
+          <div
+            :if={@templates_status == :error}
+            id="template-status"
+            data-ui="template-status"
+            role="alert"
+            class="text-sm text-muted mb-[18px]"
+          >
+            <p>
+              {gettext("Could not load starter templates. Retry, or continue without a template.")}
+            </p>
+            <.button type="button" phx-click="retry_assignment_templates" class="mt-[8px]">
+              {gettext("Retry loading templates")}
+            </.button>
+          </div>
           <.field_hint :if={@locked}>
             {gettext("The template and work type are fixed once students have accepted.")}
           </.field_hint>
