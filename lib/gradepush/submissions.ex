@@ -401,9 +401,9 @@ defmodule GradePush.Submissions do
          %Subject{assignment_id: ^assignment_id} = subject <- Repo.get(Subject, subject_id),
          true <- is_nil(extension_until) or valid_observed_at?(extension_until),
          :ok <- validate_extension(assignment, extension_until) do
-      subject
-      |> Ecto.Changeset.change(extension_until: extension_until)
-      |> Repo.update()
+      Repo.transaction(fn ->
+        update_extension_locked!(actor, assignment, subject, extension_until)
+      end)
       |> case do
         {:ok, updated} ->
           broadcast_submission(assignment, updated, :extension_changed)
@@ -420,6 +420,23 @@ defmodule GradePush.Submissions do
   end
 
   def set_extension(_, _, _, _), do: {:error, :unauthorized}
+
+  defp update_extension_locked!(actor, assignment, subject, extension_until) do
+    GradePush.Accounts.lock_memberships!()
+    GradePush.Classrooms.lock_classroom_for_teacher!(actor, assignment.classroom_id)
+
+    assignment =
+      Repo.one!(from(a in Assignment, where: a.id == ^assignment.id, lock: "FOR SHARE"))
+
+    subject = Repo.one!(from(s in Subject, where: s.id == ^subject.id, lock: "FOR UPDATE"))
+
+    case validate_extension(assignment, extension_until) do
+      :ok -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
+
+    subject |> Ecto.Changeset.change(extension_until: extension_until) |> Repo.update!()
+  end
 
   defp validate_extension(_assignment, nil), do: :ok
 

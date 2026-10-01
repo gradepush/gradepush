@@ -177,6 +177,19 @@ defmodule GradePush.Accounts do
 
   def institution, do: Repo.one(Institution)
 
+  @doc """
+  Holds institution roles stable until the current local transaction ends.
+  Acquire before user or resource locks, then check the actor's current permissions.
+  Do not hold this lock during external API calls.
+  """
+  def lock_memberships! do
+    unless Repo.in_transaction?(),
+      do: raise(ArgumentError, "membership lock requires a transaction")
+
+    Repo.one(from(i in Institution, lock: "FOR SHARE")) || Repo.rollback(:unauthorized)
+    :ok
+  end
+
   def footer_links do
     Repo.one(from(i in Institution, select: map(i, ^Institution.footer_fields()))) || %{}
   end

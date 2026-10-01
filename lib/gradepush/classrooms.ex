@@ -124,6 +124,22 @@ defmodule GradePush.Classrooms do
 
   def classroom_for_teacher(_, _), do: {:error, :unauthorized}
 
+  @doc "Locks classroom collaboration for a local transaction after its institution membership lock."
+  def lock_classroom_for_teacher!(actor, classroom_id, mode \\ :read) do
+    query = from(c in Classroom, where: c.id == ^classroom_id)
+
+    query =
+      case mode do
+        :read -> from(c in query, lock: "FOR SHARE")
+        :write -> from(c in query, lock: "FOR UPDATE")
+      end
+
+    classroom = Repo.one(query) || Repo.rollback(:not_found)
+
+    require_classroom_teacher!(actor, classroom_id)
+    classroom
+  end
+
   def institution_teacher?(user_id), do: eligible_teacher?(user_id)
 
   @doc "Creates a classroom and makes its creator an equal classroom teacher."
@@ -146,8 +162,10 @@ defmodule GradePush.Classrooms do
 
   defp persist_classroom(attrs, slug, user_id) do
     Multi.new()
+    |> Multi.run(:institution, fn _, _ -> {:ok, Accounts.lock_memberships!()} end)
     |> Multi.run(:membership, fn _, _ ->
       lock_teacher!(user_id)
+      lock_github_connection_grant!(%User{id: user_id}, attrs[:github_connection_id])
       {:ok, user_id}
     end)
     |> Multi.insert(:classroom, fn _ ->
@@ -171,10 +189,22 @@ defmodule GradePush.Classrooms do
   def update_classroom(%User{id: user_id} = actor, classroom_id, attrs)
       when is_integer(user_id) and is_integer(classroom_id) do
     with :ok <- require_classroom_teacher(actor, classroom_id),
-         %Classroom{} <- Repo.get(Classroom, classroom_id) do
-      attrs = normalize_classroom_attrs(attrs, actor)
-
-      with {:ok, updated} <- update_classroom_record(actor, classroom_id, attrs) do
+         %Classroom{} = classroom <- Repo.get(Classroom, classroom_id),
+         attrs <- normalize_classroom_attrs(attrs, actor),
+         verified_connection_id <-
+           Map.get(attrs, :github_connection_id, classroom.github_connection_id),
+         :ok <-
+           validate_connection_change(
+             classroom,
+             Map.get(attrs, :github_connection_id, classroom.github_connection_id)
+           ),
+         :ok <-
+           validate_connection_access(
+             actor,
+             Map.get(attrs, :github_connection_id, classroom.github_connection_id)
+           ) do
+      with {:ok, updated} <-
+             update_classroom_record(actor, classroom_id, attrs, verified_connection_id) do
         broadcast({"classroom:#{updated.id}", {:classroom_updated, updated.id}})
         {:ok, hydrate_classroom(updated)}
       end
@@ -186,20 +216,25 @@ defmodule GradePush.Classrooms do
 
   def update_classroom(_, _, _), do: {:error, :unauthorized}
 
-  defp update_classroom_record(actor, classroom_id, attrs) do
-    case Repo.transaction(fn -> update_classroom_locked!(actor, classroom_id, attrs) end) do
+  defp update_classroom_record(actor, classroom_id, attrs, verified_connection_id) do
+    case Repo.transaction(fn ->
+           update_classroom_locked!(actor, classroom_id, attrs, verified_connection_id)
+         end) do
       {:ok, updated} -> {:ok, updated}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp update_classroom_locked!(actor, classroom_id, attrs) do
+  defp update_classroom_locked!(actor, classroom_id, attrs, verified_connection_id) do
+    Accounts.lock_memberships!()
     Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
+    require_classroom_teacher!(actor, classroom_id)
     classroom = Repo.get!(Classroom, classroom_id)
     connection_id = Map.get(attrs, :github_connection_id, classroom.github_connection_id)
+    if connection_id != verified_connection_id, do: Repo.rollback(:organization_changed)
 
     ensure_connection_change_allowed!(classroom, connection_id)
-    validate_connection_access!(actor, connection_id)
+    lock_github_connection_grant!(actor, connection_id)
 
     case Repo.update(Classroom.changeset(classroom, attrs)) do
       {:ok, updated} -> updated
@@ -208,30 +243,42 @@ defmodule GradePush.Classrooms do
   end
 
   defp ensure_connection_change_allowed!(classroom, connection_id) do
-    changed? = connection_id != classroom.github_connection_id
-
-    assignments_exist? =
-      Repo.exists?(from(a in Assignment, where: a.classroom_id == ^classroom.id))
-
-    if changed? and assignments_exist?, do: Repo.rollback(:organization_locked)
-  end
-
-  defp validate_connection_access!(actor, connection_id) do
-    case validate_connection_access(actor, connection_id) do
+    case validate_connection_change(classroom, connection_id) do
       :ok -> :ok
       {:error, reason} -> Repo.rollback(reason)
     end
   end
 
-  defp delete_empty_classroom(classroom_id) do
-    case Repo.transaction(fn -> delete_empty_classroom_locked!(classroom_id) end) do
+  defp validate_connection_change(classroom, connection_id) do
+    changed? = connection_id != classroom.github_connection_id
+
+    assignments_exist? =
+      Repo.exists?(from(a in Assignment, where: a.classroom_id == ^classroom.id))
+
+    if changed? and assignments_exist?, do: {:error, :organization_locked}, else: :ok
+  end
+
+  @doc "Holds a current local organization grant during a transaction after GitHub preflight."
+  def lock_github_connection_grant!(_actor, nil), do: :ok
+
+  def lock_github_connection_grant!(%User{id: user_id}, connection_id) do
+    from(c in authorized_connection_query(user_id, connection_id), lock: "FOR SHARE")
+    |> Repo.one() || Repo.rollback(:invalid_connection)
+
+    :ok
+  end
+
+  defp delete_empty_classroom(actor, classroom_id) do
+    case Repo.transaction(fn -> delete_empty_classroom_locked!(actor, classroom_id) end) do
       {:ok, deleted} -> {:ok, deleted}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp delete_empty_classroom_locked!(classroom_id) do
+  defp delete_empty_classroom_locked!(actor, classroom_id) do
+    Accounts.lock_memberships!()
     Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
+    require_classroom_teacher!(actor, classroom_id)
 
     if classroom_has_content?(classroom_id), do: Repo.rollback(:not_empty)
 
@@ -254,7 +301,7 @@ defmodule GradePush.Classrooms do
   def delete_classroom(%User{} = actor, classroom_id) do
     with :ok <- require_classroom_teacher(actor, classroom_id),
          %Classroom{} <- Repo.get(Classroom, classroom_id),
-         {:ok, deleted} <- delete_empty_classroom(classroom_id) do
+         {:ok, deleted} <- delete_empty_classroom(actor, classroom_id) do
       {:ok, deleted}
     else
       nil -> {:error, :not_found}
@@ -294,10 +341,19 @@ defmodule GradePush.Classrooms do
   def remove_student(%User{} = actor, classroom_id, student_user_id)
       when is_integer(classroom_id) and is_integer(student_user_id) do
     with :ok <- require_classroom_teacher(actor, classroom_id),
-         %ClassroomStudent{} = member <- active_classroom_student(classroom_id, student_user_id) do
-      member
-      |> ClassroomStudent.changeset(%{removed_at: DateTime.utc_now()})
-      |> Repo.update()
+         %ClassroomStudent{} <- active_classroom_student(classroom_id, student_user_id) do
+      Repo.transaction(fn ->
+        Accounts.lock_memberships!()
+        Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
+        require_classroom_teacher!(actor, classroom_id)
+
+        member =
+          active_classroom_student(classroom_id, student_user_id) || Repo.rollback(:not_found)
+
+        member
+        |> ClassroomStudent.changeset(%{removed_at: DateTime.utc_now()})
+        |> Repo.update!()
+      end)
       |> case do
         {:ok, removed} ->
           broadcast({"classroom:#{classroom_id}", {:student_removed, student_user_id}})
@@ -321,7 +377,9 @@ defmodule GradePush.Classrooms do
          :ok <- require_classroom_teacher(actor, classroom_id),
          %Classroom{} <- Repo.get(Classroom, classroom_id) do
       Repo.transaction(fn ->
+        Accounts.lock_memberships!()
         Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
+        require_classroom_teacher!(actor, classroom_id)
         get_or_create_class_invitation!(actor, classroom_id)
       end)
       |> transaction_result()
@@ -332,15 +390,22 @@ defmodule GradePush.Classrooms do
   end
 
   def revoke_class_invitation(%User{} = actor, classroom_id) do
-    with :ok <- require_classroom_teacher(actor, classroom_id) do
-      now = DateTime.utc_now()
+    with :ok <- require_classroom_teacher(actor, classroom_id),
+         {:ok, count} <-
+           Repo.transaction(fn ->
+             Accounts.lock_memberships!()
+             Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
+             require_classroom_teacher!(actor, classroom_id)
+             now = DateTime.utc_now()
 
-      {count, _} =
-        from(i in Invitation,
-          where: i.classroom_id == ^classroom_id and is_nil(i.revoked_at)
-        )
-        |> Repo.update_all(set: [revoked_at: now, updated_at: now])
+             {count, _} =
+               from(i in Invitation,
+                 where: i.classroom_id == ^classroom_id and is_nil(i.revoked_at)
+               )
+               |> Repo.update_all(set: [revoked_at: now, updated_at: now])
 
+             count
+           end) do
       if count > 0, do: broadcast({"classroom:#{classroom_id}", :invitation_revoked})
       {:ok, count}
     end
@@ -393,10 +458,12 @@ defmodule GradePush.Classrooms do
   def accept_class_invitation(_, _, _), do: {:error, :unauthorized}
 
   defp accept_class_invitation_locked!(actor, invitation, profile_attrs) do
-    Repo.one!(from(u in User, where: u.id == ^actor.id, lock: "FOR UPDATE"))
+    Accounts.lock_memberships!()
+    Repo.one!(from(u in User, where: u.id == ^actor.id, lock: "FOR NO KEY UPDATE"))
     classroom_id = invitation.classroom_id
     Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
     _invitation = valid_invitation_for_update!(invitation.id)
+    unless eligible_invitation_student?(actor), do: Repo.rollback(:unauthorized)
     classroom = Repo.get!(Classroom, classroom_id)
 
     if classroom.archived_at, do: Repo.rollback(:classroom_archived)
@@ -457,7 +524,9 @@ defmodule GradePush.Classrooms do
          true <- is_integer(teacher_user_id) and eligible_teacher?(teacher_user_id),
          %Classroom{} <- Repo.get(Classroom, classroom_id) do
       Repo.transaction(fn ->
+        Accounts.lock_memberships!()
         lock_teacher!(teacher_user_id)
+        Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
 
         add_authorized_classroom_teacher!(actor, classroom_id, teacher_user_id)
       end)
@@ -484,18 +553,22 @@ defmodule GradePush.Classrooms do
   @doc "Removes a classroom collaborator while preserving the last-teacher invariant."
   def remove_teacher(%User{} = actor, classroom_id, teacher_user_id) do
     with :ok <- require_classroom_teacher(actor, classroom_id) do
-      remove_classroom_teacher(classroom_id, teacher_user_id)
+      remove_classroom_teacher(actor, classroom_id, teacher_user_id)
     end
   end
 
   def remove_teacher(_, _, _), do: {:error, :unauthorized}
 
-  defp remove_classroom_teacher(classroom_id, teacher_user_id) do
-    Repo.transaction(fn -> remove_classroom_teacher_locked!(classroom_id, teacher_user_id) end)
+  defp remove_classroom_teacher(actor, classroom_id, teacher_user_id) do
+    Repo.transaction(fn ->
+      remove_classroom_teacher_locked!(actor, classroom_id, teacher_user_id)
+    end)
   end
 
-  defp remove_classroom_teacher_locked!(classroom_id, teacher_user_id) do
+  defp remove_classroom_teacher_locked!(actor, classroom_id, teacher_user_id) do
+    Accounts.lock_memberships!()
     Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
+    require_classroom_teacher!(actor, classroom_id)
 
     membership =
       Repo.get_by(ClassroomTeacher, classroom_id: classroom_id, user_id: teacher_user_id)
@@ -529,9 +602,10 @@ defmodule GradePush.Classrooms do
 
   defp reassign_classroom_teacher(classroom_id, add_user_id, replace_user_id, actor) do
     Repo.transaction(fn ->
+      Accounts.lock_memberships!()
       lock_teacher!(add_user_id)
-      unless Accounts.admin?(actor), do: Repo.rollback(:unauthorized)
       Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [classroom_id])
+      unless Accounts.admin?(actor), do: Repo.rollback(:unauthorized)
       classroom = Repo.get!(Classroom, classroom_id)
       add_classroom_teacher!(classroom_id, add_user_id)
       replace_classroom_teacher!(classroom_id, add_user_id, replace_user_id)
@@ -541,7 +615,7 @@ defmodule GradePush.Classrooms do
   end
 
   defp lock_teacher!(user_id) do
-    Repo.one!(from(u in User, where: u.id == ^user_id, lock: "FOR UPDATE"))
+    Repo.one!(from(u in User, where: u.id == ^user_id, lock: "FOR NO KEY UPDATE"))
     unless eligible_teacher?(user_id), do: Repo.rollback(:invalid_teacher)
   end
 
@@ -679,7 +753,7 @@ defmodule GradePush.Classrooms do
 
   defp persist_github_connection(actor, verified) do
     Repo.transaction(fn ->
-      unless Accounts.teacher?(actor), do: Repo.rollback(:unauthorized)
+      Accounts.lock_memberships!()
 
       attrs = %{
         github_organization_id: verified.account.id,
@@ -704,6 +778,8 @@ defmodule GradePush.Classrooms do
             lock: "FOR UPDATE"
           )
         )
+
+      unless Accounts.teacher?(actor), do: Repo.rollback(:unauthorized)
 
       if connection.installation_id != verified.id do
         Repo.delete_all(
@@ -952,10 +1028,16 @@ defmodule GradePush.Classrooms do
 
   defp set_classroom_archive(actor, classroom_id, archived_at) do
     with :ok <- require_classroom_teacher(actor, classroom_id),
-         %Classroom{} = classroom <- Repo.get(Classroom, classroom_id) do
-      classroom
-      |> Ecto.Changeset.change(archived_at: archived_at)
-      |> Repo.update()
+         %Classroom{} <- Repo.get(Classroom, classroom_id) do
+      Repo.transaction(fn ->
+        Accounts.lock_memberships!()
+
+        classroom =
+          Repo.one!(from(c in Classroom, where: c.id == ^classroom_id, lock: "FOR UPDATE"))
+
+        require_classroom_teacher!(actor, classroom_id)
+        classroom |> Ecto.Changeset.change(archived_at: archived_at) |> Repo.update!()
+      end)
       |> case do
         {:ok, updated} ->
           broadcast({"classroom:#{updated.id}", {:classroom_archived, not is_nil(archived_at)}})
@@ -978,6 +1060,13 @@ defmodule GradePush.Classrooms do
   end
 
   defp require_classroom_teacher(_, _), do: {:error, :unauthorized}
+
+  defp require_classroom_teacher!(actor, classroom_id) do
+    case require_classroom_teacher(actor, classroom_id) do
+      :ok -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
 
   defp classroom_teacher?(user_id, classroom_id) do
     Repo.exists?(

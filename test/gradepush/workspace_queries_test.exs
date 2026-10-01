@@ -34,7 +34,7 @@ defmodule GradePush.WorkspaceQueriesTest do
              end)
 
     assert updated.title == "Updated title"
-    assert length(sql) <= 20
+    assert length(sql) <= 24
     assert Enum.count(sql, &(&1.source == "github_apps")) == 1
     refute Enum.any?(sql, &(&1.source == "classroom_students"))
     assert Enum.count(sql, &String.contains?(&1.query, "FOR UPDATE")) == 1
@@ -44,7 +44,7 @@ defmodule GradePush.WorkspaceQueriesTest do
                Assignments.update_assignment(teacher, assignment.id, %{template_repository: ""})
              end)
 
-    assert length(sql) <= 17
+    assert length(sql) <= 21
   end
 
   test "teacher workspace shares class summaries and keeps actor and archive scopes", context do

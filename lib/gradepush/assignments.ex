@@ -82,7 +82,7 @@ defmodule GradePush.Assignments do
          {:ok, slug} <- available_assignment_slug(classroom.id, attrs[:title]),
          changeset <- assignment_changeset(%Assignment{}, attrs, classroom.id, slug),
          {:ok, _assignment} <- Ecto.Changeset.apply_action(changeset, :insert),
-         {:ok, assignment} <- persist_assignment(classroom, changeset, attrs) do
+         {:ok, assignment} <- persist_assignment(actor, classroom, changeset, attrs) do
       broadcast({"classroom:#{classroom.id}", {:assignment_created, assignment.id}})
       {:ok, assignment}
     end
@@ -90,17 +90,19 @@ defmodule GradePush.Assignments do
 
   def create_assignment(_, _, _), do: {:error, :unauthorized}
 
-  defp persist_assignment(classroom, changeset, attrs) do
-    Repo.transaction(fn -> create_assignment_locked!(classroom, changeset, attrs) end)
+  defp persist_assignment(actor, classroom, changeset, attrs) do
+    Repo.transaction(fn -> create_assignment_locked!(actor, classroom, changeset, attrs) end)
   end
 
-  defp create_assignment_locked!(classroom, changeset, attrs) do
-    locked_classroom =
-      Repo.one!(from(c in Classroom, where: c.id == ^classroom.id, lock: "FOR UPDATE"))
+  defp create_assignment_locked!(actor, classroom, changeset, attrs) do
+    Accounts.lock_memberships!()
+    locked_classroom = Classrooms.lock_classroom_for_teacher!(actor, classroom.id, :write)
 
     if locked_classroom.github_connection_id != classroom.github_connection_id do
       Repo.rollback(:organization_changed)
     end
+
+    Classrooms.lock_github_connection_grant!(actor, locked_classroom.github_connection_id)
 
     assignment =
       changeset
@@ -125,7 +127,7 @@ defmodule GradePush.Assignments do
            ),
          :ok <- validate_cutoff(attrs),
          :ok <- validate_tests_for_update(found, attrs),
-         {:ok, updated} <- update_assignment_record(assignment_id, attrs) do
+         {:ok, updated} <- update_assignment_record(actor, found, attrs) do
       broadcast({"classroom:#{updated.classroom_id}", {:assignment_updated, updated.id}})
       {:ok, updated}
     else
@@ -136,13 +138,18 @@ defmodule GradePush.Assignments do
 
   def update_assignment(_, _, _), do: {:error, :unauthorized}
 
-  defp update_assignment_record(assignment_id, attrs) do
-    Repo.transaction(fn -> update_assignment_locked!(assignment_id, attrs) end)
+  defp update_assignment_record(actor, assignment, attrs) do
+    Repo.transaction(fn -> update_assignment_locked!(actor, assignment, attrs) end)
   end
 
-  defp update_assignment_locked!(assignment_id, attrs) do
-    assignment =
-      Repo.one!(from(a in Assignment, where: a.id == ^assignment_id, lock: "FOR UPDATE"))
+  defp update_assignment_locked!(actor, found, attrs) do
+    Accounts.lock_memberships!()
+    classroom = Classrooms.lock_classroom_for_teacher!(actor, found.classroom_id)
+    assignment = lock_assignment!(found.id)
+
+    Classrooms.lock_github_connection_grant!(actor, classroom.github_connection_id)
+
+    assignment_id = assignment.id
 
     accepted? = Repo.exists?(from(s in Subject, where: s.assignment_id == ^assignment_id))
 
@@ -162,6 +169,9 @@ defmodule GradePush.Assignments do
          {:ok, _classroom} <- Classrooms.classroom_for_teacher(actor, assignment.classroom_id) do
       result =
         Repo.transaction(fn ->
+          Accounts.lock_memberships!()
+          Classrooms.lock_classroom_for_teacher!(actor, assignment.classroom_id)
+          assignment = lock_assignment!(assignment_id)
           now = DateTime.utc_now()
           Repo.update!(Ecto.Changeset.change(assignment, archived_at: now))
 
@@ -191,7 +201,7 @@ defmodule GradePush.Assignments do
   def delete_assignment(%User{} = actor, assignment_id) do
     with %Assignment{} = assignment <- Repo.get(Assignment, assignment_id),
          {:ok, _classroom} <- Classrooms.classroom_for_teacher(actor, assignment.classroom_id),
-         {:ok, deleted} <- delete_assignment_record(assignment_id) do
+         {:ok, deleted} <- delete_assignment_record(actor, assignment) do
       {:ok, deleted}
     else
       nil -> {:error, :not_found}
@@ -199,18 +209,21 @@ defmodule GradePush.Assignments do
     end
   end
 
-  defp delete_assignment_record(assignment_id) do
-    Repo.transaction(fn -> delete_assignment_locked!(assignment_id) end)
+  defp delete_assignment_record(actor, assignment) do
+    Repo.transaction(fn -> delete_assignment_locked!(actor, assignment) end)
   end
 
-  defp delete_assignment_locked!(assignment_id) do
-    Repo.query!("SELECT id FROM assignments WHERE id = $1 FOR UPDATE", [assignment_id])
+  defp delete_assignment_locked!(actor, found) do
+    Accounts.lock_memberships!()
+    Classrooms.lock_classroom_for_teacher!(actor, found.classroom_id)
+    assignment = lock_assignment!(found.id)
+    assignment_id = assignment.id
 
     if Repo.exists?(from(s in Subject, where: s.assignment_id == ^assignment_id)) do
       Repo.rollback(:has_acceptances)
     end
 
-    case Repo.get!(Assignment, assignment_id) |> Repo.delete() do
+    case Repo.delete(assignment) do
       {:ok, deleted} -> deleted
       {:error, changeset} -> Repo.rollback(changeset)
     end
@@ -252,7 +265,11 @@ defmodule GradePush.Assignments do
 
   defp assignment_invitation_result(actor, assignment_id) do
     Repo.transaction(fn ->
-      Repo.query!("SELECT id FROM assignments WHERE id = $1 FOR UPDATE", [assignment_id])
+      assignment = lock_teacher_assignment!(actor, assignment_id)
+
+      if assignment.archived_at || is_nil(assignment.published_at),
+        do: Repo.rollback(:assignment_unavailable)
+
       create_or_reuse_assignment_invitation!(actor, assignment_id)
     end)
   end
@@ -278,15 +295,20 @@ defmodule GradePush.Assignments do
 
   def revoke_assignment_invitation(%User{} = actor, assignment_id) do
     with %Assignment{} = assignment <- Repo.get(Assignment, assignment_id),
-         {:ok, _classroom} <- Classrooms.classroom_for_teacher(actor, assignment.classroom_id) do
-      now = DateTime.utc_now()
+         {:ok, _classroom} <- Classrooms.classroom_for_teacher(actor, assignment.classroom_id),
+         {:ok, count} <-
+           Repo.transaction(fn ->
+             lock_teacher_assignment!(actor, assignment_id)
+             now = DateTime.utc_now()
 
-      {count, _} =
-        from(i in Invitation,
-          where: i.assignment_id == ^assignment_id and is_nil(i.revoked_at)
-        )
-        |> Repo.update_all(set: [revoked_at: now, updated_at: now])
+             {count, _} =
+               from(i in Invitation,
+                 where: i.assignment_id == ^assignment_id and is_nil(i.revoked_at)
+               )
+               |> Repo.update_all(set: [revoked_at: now, updated_at: now])
 
+             count
+           end) do
       if count > 0, do: broadcast({"assignment:#{assignment_id}", :invitation_revoked})
       {:ok, count}
     else
@@ -374,10 +396,15 @@ defmodule GradePush.Assignments do
   end
 
   defp accept_assignment_locked!(actor, token, profile_attrs) do
-    Repo.one!(from(u in User, where: u.id == ^actor.id, lock: "FOR UPDATE"))
-    invitation = lock_assignment_invitation!(token)
+    Accounts.lock_memberships!()
+    Repo.one!(from(u in User, where: u.id == ^actor.id, lock: "FOR NO KEY UPDATE"))
+    invitation = valid_invitation(token) || Repo.rollback(:invalid_invitation)
+    found = Repo.get(Assignment, invitation.assignment_id) || Repo.rollback(:invalid_invitation)
+    Repo.one!(from(c in Classroom, where: c.id == ^found.classroom_id, lock: "FOR SHARE"))
     assignment = lock_published_assignment!(invitation.assignment_id)
+    _invitation = lock_assignment_invitation!(token)
     classroom = active_assignment_classroom!(assignment)
+    unless eligible_invitation_student?(actor), do: Repo.rollback(:unauthorized)
 
     ensure_student_profile!(actor, profile_attrs)
     enroll_in_classroom!(classroom.id, actor.id)
@@ -397,19 +424,31 @@ defmodule GradePush.Assignments do
       from(i in Invitation,
         where:
           i.token_hash == ^hash and is_nil(i.revoked_at) and
-            (is_nil(i.expires_at) or i.expires_at > ^DateTime.utc_now())
+            (is_nil(i.expires_at) or i.expires_at > ^DateTime.utc_now()),
+        lock: "FOR SHARE"
       )
     ) || Repo.rollback(:invalid_invitation)
   end
 
   defp lock_published_assignment!(assignment_id) do
-    Repo.query!("SELECT id FROM assignments WHERE id = $1 FOR UPDATE", [assignment_id])
-    assignment = Repo.get!(Assignment, assignment_id)
+    assignment = lock_assignment!(assignment_id)
 
     if assignment.archived_at || is_nil(assignment.published_at),
       do: Repo.rollback(:assignment_unavailable)
 
     assignment
+  end
+
+  defp lock_teacher_assignment!(actor, assignment_id) do
+    Accounts.lock_memberships!()
+    found = Repo.get(Assignment, assignment_id) || Repo.rollback(:not_found)
+    Classrooms.lock_classroom_for_teacher!(actor, found.classroom_id)
+    lock_assignment!(assignment_id)
+  end
+
+  defp lock_assignment!(assignment_id) do
+    Repo.one(from(a in Assignment, where: a.id == ^assignment_id, lock: "FOR UPDATE")) ||
+      Repo.rollback(:not_found)
   end
 
   defp active_assignment_classroom!(assignment) do
@@ -583,7 +622,7 @@ defmodule GradePush.Assignments do
 
   defp persist_team(actor, assignment, name) do
     Repo.transaction(fn ->
-      Repo.query!("SELECT id FROM assignments WHERE id = $1 FOR UPDATE", [assignment.id])
+      assignment = lock_team_creation!(actor, assignment.id)
 
       changeset =
         %Team{assignment_id: assignment.id, created_by_id: actor.id}
@@ -614,7 +653,7 @@ defmodule GradePush.Assignments do
            Repo.get(Assignment, assignment_id),
          true <- active_student?(assignment.classroom_id, actor.id),
          %Team{} = team <- active_team(team_id, assignment_id),
-         {:ok, updated} <- update_team_membership(assignment, team, actor.id) do
+         {:ok, updated} <- update_team_membership(actor, assignment, team, actor.id, :student) do
       broadcast({"assignment:#{assignment_id}", {:team_changed, team.id}})
       {:ok, updated}
     else
@@ -634,7 +673,8 @@ defmodule GradePush.Assignments do
          {:ok, _classroom} <- Classrooms.classroom_for_teacher(actor, assignment.classroom_id),
          true <- active_student?(assignment.classroom_id, student_user_id),
          %Team{} = team <- active_team(team_id, assignment_id),
-         {:ok, updated} <- update_team_membership(assignment, team, student_user_id) do
+         {:ok, updated} <-
+           update_team_membership(actor, assignment, team, student_user_id, :teacher) do
       broadcast({"assignment:#{assignment_id}", {:team_changed, team.id}})
       {:ok, updated}
     else
@@ -646,19 +686,55 @@ defmodule GradePush.Assignments do
 
   def add_team_member(_, _, _, _), do: {:error, :unauthorized}
 
-  defp update_team_membership(assignment, team, user_id) do
-    with {:ok, updated} <- persist_team_membership(assignment, team, user_id),
+  defp update_team_membership(actor, assignment, team, user_id, mode) do
+    with {:ok, updated} <- persist_team_membership(actor, assignment, team, user_id, mode),
          :ok <- queue_existing_subject(assignment.id, team.id) do
       {:ok, updated}
     end
   end
 
-  defp persist_team_membership(assignment, team, user_id) do
+  defp persist_team_membership(actor, assignment, team, user_id, mode) do
     Repo.transaction(fn ->
-      Repo.query!("SELECT id FROM assignments WHERE id = $1 FOR UPDATE", [assignment.id])
+      assignment = lock_team_creation!(actor, assignment.id)
+
+      authorize_team_member_change!(actor, assignment, user_id, mode)
+
+      unless active_student?(assignment.classroom_id, user_id),
+        do: Repo.rollback(:student_not_enrolled)
+
+      team = active_team(team.id, assignment.id) || Repo.rollback(:invalid_team)
       insert_team_member!(assignment, team, user_id)
       Repo.preload(team, members: :user)
     end)
+  end
+
+  defp authorize_team_member_change!(actor, assignment, user_id, :student) do
+    unless Accounts.student?(actor) and assignment.team_mode == "students" and actor.id == user_id,
+      do: Repo.rollback(:unauthorized)
+  end
+
+  defp authorize_team_member_change!(actor, assignment, _user_id, :teacher) do
+    case Classrooms.classroom_for_teacher(actor, assignment.classroom_id) do
+      {:ok, _} -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
+
+    unless assignment.team_mode == "teacher", do: Repo.rollback(:invalid_team)
+  end
+
+  defp lock_team_creation!(actor, assignment_id) do
+    Accounts.lock_memberships!()
+    found = Repo.get(Assignment, assignment_id) || Repo.rollback(:not_found)
+    Repo.one!(from(c in Classroom, where: c.id == ^found.classroom_id, lock: "FOR SHARE"))
+    assignment = lock_assignment!(assignment_id)
+
+    unless assignment.kind == "team" and is_nil(assignment.archived_at),
+      do: Repo.rollback(:invalid_team)
+
+    case authorize_team_creation(actor, assignment) do
+      :ok -> assignment
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   @doc "Lists teams and their declared students for a classroom teacher."
@@ -835,14 +911,7 @@ defmodule GradePush.Assignments do
          %Repository{} = repository <- Repo.get_by(Repository, subject_id: subject_id),
          true <- repository.state in ["failed", "pending"] do
       result =
-        Repo.transaction(fn ->
-          repository
-          |> Repository.changeset(%{state: "pending", last_error: nil})
-          |> Repo.update!()
-
-          enqueue_repository_job!(subject_id)
-          Repo.get_by!(Repository, subject_id: subject_id)
-        end)
+        Repo.transaction(fn -> retry_repository_locked!(actor, subject, repository) end)
 
       case result do
         {:ok, updated} -> {:ok, updated}
@@ -856,6 +925,19 @@ defmodule GradePush.Assignments do
   end
 
   def retry_repository(_, _), do: {:error, :unauthorized}
+
+  defp retry_repository_locked!(actor, subject, repository) do
+    lock_teacher_assignment!(actor, subject.assignment_id)
+
+    repository =
+      Repo.one!(from(r in Repository, where: r.id == ^repository.id, lock: "FOR UPDATE"))
+
+    unless repository.state in ["failed", "pending"], do: Repo.rollback(:repository_ready)
+
+    repository |> Repository.changeset(%{state: "pending", last_error: nil}) |> Repo.update!()
+    enqueue_repository_job!(subject.id)
+    Repo.get_by!(Repository, subject_id: subject.id)
+  end
 
   defp publish_repository_change({:ok, repository}, subject_id) do
     assignment_id =
