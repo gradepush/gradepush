@@ -205,14 +205,19 @@ defmodule GradePushWeb.AssignmentComponents do
           accepted: @accepted,
           total: @total
         )}</span>
-        <.button phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "clone_all"})}><.icon
-          name="hero-command-line"
-          class="size-4"
-        />{gettext("Clone all locally")}</.button>
-        <.button
-          :if={teacher_managed_teams?(@assignment, @preview)}
-          phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "teams"})}
-        ><.icon name="hero-user-group" class="size-4" />{gettext("Manage teams")}</.button>
+        <div
+          data-ui="submission-actions"
+          class="ml-auto flex flex-wrap items-stretch justify-end gap-[10px] max-[600px]:w-full max-[600px]:[&>button]:flex-1"
+        >
+          <.button phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "clone_all"})}><.icon
+            name="hero-command-line"
+            class="size-4"
+          />{gettext("Clone all locally")}</.button>
+          <.button
+            :if={teacher_managed_teams?(@assignment, @preview)}
+            phx-click={JS.push_focus() |> JS.push("open", value: %{kind: "teams"})}
+          ><.icon name="hero-user-group" class="size-4" />{gettext("Manage teams")}</.button>
+        </div>
       </div>
       <form
         id="submission-search"
@@ -240,7 +245,10 @@ defmodule GradePushWeb.AssignmentComponents do
               {gettext("All progress")}
             </option><option
               :for={status <- [:pushed, :late, :no_push, :not_accepted]}
-              :if={!@assignment.group? or status != :not_accepted}
+              :if={
+                !@assignment.group? or Map.get(@assignment, :team_mode) == "teacher" or
+                  status != :not_accepted
+              }
               value={status}
               selected={@filter == to_string(status)}
             >
@@ -278,6 +286,9 @@ defmodule GradePushWeb.AssignmentComponents do
                 ]}
               >
                 <strong>{row.name}</strong>
+                <span :if={Map.get(row, :deleted_team?, false)}>{gettext(
+                  "Deleted team · results kept"
+                )}</span>
                 <span :if={!@assignment.group?}>{row.identifier} ·
                 <a
                   href={"https://github.com/#{row.handle}"}
@@ -286,15 +297,23 @@ defmodule GradePushWeb.AssignmentComponents do
                   class="underline-offset-[3px] hover:text-brand hover:underline"
                 >@{row.handle}</a></span>
                 <span
-                  :if={@assignment.group?}
-                  class="flex! flex-wrap gap-y-[3px] gap-x-[10px]"
-                ><a
-                  :for={member <- row.member_profiles}
-                  href={"https://github.com/#{member.handle}"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="underline-offset-[3px] hover:text-brand hover:underline"
-                >{member.name}</a></span>
+                  :if={@assignment.group? and row.member_profiles != []}
+                  class="flex! items-start gap-[6px]"
+                >
+                  <.icon name="hero-user-group" class="mt-[2px] size-3.5 shrink-0" />
+                  <span class="flex min-w-0 flex-wrap gap-y-[3px] gap-x-[10px]">
+                    <a
+                      :for={member <- row.member_profiles}
+                      href={"https://github.com/#{member.handle}"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="underline-offset-[3px] hover:text-brand hover:underline"
+                    >{member.name}</a>
+                  </span>
+                </span>
+                <span :if={@assignment.group? and row.member_profiles == []}>
+                  {gettext("No students assigned yet.")}
+                </span>
               </th>
               <td
                 data-ui="push-cell"
@@ -306,9 +325,15 @@ defmodule GradePushWeb.AssignmentComponents do
                 data-label={gettext("Last push")}
               >
                 <span :if={row.pushed}>{local(row.pushed, @locale)}</span><.dash
-                  :if={!row.pushed}
+                  :if={!row.pushed and not (@assignment.group? and row.status == :not_accepted)}
                   label={gettext("No pushes")}
                 />
+                <span
+                  :if={@assignment.group? and row.status == :not_accepted}
+                  class="whitespace-normal"
+                >
+                  {gettext("Waiting for acceptance")}
+                </span>
                 <span
                   :if={row.status == :late}
                   class="block text-warning text-[11px] mt-[3px]"
@@ -365,7 +390,7 @@ defmodule GradePushWeb.AssignmentComponents do
               </td>
               <td class={[
                 "text-muted text-right [&_[data-ui~=field-help]]:mt-[6px] [&_[data-ui~=field-help]]:mb-0",
-                "[&_[data-ui~=field-help]]:mx-0 max-[760px]:[&:not(:has(a,button,p))]:hidden max-[760px]:col-span-full",
+                "[&_[data-ui~=field-help]]:mx-0 max-[760px]:[&:not(:has(a,button,p))]:hidden! max-[760px]:col-span-full",
                 "max-[760px]:border-t max-[760px]:border-t-[#eef1f5] max-[760px]:pt-[10px]!"
               ]}>
                 <div class="flex justify-end items-center gap-[6px]">
@@ -411,6 +436,21 @@ defmodule GradePushWeb.AssignmentComponents do
                 <.field_hint :if={Map.get(row, :repository_state) == "pending"}>
                   {gettext("Repository is being created.")}
                 </.field_hint>
+                <.field_hint :if={Map.get(row, :access_sync_state) == "pending"}>
+                  {gettext("Updating GitHub access…")}
+                </.field_hint>
+                <div :if={!@preview and Map.get(row, :access_sync_state) == "failed"} class="mt-[8px]">
+                  <p class="mb-[6px] text-[12px] text-error">
+                    {gettext("GitHub access could not be updated. Previous access may remain.")}
+                  </p>
+                  <.button
+                    phx-click="retry_repository_access"
+                    phx-value-subject_id={row.subject_id}
+                    aria-label={gettext("Retry GitHub access update for %{name}", name: row.name)}
+                  >
+                    <.icon name="hero-arrow-path" class="size-4" />{gettext("Retry access update")}
+                  </.button>
+                </div>
                 <div
                   :if={!@preview and Map.get(row, :repository_state) == "failed"}
                   class="[&_p]:mt-[3px] [&_p]:mb-[6px] [&_p]:text-error [&_p]:text-[12px] [&_p]:leading-[1.5] [&_p]:mx-0"
@@ -441,14 +481,17 @@ defmodule GradePushWeb.AssignmentComponents do
       <.empty_state :if={@rows == []}>
         <.icon name="hero-user-group" class="size-8" /><h3>
           {cond do
+            @query != "" or @filter != "all" -> gettext("No matching results")
             @total == 0 -> gettext("No students yet")
             @assignment.group? and @assignment.submitted == 0 -> gettext("No teams yet")
             true -> gettext("No matching results")
           end}
         </h3><p>
-          {if @total == 0,
-            do: gettext("Share the classroom link to let your students join."),
-            else: empty_message(@assignment, @teams)}
+          {cond do
+            @query != "" or @filter != "all" -> gettext("Try another search or progress filter.")
+            @total == 0 -> gettext("Share the classroom link to let your students join.")
+            true -> empty_message(@assignment, @teams)
+          end}
         </p>
       </.empty_state>
       <p :if={@assignment.group?} class="text-muted text-[12px] mt-[18px]">

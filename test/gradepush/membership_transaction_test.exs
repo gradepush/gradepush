@@ -10,6 +10,7 @@ defmodule GradePush.MembershipTransactionTest do
   alias GradePush.Accounts.{Institution, User}
   alias GradePush.Assignments.{Assignment, Repository, Subject, TeamMember}
   alias GradePush.Classrooms.{Classroom, ClassroomStudent, ClassroomTeacher, GitHubConnection}
+  alias GradePush.GitHub.RepositoryAccess
   alias GradePush.Installation.GitHubApp
 
   setup do
@@ -196,6 +197,44 @@ defmodule GradePush.MembershipTransactionTest do
 
   defp transaction_student do
     student_fixture(%{login: "transaction-student-#{System.unique_integer([:positive])}"})
+  end
+
+  test "team mutations recheck classroom access after waiting for a concurrent revocation", c do
+    assignment = assignment_fixture(c.owner, c.classroom, %{kind: "team", team_mode: "teacher"})
+    {:ok, team} = Assignments.create_team(c.owner, assignment.id, %{name: "Scoped team"})
+
+    assert {:error, :not_found} =
+             after_change(
+               fn ->
+                 assert {:ok, _} =
+                          Classrooms.remove_teacher(c.owner, c.classroom.id, c.colleague.id)
+               end,
+               fn -> Assignments.delete_team(c.colleague, assignment.id, team.id) end
+             )
+
+    assert {:ok, [_]} = Assignments.list_teams(c.owner, assignment.id)
+  end
+
+  test "access jobs cannot run concurrently for the same subject and recover after lock release",
+       c do
+    key = "gradepush:repository-access:#{c.assignment.id}"
+
+    assert {:ok, :ok} =
+             Repo.transaction(fn ->
+               Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [key])
+
+               task =
+                 Task.async(fn ->
+                   connection(fn ->
+                     RepositoryAccess.sync_subject(c.assignment.id)
+                   end)
+                 end)
+
+               assert {:error, :access_sync_busy} = Task.await(task, 5000)
+               :ok
+             end)
+
+    assert {:error, :not_found} = RepositoryAccess.sync_subject(c.assignment.id)
   end
 
   test "invitation creation and teacher addition do not block on the creator foreign key", c do

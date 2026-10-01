@@ -15,6 +15,8 @@ defmodule GradePush.Assignments.Repository do
     field :workflow_file_sha, :string
     field :state, :string, default: "pending"
     field :last_error, :string
+    field :access_sync_state, :string, default: "synced"
+    field :access_version, :integer, default: 0
 
     belongs_to :subject, Subject
 

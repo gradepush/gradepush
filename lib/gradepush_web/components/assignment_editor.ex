@@ -185,7 +185,7 @@ defmodule GradePushWeb.AssignmentEditor do
                 >
                   <div
                     data-ui="test-card-heading"
-                    class="flex items-stretch bg-surface-heading group-data-[expanded=true]:border-b group-data-[expanded=true]:border-line"
+                    class="flex items-stretch bg-surface-heading hover:bg-brand/5 group-data-[expanded=true]:border-b group-data-[expanded=true]:border-line"
                   >
                     <button
                       id={test.id <> "-toggle"}
@@ -193,7 +193,7 @@ defmodule GradePushWeb.AssignmentEditor do
                       data-test-toggle
                       aria-expanded="true"
                       aria-controls={test.id <> "-settings"}
-                      class="flex min-h-[64px] min-w-0 flex-1 cursor-pointer items-center gap-[12px] px-[18px] py-[14px] text-left hover:bg-brand/5 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-brand"
+                      class="flex min-h-[64px] min-w-0 flex-1 cursor-pointer items-center gap-[12px] px-[18px] py-[14px] text-left focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-brand"
                     >
                       <span class="min-w-0 flex-1">
                         <span class="block text-[12px] text-muted">
@@ -221,10 +221,12 @@ defmodule GradePushWeb.AssignmentEditor do
                       /></span>
                     </button>
                     <.button
+                      id={test.id <> "-remove"}
+                      data-remove-test
                       type="button"
                       variant="text-danger"
                       class="mr-[14px] h-[44px] w-[44px] shrink-0 self-center justify-center rounded-md border border-danger/30 bg-danger/5 text-danger hover:bg-danger/10"
-                      phx-click="remove_assignment_test"
+                      phx-click={JS.push_focus() |> JS.push("remove_assignment_test")}
                       phx-value-index={test.index}
                       disabled={@locked and not @demo}
                       aria-label={gettext("Remove test %{number}", number: test.index + 1)}
@@ -412,6 +414,7 @@ defmodule GradePushWeb.AssignmentEditor do
               </.inputs_for>
               <div class="flex items-center justify-between mb-[16px] gap-[16px] [&>span]:text-[12px] [&>span]:text-muted">
                 <.button
+                  id="add-assignment-test"
                   type="button"
                   variant="secondary"
                   phx-click="add_assignment_test"

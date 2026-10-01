@@ -45,6 +45,39 @@ defmodule GradePush.GitHub.RealTest do
            end)
   end
 
+  test "repository invitation revocation paginates and uses scoped DELETE endpoints" do
+    invitations = for id <- 1..100, do: %{"id" => id, "invitee" => %{"id" => id + 1000}}
+    queue_response(response(200, invitations))
+    queue_response(response(200, [%{"id" => 101, "invitee" => %{"id" => 1101}}]))
+    assert {:ok, all} = Real.list_repository_invitations("repo-token", "org", "repo")
+    assert length(all) == 101
+
+    assert_received {:github_request, :get,
+                     "https://api.github.com/repos/org/repo/invitations?per_page=100&page=1", _,
+                     nil}
+
+    assert_received {:github_request, :get,
+                     "https://api.github.com/repos/org/repo/invitations?per_page=100&page=2", _,
+                     nil}
+
+    queue_response(response(204, nil))
+    assert {:ok, _} = Real.delete_repository_invitation("repo-token", "org", "repo", 101)
+
+    assert_received {:github_request, :delete,
+                     "https://api.github.com/repos/org/repo/invitations/101", headers, nil}
+
+    assert {"authorization", "Bearer repo-token"} in headers
+
+    queue_response(response(204, nil))
+    assert {:ok, _} = Real.remove_collaborator("repo-token", "org", "repo", "current-login")
+
+    assert_received {:github_request, :delete,
+                     "https://api.github.com/repos/org/repo/collaborators/current-login", _, nil}
+
+    queue_response(response(403, %{"message" => "Forbidden"}))
+    assert {:error, _} = Real.remove_collaborator("repo-token", "org", "repo", "current-login")
+  end
+
   test "OAuth exchange keeps credentials in the POST body" do
     queue_response(response(200, %{"access_token" => "user-token"}))
 

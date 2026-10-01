@@ -312,8 +312,14 @@
     dialog_id="class-dialog"
     title_id="class-modal-title"
     title={modal_title(@modal)}
+    initial_focus={
+      if modal?(@modal, "remove_assignment_test"),
+        do: JS.focus(to: "#cancel-test-removal"),
+        else: JS.focus_first()
+    }
     class={[
       modal?(@modal, "clone_all") && "w-[640px]",
+      modal?(@modal, "teams") && "w-[760px]",
       modal?(@modal, "test_results") &&
         "w-[640px] [&_[data-ui~=grading]]:border [&_[data-ui~=grading]]:border-line [&_[data-ui~=grading]]:rounded-[9px] [&_[data-ui~=grading]]:overflow-hidden"
     ]}
@@ -334,6 +340,20 @@
       {@notice}
     </.notice>
     <%= cond do %>
+      <% modal?(@modal, "remove_assignment_test") -> %>
+        <% {_index, test} = elem(@modal, 1) %>
+        <p class="mb-[12px] font-semibold text-heading! wrap-anywhere">
+          {if test.name in [nil, ""], do: gettext("Untitled test"), else: test.name}
+        </p>
+        <p class="mb-[24px]">
+          {gettext("This test will be removed when you save the assignment.")}
+        </p>
+        <.modal_actions>
+          <.button id="cancel-test-removal" phx-click="close">{gettext("Cancel")}</.button>
+          <.button variant="danger" phx-click="confirm_remove_assignment_test">
+            <.icon name="hero-trash" class="size-4" />{gettext("Remove test")}
+          </.button>
+        </.modal_actions>
       <% modal?(@modal, "test_results") -> %>
         <% subject = Enum.find(@assignment_subjects, &(&1.id == elem(@modal, 1))) %>
         <%= if subject do %>
@@ -683,6 +703,7 @@
           >{gettext("Remove from classroom")}</.button>
         </.modal_actions>
       <% modal?(@modal, "teams") -> %>
+        <% available_students = unassigned_students(@members, @teams) %>
         <p>
           {gettext(
             "Assign students to teams. Students receive their team when they accept the assignment."
@@ -691,13 +712,14 @@
         <form
           data-ui="team-create-form"
           phx-submit="create_team"
-          class="grid gap-[18px]"
+          class="mt-[22px] grid items-end gap-[12px] min-[600px]:grid-cols-[minmax(0,1fr)_auto]"
         >
           <.field>
             {gettext("Team name")}<.input
+              id="new-team-name"
               name="team[name]"
               required
-              maxlength="100"
+              maxlength="120"
               placeholder={gettext("e.g. Team 1")}
             />
           </.field><.button type="submit" variant="primary"><.icon
@@ -707,48 +729,196 @@
         </form>
         <div
           :if={@teams != []}
-          data-ui="teacher-list"
-          class={[
-            "list-none grid p-0 my-[22px] mx-0 gap-[18px] [&_li]:flex [&_li]:items-center [&_li]:border-b",
-            "[&_li]:border-b-line [&_li]:py-[6px] [&_li]:px-0 [&_li]:gap-[10px] [&_strong]:text-[13px]",
-            "[&_strong]:font-[550] [&_[data-variant=icon]]:ml-auto [&>section]:pb-[18px] [&>section]:border-b",
-            "[&>section]:border-b-line [&_ul]:list-none [&_ul]:mt-0 [&_ul]:mb-[12px] [&_ul]:p-0 [&_ul]:mx-0"
-          ]}
+          id="managed-team-tabs"
+          phx-hook="TeamTabs"
+          data-ui="managed-teams"
+          class="my-[22px] min-w-0"
         >
-          <section :for={team <- @teams} id={"managed-team-#{team.id}"}>
-            <div class="flex justify-between items-baseline mb-[10px] gap-[12px] [&_span]:text-muted [&_span]:text-[12px]">
-              <strong>{team.name}</strong><span>
-                {ngettext("%{count} student", "%{count} students", length(team.members))}
+          <div
+            role="tablist"
+            aria-label={gettext("Teams")}
+            class="flex min-w-0 gap-[5px] overflow-x-auto rounded-[10px] border border-line bg-tab-track p-[5px]"
+          >
+            <button
+              :for={team <- @teams}
+              id={"team-tab-#{team.id}"}
+              type="button"
+              role="tab"
+              aria-selected={to_string(team.id == @active_team_id)}
+              aria-controls={"managed-team-#{team.id}"}
+              tabindex={if team.id == @active_team_id, do: "0", else: "-1"}
+              phx-click="select_team"
+              phx-value-team_id={team.id}
+              title={team.name}
+              class="flex min-h-[44px] max-w-[240px] shrink-0 items-center gap-[10px] rounded-[7px] px-[12px] py-[10px] text-[13px] font-medium text-muted aria-selected:bg-white aria-selected:text-brand aria-selected:shadow-tab hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand max-[480px]:max-w-[200px]"
+            >
+              <span class="min-w-0 truncate">{team.name}</span>
+              <span class="shrink-0 rounded-[4px] bg-surface-heading px-[6px] py-[2px] text-[11px] tabular-nums">
+                <span aria-hidden="true">{length(team.members)}/{@assignment.team_size}</span>
+                <span class="sr-only">{gettext("%{count} / %{limit} students",
+                  count: length(team.members),
+                  limit: @assignment.team_size
+                )}</span>
+              </span>
+            </button>
+          </div>
+          <section
+            :for={team <- @teams}
+            id={"managed-team-#{team.id}"}
+            role="tabpanel"
+            aria-labelledby={"team-tab-#{team.id}"}
+            tabindex="0"
+            hidden={team.id != @active_team_id}
+            class="min-h-[200px] min-w-0 pt-[22px] focus-visible:rounded-[7px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
+          >
+            <div class="mb-[14px] flex flex-wrap items-center justify-between gap-[8px]">
+              <h3
+                id={"managed-team-#{team.id}-title"}
+                class="min-w-0 text-[14px] font-semibold wrap-anywhere"
+              >
+                {team.name}
+              </h3>
+              <span class="shrink-0 text-[12px] text-muted">
+                {gettext("%{count} / %{limit} students",
+                  count: length(team.members),
+                  limit: @assignment.team_size
+                )}
               </span>
             </div>
-            <ul :if={team.members != []}>
-              <li :for={student <- team.members}>
+            <form
+              :if={@team_action == {"rename", team.id, nil}}
+              phx-submit="rename_team"
+              class="mb-[20px] grid gap-[12px]"
+            >
+              <.field>
+                {gettext("Team name")}
+                <.input
+                  id={"rename-team-#{team.id}"}
+                  name="team[name]"
+                  value={team.name}
+                  required
+                  maxlength="120"
+                  phx-mounted={JS.focus()}
+                />
+              </.field>
+              <.field_hint>
+                {gettext("The GitHub repository keeps its current name.")}
+              </.field_hint>
+              <div class="flex flex-wrap gap-[8px]">
+                <.button type="submit" variant="primary">{gettext("Save name")}</.button>
+                <.button phx-click={
+                  JS.push("cancel_team_action") |> JS.focus(to: "#team-tab-#{team.id}")
+                }>{gettext("Cancel")}</.button>
+              </div>
+            </form>
+            <p :if={team.members == []} class="mb-[16px] text-[13px] text-muted">
+              {gettext("No students assigned yet.")}
+            </p>
+            <ul :if={team.members != []} class="mb-[16px] grid gap-[10px]">
+              <li :for={student <- team.members} class="flex min-w-0 items-center gap-[10px]">
                 <.user_avatar src={Map.get(student, :avatar_url)} size="small">
                   {student.initials}
-                </.user_avatar><strong>{student.name}</strong>
+                </.user_avatar><span class="min-w-0 flex-1 text-[13px] font-medium wrap-anywhere">{student.name}</span>
+                <.button
+                  variant="icon"
+                  class="size-9! shrink-0 text-error!"
+                  phx-click="team_action"
+                  phx-value-action="remove"
+                  phx-value-team_id={team.id}
+                  phx-value-student_id={student.id}
+                  aria-label={gettext("Remove %{name} from the team", name: student.name)}
+                  title={gettext("Remove from team")}
+                >
+                  <.icon name="hero-user-minus" class="size-4" />
+                </.button>
               </li>
             </ul>
             <form
-              :if={team.can_add? and unassigned_students(@members, @teams) != []}
+              :if={team.can_add? and available_students != [] and is_nil(@team_action)}
               phx-submit="add_team_member"
-              class="grid grid-cols-[minmax(0,1fr)_auto] [align-items:end] gap-[18px]"
+              class="grid items-end gap-[12px] min-[600px]:grid-cols-[minmax(0,1fr)_auto]"
             >
               <.input type="hidden" name="team_id" value={team.id} />
               <.field>
                 {gettext("Add a student")}
                 <.input type="select" name="student_id" required>
                   <option
-                    :for={student <- unassigned_students(@members, @teams)}
+                    :for={student <- available_students}
                     value={student.id}
                   >
                     {student.name} (@{student.handle})
                   </option>
                 </.input>
-              </.field><.button type="submit">{gettext("Add to team")}</.button>
+              </.field><.button type="submit" class="justify-self-start">{gettext("Add to team")}</.button>
             </form>
             <.field_hint :if={not team.can_add?}>
               {gettext("This team has reached its member limit.")}
             </.field_hint>
+            <.field_hint :if={team.can_add? and available_students == []}>
+              {if @members == [],
+                do: gettext("Students will appear here once they join the classroom."),
+                else: gettext("All classroom students are already assigned to a team.")}
+            </.field_hint>
+            <div
+              :if={is_nil(@team_action)}
+              class="mt-[22px] flex flex-wrap justify-between gap-[8px] border-t border-line pt-[14px]"
+            >
+              <.button
+                phx-click="team_action"
+                phx-value-action="rename"
+                phx-value-team_id={team.id}
+              >
+                <.icon name="hero-pencil-square" class="size-4" />{gettext("Rename team")}
+              </.button>
+              <.button
+                class="text-error!"
+                phx-click="team_action"
+                phx-value-action="delete"
+                phx-value-team_id={team.id}
+              >
+                <.icon name="hero-trash" class="size-4" />{gettext("Delete team")}
+              </.button>
+            </div>
+            <div
+              :if={
+                @team_action && elem(@team_action, 1) == team.id &&
+                  elem(@team_action, 0) in ["remove", "delete"]
+              }
+              id={"team-confirmation-#{team.id}"}
+              data-ui="team-confirmation"
+              class="mt-[20px] rounded-[8px] border border-line bg-surface-heading p-[16px]"
+            >
+              <h4 class="text-[14px] font-semibold">
+                {if elem(@team_action, 0) == "delete",
+                  do: gettext("Delete %{name}?", name: team.name),
+                  else:
+                    gettext("Remove %{name} from this team?",
+                      name: Enum.find(team.members, &(&1.id == elem(@team_action, 2))).name
+                    )}
+              </h4>
+              <p class="mt-[8px] text-[13px] leading-relaxed text-muted">
+                {gettext(
+                  "Students stay in the classroom. The repository and results are kept. Direct GitHub access and pending invitations will be removed. Access granted by the GitHub organization may remain."
+                )}
+              </p>
+              <div class="mt-[14px] flex flex-wrap gap-[8px]">
+                <.button
+                  variant="danger"
+                  phx-click={JS.push("confirm_team_action") |> JS.focus(to: "#new-team-name")}
+                >
+                  {if elem(@team_action, 0) == "delete",
+                    do: gettext("Delete team"),
+                    else: gettext("Remove from team")}
+                </.button>
+                <.button
+                  id={"cancel-team-action-#{team.id}"}
+                  phx-mounted={JS.focus()}
+                  phx-click={
+                    JS.push("cancel_team_action") |> JS.focus(to: "#team-tab-#{team.id}")
+                  }
+                >{gettext("Cancel")}</.button>
+              </div>
+            </div>
           </section>
         </div>
         <div

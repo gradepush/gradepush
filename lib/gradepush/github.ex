@@ -28,6 +28,12 @@ defmodule GradePush.GitHub do
               {:ok, map()} | {:error, term()}
   @callback add_collaborator(String.t(), String.t(), String.t(), String.t(), String.t()) ::
               {:ok, map() | nil} | {:error, term()}
+  @callback remove_collaborator(String.t(), String.t(), String.t(), String.t()) ::
+              {:ok, term()} | {:error, term()}
+  @callback list_repository_invitations(String.t(), String.t(), String.t()) ::
+              {:ok, [map()]} | {:error, term()}
+  @callback delete_repository_invitation(String.t(), String.t(), String.t(), pos_integer()) ::
+              {:ok, term()} | {:error, term()}
   @callback list_commits(String.t(), String.t(), String.t(), keyword()) ::
               {:ok, [map()]} | {:error, term()}
   @callback get_workflow_run(String.t(), String.t(), String.t(), pos_integer(), pos_integer()) ::
@@ -93,6 +99,15 @@ defmodule GradePush.GitHub do
 
   def add_collaborator(access_token, owner, repository, username, permission),
     do: call(:add_collaborator, [access_token, owner, repository, username, permission])
+
+  def remove_collaborator(token, owner, repository, username),
+    do: call(:remove_collaborator, [token, owner, repository, username])
+
+  def list_repository_invitations(token, owner, repository),
+    do: call(:list_repository_invitations, [token, owner, repository])
+
+  def delete_repository_invitation(token, owner, repository, invitation_id),
+    do: call(:delete_repository_invitation, [token, owner, repository, invitation_id])
 
   def list_commits(access_token, owner, repository, options \\ []),
     do: call(:list_commits, [access_token, owner, repository, options])

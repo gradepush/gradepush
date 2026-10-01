@@ -8,6 +8,50 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
   alias GradePush.{Assignments, Classrooms, Repo, Submissions}
   alias GradePush.Assignments.{Repository, Subject}
 
+  test "team actions confirm removal, retain archived results and expose access retries", %{
+    conn: conn
+  } do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher)
+    student = student_fixture()
+    enroll_student(classroom, teacher, student)
+    assignment = assignment_fixture(teacher, classroom, %{kind: "team", team_mode: "teacher"})
+    {:ok, team} = Assignments.create_team(teacher, assignment.id, %{name: "Orion"})
+    {:ok, _} = Assignments.add_team_member(teacher, assignment.id, team.id, student.id)
+    subject = accept_assignment(assignment, teacher, student)
+    {:ok, view, _} = conn |> log_in_user(teacher) |> live(assignment_path(classroom, assignment))
+    view |> element("button", "Manage teams") |> render_click()
+    panel = "#managed-team-#{team.id}"
+    view |> element("#{panel} button[phx-value-action=rename]") |> render_click()
+
+    view
+    |> form("#{panel} form[phx-submit=rename_team]", team: %{name: "Atlas"})
+    |> render_submit()
+
+    assert has_element?(view, "#team-tab-#{team.id}", "Atlas")
+    view |> element("#{panel} button[phx-value-action=remove]") |> render_click()
+    assert has_element?(view, "[data-ui=team-confirmation]", "Remove Test Student")
+    view |> element("[data-ui=team-confirmation] button", "Cancel") |> render_click()
+    assert has_element?(view, "#{panel} li", "Test Student")
+    view |> element("#{panel} button[phx-value-action=remove]") |> render_click()
+    view |> element("[data-ui=team-confirmation] button", "Remove from team") |> render_click()
+    refute has_element?(view, "#{panel} li")
+    assert has_element?(view, "#{panel} select[name=student_id]")
+    view |> element("#{panel} button[phx-value-action=delete]") |> render_click()
+    view |> element("[data-ui=team-confirmation] button", "Delete team") |> render_click()
+    refute has_element?(view, "[role=tab]")
+    view |> element("button", "Done") |> render_click()
+    assert has_element?(view, "#submission-team-#{team.id}", "Deleted team")
+    assert has_element?(view, "#submission-team-#{team.id}", "Updating GitHub access")
+    view |> element("button", "Manage teams") |> render_click()
+    Assignments.repository_access_failed(subject.id)
+    send(view.pid, :refresh_workspace)
+    view |> element("button", "Done") |> render_click()
+    assert has_element?(view, "#submission-team-#{team.id}", "Previous access may remain")
+    view |> element("button[phx-click=retry_repository_access]") |> render_click()
+    assert has_element?(view, "#submission-team-#{team.id}", "Updating GitHub access")
+  end
+
   test "teacher can retry failed repository setup and sees the pending state", %{conn: conn} do
     %{user: teacher} = bootstrap_fixture()
     classroom = classroom_fixture(teacher)
@@ -62,6 +106,9 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
     {:ok, [team]} = Assignments.list_teams(teacher, assignment.id)
     assert team.name == "Blue Team"
     assert has_element?(view, "#managed-team-#{team.id}", "Blue Team")
+    assert has_element?(view, "#managed-team-#{team.id}", "No students assigned yet.")
+    assert has_element?(view, "#submission-team-#{team.id}", "No students assigned yet.")
+    refute has_element?(view, "[data-ui=submissions]", "No teams yet")
 
     view
     |> form("#managed-team-#{team.id} form[phx-submit='add_team_member']", %{
@@ -75,6 +122,22 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
 
     assert has_element?(view, "[role='status']", "Student added to the team.")
     view |> element("button", "Done") |> render_click()
+    assert has_element?(view, "#submission-team-#{team.id}", "Waiting for acceptance")
+    assert has_element?(view, "#submission-team-#{team.id} a", "Test Student")
+    refute has_element?(view, "#submission-team-#{team.id} button")
+
+    view
+    |> form("#submission-search", query: student.login, status: "not_accepted")
+    |> render_change()
+
+    assert has_element?(view, "#submission-team-#{team.id}")
+    view |> form("#submission-search", query: "missing team", status: "all") |> render_change()
+    assert has_element?(view, "[data-ui=submissions]", "No matching results")
+    refute has_element?(view, "#submission-team-#{team.id}")
+    view |> form("#submission-search", query: "", status: "no_push") |> render_change()
+    refute has_element?(view, "#submission-team-#{team.id}")
+    view |> form("#submission-search", query: "", status: "all") |> render_change()
+
     view |> element("button", "Share assignment") |> render_click()
     refute has_element?(view, "[role='status']", "Student added to the team.")
     view |> element("[data-ui~='modal-heading'] button[phx-click='close']") |> render_click()
@@ -90,8 +153,83 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
     assert subject.team_id == team.id
 
     assert eventually(fn ->
-             has_element?(view, "#submission-team-#{team.id} strong", "Blue Team")
+             has_element?(view, "#submission-team-#{team.id}", "Repository is being created.")
            end)
+
+    refute has_element?(view, "#submission-team-#{team.id}", "Waiting for acceptance")
+    assert view |> element("#submission-team-#{team.id}") |> render() =~ "Blue Team"
+    view |> form("#submission-search", query: "", status: "not_accepted") |> render_change()
+    refute has_element?(view, "#submission-team-#{team.id}")
+  end
+
+  test "teams remain visible in an empty classroom and alongside accepted teams", %{conn: conn} do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher)
+    assignment = assignment_fixture(teacher, classroom, %{kind: "team", team_mode: "teacher"})
+    {:ok, waiting} = Assignments.create_team(teacher, assignment.id, %{name: "Waiting team"})
+    {:ok, accepted} = Assignments.create_team(teacher, assignment.id, %{name: "Accepted team"})
+    conn = log_in_user(conn, teacher)
+    {:ok, view, _} = live(conn, assignment_path(classroom, assignment))
+
+    assert has_element?(view, "#submission-team-#{waiting.id}", "Waiting for acceptance")
+    view |> element("button", "Manage teams") |> render_click()
+    assert has_element?(view, "#managed-team-#{waiting.id}", "once they join the classroom")
+    refute has_element?(view, "#managed-team-#{waiting.id} form")
+
+    student = student_fixture()
+    enroll_student(classroom, teacher, student)
+    {:ok, _} = Assignments.add_team_member(teacher, assignment.id, accepted.id, student.id)
+    accept_assignment(assignment, teacher, student)
+    {:ok, view, _} = live(conn, assignment_path(classroom, assignment))
+
+    assert has_element?(view, "#submission-team-#{waiting.id}", "Waiting for acceptance")
+    assert has_element?(view, "#submission-team-#{accepted.id}", "Repository is being created.")
+    assert view |> element("#submission-team-#{accepted.id}") |> render() =~ "Accepted team"
+    view |> form("#submission-search", query: "", status: "not_accepted") |> render_change()
+    assert has_element?(view, "#submission-team-#{waiting.id}")
+    refute has_element?(view, "#submission-team-#{accepted.id}")
+  end
+
+  test "team tabs select only this assignment's teams and preserve selection on updates", %{
+    conn: conn
+  } do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher)
+    student = student_fixture()
+    enroll_student(classroom, teacher, student)
+    assignment = assignment_fixture(teacher, classroom, %{kind: "team", team_mode: "teacher"})
+    other = assignment_fixture(teacher, classroom, %{kind: "team", team_mode: "teacher"})
+    {:ok, first} = Assignments.create_team(teacher, assignment.id, %{name: "First"})
+    {:ok, second} = Assignments.create_team(teacher, assignment.id, %{name: "Second"})
+    {:ok, foreign} = Assignments.create_team(teacher, other.id, %{name: "Other assignment"})
+    {:ok, view, _} = conn |> log_in_user(teacher) |> live(assignment_path(classroom, assignment))
+    view |> element("button", "Manage teams") |> render_click()
+
+    assert has_element?(view, "#team-tab-#{first.id}[aria-selected=true][tabindex='0']")
+    assert has_element?(view, "#managed-team-#{second.id}[hidden]")
+    view |> element("#team-tab-#{second.id}") |> render_click()
+    assert has_element?(view, "#team-tab-#{second.id}[aria-selected=true]")
+    assert has_element?(view, "#managed-team-#{first.id}[hidden]")
+    refute has_element?(view, "#managed-team-#{second.id}[hidden]")
+
+    for value <- [to_string(foreign.id), "invalid"] do
+      render_click(view, "select_team", %{"team_id" => value})
+      assert has_element?(view, "#team-tab-#{second.id}[aria-selected=true]")
+    end
+
+    view
+    |> form("#managed-team-#{second.id} form", student_id: to_string(student.id))
+    |> render_submit()
+
+    assert has_element?(view, "#team-tab-#{second.id}[aria-selected=true]", "1/2")
+    assert has_element?(view, "#managed-team-#{second.id}", "Test Student")
+
+    view |> form("[data-ui=team-create-form]", team: %{name: "Third"}) |> render_submit()
+    {:ok, teams} = Assignments.list_teams(teacher, assignment.id)
+    third = Enum.find(teams, &(&1.name == "Third"))
+    assert has_element?(view, "#team-tab-#{third.id}[aria-selected=true]")
+    refute has_element?(view, "#managed-team-#{third.id}[hidden]")
+    assert has_element?(view, "#managed-team-#{second.id}[hidden]")
   end
 
   test "teacher sets and clears a submission deadline extension in Toronto local time", %{

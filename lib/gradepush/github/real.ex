@@ -186,6 +186,31 @@ defmodule GradePush.GitHub.Real do
     do: {:error, :invalid_permission}
 
   @impl true
+  def remove_collaborator(token, owner, repository, username) do
+    request(
+      :delete,
+      "#{repo_path(owner, repository)}/collaborators/#{segment(username)}",
+      token,
+      nil
+    )
+  end
+
+  @impl true
+  def list_repository_invitations(token, owner, repository) do
+    list_all_pages(token, "#{repo_path(owner, repository)}/invitations", nil)
+  end
+
+  @impl true
+  def delete_repository_invitation(token, owner, repository, invitation_id) do
+    request(
+      :delete,
+      "#{repo_path(owner, repository)}/invitations/#{id(invitation_id)}",
+      token,
+      nil
+    )
+  end
+
+  @impl true
   def list_commits(access_token, owner, repository, options \\ []) do
     query =
       options

@@ -686,11 +686,85 @@ defmodule GradePush.Assignments do
 
   def add_team_member(_, _, _, _), do: {:error, :unauthorized}
 
-  defp update_team_membership(actor, assignment, team, user_id, mode) do
-    with {:ok, updated} <- persist_team_membership(actor, assignment, team, user_id, mode),
-         :ok <- queue_existing_subject(assignment.id, team.id) do
-      {:ok, updated}
+  @doc "Renames a team in GradePush without renaming its GitHub repository."
+  def rename_team(%User{} = actor, assignment_id, team_id, attrs) do
+    with {:ok, name} <- team_name(attrs) do
+      change_teacher_team(actor, assignment_id, team_id, fn _assignment, team ->
+        team |> Team.changeset(%{name: name}) |> update_team!()
+      end)
     end
+  end
+
+  def rename_team(_, _, _, _), do: {:error, :unauthorized}
+
+  defp update_team!(changeset) do
+    case Repo.update(changeset) do
+      {:ok, team} -> team
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
+  end
+
+  @doc "Removes a team member and queues reconciliation of their direct GitHub access."
+  def remove_team_member(%User{} = actor, assignment_id, team_id, user_id) do
+    change_teacher_team(actor, assignment_id, team_id, fn assignment, team ->
+      member =
+        Repo.one(
+          from(m in TeamMember,
+            where: m.team_id == ^team.id and m.user_id == ^user_id and is_nil(m.left_at)
+          )
+        ) ||
+          Repo.rollback(:not_found)
+
+      member |> Ecto.Changeset.change(left_at: DateTime.utc_now()) |> Repo.update!()
+      queue_existing_subject!(assignment.id, team.id)
+      team
+    end)
+  end
+
+  def remove_team_member(_, _, _, _), do: {:error, :unauthorized}
+
+  @doc "Archives a team, releasing its members and retaining repositories and assessment records."
+  def delete_team(%User{} = actor, assignment_id, team_id) do
+    change_teacher_team(actor, assignment_id, team_id, fn assignment, team ->
+      now = DateTime.utc_now()
+
+      Repo.update_all(from(m in TeamMember, where: m.team_id == ^team.id and is_nil(m.left_at)),
+        set: [left_at: now]
+      )
+
+      team = team |> Ecto.Changeset.change(archived_at: now) |> Repo.update!()
+      queue_existing_subject!(assignment.id, team.id)
+      team
+    end)
+  end
+
+  def delete_team(_, _, _), do: {:error, :unauthorized}
+
+  defp change_teacher_team(actor, assignment_id, team_id, change) do
+    result =
+      Repo.transaction(fn ->
+        assignment = lock_teacher_assignment!(actor, assignment_id)
+
+        unless assignment.kind == "team" and is_nil(assignment.archived_at),
+          do: Repo.rollback(:invalid_team)
+
+        active_assignment_classroom!(assignment)
+        team = active_team(team_id, assignment.id) || Repo.rollback(:not_found)
+        change.(assignment, team)
+      end)
+
+    case result do
+      {:ok, team} ->
+        broadcast({"assignment:#{assignment_id}", {:team_changed, team.id}})
+        {:ok, team}
+
+      error ->
+        error
+    end
+  end
+
+  defp update_team_membership(actor, assignment, team, user_id, mode) do
+    persist_team_membership(actor, assignment, team, user_id, mode)
   end
 
   defp persist_team_membership(actor, assignment, team, user_id, mode) do
@@ -704,6 +778,7 @@ defmodule GradePush.Assignments do
 
       team = active_team(team.id, assignment.id) || Repo.rollback(:invalid_team)
       insert_team_member!(assignment, team, user_id)
+      queue_existing_subject!(assignment.id, team.id)
       Repo.preload(team, members: :user)
     end)
   end
@@ -773,7 +848,7 @@ defmodule GradePush.Assignments do
   def list_teams(_, _), do: {:error, :unauthorized}
 
   @doc "Returns the persisted repository creation intent for a trusted background worker."
-  def provisioning_intent(subject_id) when is_integer(subject_id) do
+  def provisioning_intent(subject_id, options \\ []) when is_integer(subject_id) do
     with %Subject{} = subject <- Repo.get(Subject, subject_id),
          %Assignment{} = assignment <-
            Repo.get(Assignment, subject.assignment_id) |> preload_assignment(),
@@ -782,7 +857,7 @@ defmodule GradePush.Assignments do
          %Repository{} = repository <- Repo.get_by(Repository, subject_id: subject.id) do
       members = subject_recipients(subject)
 
-      if members == [] do
+      if members == [] and not Keyword.get(options, :allow_empty_recipients, false) do
         {:error, :no_github_recipients}
       else
         {:ok,
@@ -817,6 +892,8 @@ defmodule GradePush.Assignments do
            name: repository.name,
            full_name: repository.full_name,
            html_url: repository.html_url,
+           access_version: repository.access_version,
+           removed_recipients: removed_subject_recipients(subject, members),
            recipients: members
          }}
       end
@@ -925,6 +1002,49 @@ defmodule GradePush.Assignments do
   end
 
   def retry_repository(_, _), do: {:error, :unauthorized}
+
+  @doc "Retries a failed or pending repository access change within the teacher's classroom."
+  def retry_repository_access(%User{} = actor, subject_id) when is_integer(subject_id) do
+    result =
+      Repo.transaction(fn ->
+        subject = Repo.get(Subject, subject_id) || Repo.rollback(:not_found)
+        lock_teacher_assignment!(actor, subject.assignment_id)
+        enqueue_access_sync_job!(subject.id)
+        Repo.get_by!(Repository, subject_id: subject.id)
+      end)
+
+    publish_repository_change(result, subject_id)
+  end
+
+  def retry_repository_access(_, _), do: {:error, :unauthorized}
+
+  @doc "Records access reconciliation only if no newer membership change is pending."
+  def repository_access_synced(subject_id, version, result) do
+    state = if result == :ok, do: "synced", else: "failed"
+
+    Repo.update_all(
+      from(r in Repository, where: r.subject_id == ^subject_id and r.access_version == ^version),
+      set: [access_sync_state: state]
+    )
+  end
+
+  @doc "Makes an exhausted access job visible without replacing a completed reconciliation."
+  def repository_access_failed(subject_id) do
+    Repo.update_all(
+      from(r in Repository,
+        where: r.subject_id == ^subject_id and r.access_sync_state == "pending"
+      ),
+      set: [access_sync_state: "failed"]
+    )
+
+    publish_repository_access(subject_id)
+  end
+
+  @doc "Publishes committed repository access state to its classroom subscribers."
+  def publish_repository_access(subject_id) do
+    publish_repository_change({:ok, nil}, subject_id)
+    :ok
+  end
 
   defp retry_repository_locked!(actor, subject, repository) do
     lock_teacher_assignment!(actor, subject.assignment_id)
@@ -1247,6 +1367,15 @@ defmodule GradePush.Assignments do
   end
 
   defp enrich_subject_profiles(subjects) do
+    subjects =
+      Enum.map(subjects, fn
+        %{team: nil} = subject ->
+          subject
+
+        %{team: team} = subject ->
+          %{subject | team: %{team | members: Enum.filter(team.members, &is_nil(&1.left_at))}}
+      end)
+
     users =
       subjects
       |> Enum.flat_map(fn subject ->
@@ -1474,24 +1603,22 @@ defmodule GradePush.Assignments do
     end
   end
 
-  defp queue_existing_subject(assignment_id, team_id) do
+  defp queue_existing_subject!(assignment_id, team_id) do
     case Repo.get_by(Subject, assignment_id: assignment_id, team_id: team_id) do
       %Subject{id: subject_id} ->
-        enqueue_access_sync_job(subject_id)
+        enqueue_access_sync_job!(subject_id)
 
       nil ->
         :ok
     end
   end
 
-  defp enqueue_access_sync_job(subject_id) do
-    case Repo.transaction(fn -> enqueue_access_sync_job!(subject_id) end) do
-      {:ok, :ok} -> :ok
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
   defp enqueue_access_sync_job!(subject_id) do
+    Repo.update_all(from(r in Repository, where: r.subject_id == ^subject_id),
+      set: [access_sync_state: "pending"],
+      inc: [access_version: 1]
+    )
+
     job =
       SyncAssignmentRepositoryAccess.new(
         %{"subject_id" => subject_id},
@@ -1512,17 +1639,12 @@ defmodule GradePush.Assignments do
   defp insert_team_member!(assignment, team, user_id) do
     Repo.query!("SELECT id FROM assignment_teams WHERE id = $1 FOR UPDATE", [team.id])
 
+    existing = team_membership!(assignment, team, user_id)
+
     count =
       Repo.aggregate(
         from(m in TeamMember, where: m.team_id == ^team.id and is_nil(m.left_at)),
         :count
-      )
-
-    existing =
-      Repo.get_by(TeamMember,
-        assignment_id: assignment.id,
-        team_id: team.id,
-        user_id: user_id
       )
 
     cond do
@@ -1542,6 +1664,23 @@ defmodule GradePush.Assignments do
         |> Ecto.Changeset.change()
         |> Repo.insert!()
     end
+  end
+
+  defp team_membership!(assignment, team, user_id) do
+    memberships =
+      Repo.all(
+        from(m in TeamMember,
+          where:
+            m.assignment_id == ^assignment.id and m.user_id == ^user_id and
+              (m.team_id == ^team.id or is_nil(m.left_at))
+        )
+      )
+
+    if Enum.any?(memberships, &(&1.team_id != team.id and is_nil(&1.left_at))) do
+      Repo.rollback(:already_in_team)
+    end
+
+    Enum.find(memberships, &(&1.team_id == team.id))
   end
 
   defp authorize_team_creation(actor, %Assignment{} = assignment) do
@@ -1584,13 +1723,30 @@ defmodule GradePush.Assignments do
       on: user.id == member.user_id,
       join: membership in GradePush.Accounts.InstitutionMembership,
       on: membership.user_id == user.id and membership.role == :student,
-      where: member.team_id == ^team_id and is_nil(member.left_at),
+      join: team in Team,
+      on: team.id == member.team_id,
+      where: member.team_id == ^team_id and is_nil(member.left_at) and is_nil(team.archived_at),
       order_by: [asc: member.inserted_at],
       select: %{github_id: user.github_id, login: user.login}
     )
     |> Repo.all()
     |> Enum.filter(&(is_integer(&1.github_id) and is_binary(&1.login)))
   end
+
+  defp removed_subject_recipients(%Subject{kind: "team", team_id: team_id}, current) do
+    current_ids = Enum.map(current, & &1.github_id)
+
+    Repo.all(
+      from(m in TeamMember,
+        join: u in User,
+        on: u.id == m.user_id,
+        where: m.team_id == ^team_id and u.github_id not in ^current_ids,
+        select: %{github_id: u.github_id, login: u.login}
+      )
+    )
+  end
+
+  defp removed_subject_recipients(_subject, _current), do: []
 
   defp workflow_config(%Assignment{autograding_enabled: false}), do: nil
 
@@ -1637,14 +1793,21 @@ defmodule GradePush.Assignments do
           end
       end
 
-    assignment.repository_name_pattern
-    |> String.replace("{classroom}", slugify(classroom.code))
-    |> String.replace("{assignment}", slugify(assignment.slug))
-    |> String.replace("{identifier}", slugify(identifier))
-    |> String.replace("{team}", slugify(identifier))
-    |> slugify()
-    |> String.slice(0, 100)
+    name =
+      assignment.repository_name_pattern
+      |> String.replace("{classroom}", slugify(classroom.code))
+      |> String.replace("{assignment}", slugify(assignment.slug))
+      |> String.replace("{identifier}", slugify(identifier))
+      |> String.replace("{team}", slugify(identifier))
+      |> slugify()
+
+    # Deleted teams retain their repositories, so a reused team name needs a distinct identity.
+    suffix = repository_suffix(subject)
+    String.slice(name, 0, 100 - byte_size(suffix)) <> suffix
   end
+
+  defp repository_suffix(%Subject{kind: "team", team_id: id}), do: "-team-#{id}"
+  defp repository_suffix(_subject), do: ""
 
   defp template_part(nil, _index), do: nil
   defp template_part("", _index), do: nil

@@ -62,6 +62,8 @@ defmodule GradePushWeb.TeacherLive do
        assignment_details: nil,
        assignment_subjects: [],
        teams: [],
+       active_team_id: nil,
+       team_action: nil,
        assignment_activity: %{},
        subscribed_topics: [],
        refresh_pending?: false,
@@ -170,6 +172,13 @@ defmodule GradePushWeb.TeacherLive do
     assignment_state =
       real_assignment_state(actor, classroom_state, socket, params["assignment"], locale)
 
+    active_team_id =
+      case Enum.find(assignment_state.teams, &(&1.id == socket.assigns.active_team_id)) ||
+             List.first(assignment_state.teams) do
+        nil -> nil
+        team -> team.id
+      end
+
     classroom_record = classroom_state.classroom_record
     assignment_record = assignment_state.assignment_record
     socket = subscribe_to_workspace(socket, classroom_record, assignment_record)
@@ -200,6 +209,7 @@ defmodule GradePushWeb.TeacherLive do
         scenario: nil,
         route_params: params,
         query: "",
+        active_team_id: active_team_id,
         modal: nil,
         pending_teacher: nil,
         notice: Phoenix.Flash.get(socket.assigns.flash, :info),
@@ -269,7 +279,6 @@ defmodule GradePushWeb.TeacherLive do
         assignment_record,
         assignment,
         classroom_state.classroom,
-        classroom_state.members,
         socket.assigns.query,
         socket.assigns.submission_filter,
         locale
@@ -312,7 +321,7 @@ defmodule GradePushWeb.TeacherLive do
 
   defp include_locked_template(templates, _assignment), do: templates
 
-  defp submission_state(_actor, nil, _assignment, _classroom, _members, _query, _filter, _locale),
+  defp submission_state(_actor, nil, _assignment, _classroom, _query, _filter, _locale),
     do: %{assignment_subjects: [], assignment_activity: %{}, teams: [], assignment_details: nil}
 
   defp submission_state(
@@ -320,7 +329,6 @@ defmodule GradePushWeb.TeacherLive do
          assignment_record,
          assignment,
          classroom,
-         members,
          query,
          filter,
          locale
@@ -333,7 +341,7 @@ defmodule GradePushWeb.TeacherLive do
       TeacherWorkspace.details(
         assignment,
         classroom,
-        members,
+        teams,
         subjects,
         activities,
         query,
@@ -448,9 +456,115 @@ defmodule GradePushWeb.TeacherLive do
                socket.assigns.assignment_record.id,
                %{name: String.trim(name)}
              ) do
-          {:ok, _team} -> reload_real_workspace(socket, gettext("Team created."))
-          {:error, reason} -> {:noreply, assign(socket, error: team_error(reason))}
+          {:ok, team} ->
+            socket
+            |> assign(active_team_id: team.id, team_action: nil)
+            |> reload_real_workspace(gettext("Team created."))
+
+          {:error, reason} ->
+            {:noreply, assign(socket, error: team_error(reason))}
         end
+    end
+  end
+
+  def handle_event("select_team", %{"team_id" => value}, socket) do
+    with true <- teacher_team_assignment?(socket.assigns),
+         {:ok, team_id} <- parse_id_result(value),
+         true <- Enum.any?(socket.assigns.teams, &(&1.id == team_id)) do
+      {:noreply,
+       assign(socket, active_team_id: team_id, team_action: nil, error: nil, notice: nil)}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("team_action", %{"action" => action, "team_id" => value} = params, socket)
+      when action in ["rename", "remove", "delete"] do
+    with true <- teacher_team_assignment?(socket.assigns),
+         {:ok, team_id} <- parse_id_result(value),
+         team when not is_nil(team) <- Enum.find(socket.assigns.teams, &(&1.id == team_id)) do
+      student = Enum.find(team.members, &(to_string(&1.id) == params["student_id"]))
+
+      if action != "remove" or student do
+        {:noreply,
+         assign(socket,
+           team_action: {action, team_id, student && student.id},
+           error: nil,
+           notice: nil
+         )}
+      else
+        {:noreply, socket}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("cancel_team_action", _, socket),
+    do: {:noreply, assign(socket, team_action: nil, error: nil)}
+
+  def handle_event("rename_team", %{"team" => attrs}, socket) do
+    with true <- teacher_team_assignment?(socket.assigns),
+         {"rename", team_id, nil} <- socket.assigns.team_action,
+         {:ok, _team} <-
+           AssignmentsContext.rename_team(
+             socket.assigns.current_user,
+             socket.assigns.assignment_record.id,
+             team_id,
+             attrs
+           ) do
+      socket
+      |> assign(team_action: nil)
+      |> push_event("team-renamed", %{id: team_id})
+      |> reload_real_workspace(gettext("Team renamed."))
+    else
+      {:error, reason} -> {:noreply, assign(socket, error: team_error(reason))}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("confirm_team_action", _, socket) do
+    with true <- teacher_team_assignment?(socket.assigns),
+         {action, team_id, student_id} when action in ["remove", "delete"] <-
+           socket.assigns.team_action do
+      result =
+        if action == "remove" do
+          AssignmentsContext.remove_team_member(
+            socket.assigns.current_user,
+            socket.assigns.assignment_record.id,
+            team_id,
+            student_id
+          )
+        else
+          AssignmentsContext.delete_team(
+            socket.assigns.current_user,
+            socket.assigns.assignment_record.id,
+            team_id
+          )
+        end
+
+      case result do
+        {:ok, _team} ->
+          socket |> assign(team_action: nil) |> reload_real_workspace(team_action_notice(action))
+
+        {:error, reason} ->
+          {:noreply, assign(socket, error: team_error(reason))}
+      end
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("retry_repository_access", %{"subject_id" => value}, socket) do
+    with false <- socket.assigns.preview?,
+         {:ok, subject_id} <- parse_id_result(value),
+         true <- Enum.any?(socket.assigns.assignment_subjects, &(&1.id == subject_id)),
+         {:ok, _} <-
+           AssignmentsContext.retry_repository_access(socket.assigns.current_user, subject_id) do
+      reload_real_workspace(socket, gettext("GitHub access update queued."))
+    else
+      _ ->
+        {:noreply, assign(socket, error: gettext("Could not update GitHub access. Try again."))}
     end
   end
 
@@ -566,11 +680,18 @@ defmodule GradePushWeb.TeacherLive do
       else: {:noreply, socket}
   end
 
+  def handle_event("close", _, %{assigns: %{preview?: false, modal: {"teams", _}}} = socket) do
+    socket
+    |> assign(modal: nil, team_action: nil, error: nil)
+    |> reload_real_workspace(socket.assigns.notice)
+  end
+
   def handle_event("close", _, socket),
     do:
       {:noreply,
        assign(socket,
          modal: nil,
+         team_action: nil,
          pending_teacher: nil,
          invitation_url: nil,
          available_organizations: [],
@@ -612,9 +733,22 @@ defmodule GradePushWeb.TeacherLive do
   end
 
   def handle_event("remove_assignment_test", %{"index" => index}, socket) do
-    with true <- socket.assigns.assignment_form != nil,
+    with true <- editable_assignment_tests?(socket.assigns),
+         true <- is_binary(index),
          {index, ""} <- Integer.parse(index),
-         true <- index >= 0 do
+         true <- index >= 0,
+         test when not is_nil(test) <- assignment_test_at(socket, index) do
+      {:noreply,
+       assign(socket, modal: {"remove_assignment_test", {index, test}}, error: nil, notice: nil)}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("confirm_remove_assignment_test", _, socket) do
+    with true <- editable_assignment_tests?(socket.assigns),
+         {"remove_assignment_test", {index, test}} <- socket.assigns.modal,
+         ^test <- assignment_test_at(socket, index) do
       params = AssignmentEditing.remove_test(socket.assigns.assignment_params, index)
 
       form =
@@ -622,7 +756,7 @@ defmodule GradePushWeb.TeacherLive do
           do: assign_assignment_form(socket, params),
           else: assign_real_assignment_form(socket, params, nil)
 
-      {:noreply, form}
+      {:noreply, form |> assign(modal: nil) |> push_event("assignment-test-removed", %{})}
     else
       _ -> {:noreply, socket}
     end
@@ -1220,7 +1354,7 @@ defmodule GradePushWeb.TeacherLive do
           TeacherWorkspace.details(
             socket.assigns.assignment,
             socket.assigns.classroom,
-            socket.assigns.members,
+            socket.assigns.teams,
             socket.assigns.assignment_subjects,
             socket.assigns.assignment_activity,
             query,
@@ -1394,7 +1528,19 @@ defmodule GradePushWeb.TeacherLive do
 
   defp teacher_team_assignment?(_assigns), do: false
 
+  defp team_action_notice("remove"),
+    do: gettext("Student removed. GitHub access will be updated.")
+
+  defp team_action_notice("delete"), do: gettext("Team deleted. GitHub access will be updated.")
+
   defp team_error(:team_name_required), do: gettext("Enter a team name.")
+
+  defp team_error(%Ecto.Changeset{errors: errors}) do
+    if Keyword.has_key?(errors, :name),
+      do: gettext("Choose a unique team name of at most 120 characters."),
+      else: gettext("Could not update teams. Check the selection and try again.")
+  end
+
   defp team_error(:team_full), do: gettext("This team has reached its member limit.")
   defp team_error(:already_in_team), do: gettext("This student already belongs to a team.")
 
@@ -1508,8 +1654,24 @@ defmodule GradePushWeb.TeacherLive do
   defp modal_title({"clone_all", _}), do: gettext("Clone all locally")
   defp modal_title({"connect_organization", _}), do: gettext("Connect an organization")
   defp modal_title({"teams", _}), do: gettext("Manage teams")
+  defp modal_title({"remove_assignment_test", _}), do: gettext("Remove test?")
   defp modal_title({"test_results", _}), do: gettext("Automatic test results")
   defp modal_title({"deadline_extension", _}), do: gettext("Revise submission deadline")
+
+  defp editable_assignment_tests?(%{preview?: false, assignment: %{submitted: count}})
+       when count > 0,
+       do: false
+
+  defp editable_assignment_tests?(%{live_action: action, assignment_form: %Phoenix.HTML.Form{}})
+       when action in [:new_assignment, :edit_assignment], do: true
+
+  defp editable_assignment_tests?(_assigns), do: false
+
+  defp assignment_test_at(socket, index) do
+    socket.assigns.assignment_form.source
+    |> Ecto.Changeset.get_field(:tests, [])
+    |> Enum.at(index)
+  end
 
   defp editing_value(assigns, key) do
     params = Map.get(assigns, :class_form_params, %{})

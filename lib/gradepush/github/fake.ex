@@ -246,6 +246,33 @@ defmodule GradePush.GitHub.Fake do
     do: {:error, :invalid_permission}
 
   @impl true
+  def remove_collaborator(_token, owner, repository, username) do
+    with nil <- take_fault(:remove_collaborator),
+         {:ok, _} <- get_repository("test-installation-token", owner, repository) do
+      Store.update({:collaborators, owner, repository}, &List.delete(&1 || [], username))
+      {:ok, nil}
+    end
+  end
+
+  @impl true
+  def list_repository_invitations(_token, owner, repository) do
+    with nil <- take_fault(:list_repository_invitations) do
+      {:ok, Store.get({:repository_invitations, owner, repository}, [])}
+    end
+  end
+
+  @impl true
+  def delete_repository_invitation(_token, owner, repository, invitation_id) do
+    with nil <- take_fault(:delete_repository_invitation) do
+      Store.update({:repository_invitations, owner, repository}, fn invitations ->
+        Enum.reject(invitations || [], &(&1["id"] == invitation_id))
+      end)
+
+      {:ok, nil}
+    end
+  end
+
+  @impl true
   def list_commits(_access_token, _owner, _repository, _options \\ []), do: {:ok, []}
 
   @impl true

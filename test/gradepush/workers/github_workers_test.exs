@@ -408,7 +408,7 @@ defmodule GradePush.Workers.GitHubWorkersTest do
                max_attempts: 10
              })
 
-    assert %Repository{state: "failed", last_error: "collaborator_setup_failed"} =
+    assert %Repository{state: "ready", access_sync_state: "failed"} =
              Repo.get_by!(Repository, subject_id: subject.id)
   end
 

@@ -10,12 +10,13 @@ defmodule GradePush.Workers.ProvisionAssignmentRepository do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"subject_id" => subject_id}} = job) do
-    with {:ok, intent} <- Assignments.provisioning_intent(subject_id),
+    with {:ok, intent} <-
+           Assignments.provisioning_intent(subject_id, allow_empty_recipients: true),
          {:ok, repository} <- ensure_repository(intent),
          {:ok, _repository_record} <-
            Assignments.repository_created(subject_id, repository_record(repository)),
          {:ok, workflow} <- ensure_workflow(intent, repository),
-         :ok <- grant_student_access(intent, repository),
+         :ok <- RepositoryAccess.sync_subject(subject_id),
          {:ok, _repository_record} <-
            Assignments.repository_provisioned(
              subject_id,
@@ -107,16 +108,6 @@ defmodule GradePush.Workers.ProvisionAssignmentRepository do
     else
       {:ok, %{}}
     end
-  end
-
-  defp grant_student_access(intent, repository) do
-    RepositoryAccess.sync_collaborators(
-      field(intent, :installation_id),
-      repository["id"],
-      get_in(repository, ["owner", "login"]),
-      repository["name"],
-      field(intent, :recipients) || []
-    )
   end
 
   defp validate_created_repository(repository, intent) do

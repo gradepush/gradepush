@@ -360,7 +360,7 @@ defmodule GradePushWeb.SurfaceComponents do
       role={@role || if(@kind == "error", do: "alert", else: "status")}
       class={[
         if(@kind == "error",
-          do: "mb-[16px] bg-error-surface p-[12px] text-error!",
+          do: "mb-[24px] rounded-[6px] bg-error-surface px-[16px] py-[12px] text-error!",
           else: "mt-[20px] rounded-[6px] bg-success-surface px-[16px] py-[12px] text-success-ink"
         ),
         @icon && "flex items-start gap-[10px] rounded-[8px]",

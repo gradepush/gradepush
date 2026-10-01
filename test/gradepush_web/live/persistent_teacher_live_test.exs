@@ -354,7 +354,9 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     assert has_element?(view, "fieldset[disabled]")
     assert has_element?(view, "[data-ui=automatic-test] [data-test-toggle]:not([disabled])")
     assert has_element?(view, "[data-test-settings][disabled]")
-    assert has_element?(view, "button[phx-click=remove_assignment_test][disabled]")
+    assert has_element?(view, "button[data-remove-test][disabled]")
+    render_click(view, "remove_assignment_test", %{"index" => "0"})
+    refute has_element?(view, "[role=dialog]")
     refute has_element?(view, "input[name='assignment[tests][0][_persistent_id]']")
 
     render_submit(view, "save_assignment", %{

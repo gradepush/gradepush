@@ -2,6 +2,55 @@ defmodule GradePushWeb.AssignmentEditorTest do
   use GradePushWeb.ConnCase, async: true, group: :institution
   import Phoenix.LiveViewTest
 
+  test "removing a test needs confirmation and cancellation preserves all fields", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/classrooms/programming/assignments/new")
+    view |> form("#assignment-form", assignment: %{autograding: "true"}) |> render_change()
+    view |> element("button", "Add test") |> render_click()
+    view |> element("button", "Add test") |> render_click()
+
+    view
+    |> form("#assignment-form",
+      assignment: %{
+        autograding: "true",
+        tests: %{
+          "0" => %{
+            name: "Build",
+            type: "command",
+            command: "make",
+            points: "7",
+            description: "Compile the project."
+          },
+          "1" => %{name: "README", type: "command", command: "cat README.md", points: "3"}
+        }
+      }
+    )
+    |> render_change()
+
+    render_click(view, "confirm_remove_assignment_test")
+
+    for index <- ["-1", "2", "invalid"] do
+      render_click(view, "remove_assignment_test", %{"index" => index})
+      refute has_element?(view, "[role=dialog]")
+    end
+
+    view |> element("#assignment_tests_0-remove") |> render_click()
+    assert has_element?(view, "[role=dialog]", "Remove test?")
+    assert has_element?(view, "[role=dialog]", "Build")
+    assert has_element?(view, "#assignment_tests_0-card")
+    view |> element("#cancel-test-removal") |> render_click()
+    refute has_element?(view, "[role=dialog]")
+    assert has_element?(view, "#assignment_tests_0_command[value=make]")
+    assert has_element?(view, "#assignment_tests_0_description", "Compile the project.")
+    view |> element("#assignment_tests_0-remove") |> render_click()
+    view |> element("button[phx-click=confirm_remove_assignment_test]") |> render_click()
+    refute has_element?(view, "[role=dialog]")
+    assert view |> element("[data-ui=automatic-test] [data-test-name]") |> render() =~ "README"
+    refute has_element?(view, "input[value=Build]")
+    assert_push_event(view, "assignment-test-removed", %{})
+    render_click(view, "confirm_remove_assignment_test")
+    assert has_element?(view, "input[value=README]")
+  end
+
   test "create, inspect, edit and return to the class without losing the new assignment", %{
     conn: conn
   } do
@@ -103,6 +152,7 @@ defmodule GradePushWeb.AssignmentEditorTest do
 
     view |> element("button", "Add test") |> render_click()
     view |> element("button[phx-value-index='1']") |> render_click()
+    view |> element("button[phx-click=confirm_remove_assignment_test]") |> render_click()
     view |> form("#assignment-form") |> render_submit()
     path = assert_patch(view)
     assert has_element?(view, "[data-ui~='empty']", "No teams yet")

@@ -127,6 +127,42 @@ const TestCardDisclosure = {
     window.removeEventListener("phx:focus-invalid", this.revealServerInvalid)
   },
 }
+const TeamTabs = {
+  mounted() {
+    this.handleEvent("team-renamed", ({id}) => {
+      this.el.querySelector(`#team-tab-${id}`)?.focus({preventScroll:true})
+    })
+    this.reveal = () => {
+      const tab = this.el.querySelector('[role="tab"][aria-selected="true"]')
+      if (!tab) return
+      const track = tab.parentElement
+      const bounds = tab.getBoundingClientRect()
+      const viewport = track.getBoundingClientRect()
+      if (bounds.left < viewport.left + 6) track.scrollLeft -= viewport.left + 6 - bounds.left
+      if (bounds.right > viewport.right - 6) track.scrollLeft += bounds.right - viewport.right + 6
+    }
+    this.navigate = event => {
+      const tab = event.target.closest('[role="tab"]')
+      if (!tab || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return
+      event.preventDefault()
+      const tabs = [...this.el.querySelectorAll('[role="tab"]')]
+      const index = tabs.indexOf(tab)
+      const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 :
+        (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length
+      tabs[next].focus({preventScroll: true})
+      tabs[next].click()
+    }
+    this.el.addEventListener("keydown", this.navigate)
+    this.observer = new ResizeObserver(this.reveal)
+    this.observer.observe(this.el)
+    this.reveal()
+  },
+  updated() { this.reveal() },
+  destroyed() {
+    this.el.removeEventListener("keydown", this.navigate)
+    this.observer.disconnect()
+  },
+}
 let setupTokenFromLink = null
 if (window.location.pathname === "/setup" && window.location.hash) {
   setupTokenFromLink = new URLSearchParams(window.location.hash.slice(1)).get("setup_token")
@@ -157,7 +193,7 @@ const SetupToken = {
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, CopyToClipboard, HeaderDisclosure, TestCardDisclosure, SetupToken},
+  hooks: {...colocatedHooks, CopyToClipboard, HeaderDisclosure, TestCardDisclosure, TeamTabs, SetupToken},
 })
 
 topbar.config({barColors: {0: "#2052F2"}, shadowColor: "transparent"})
@@ -165,6 +201,9 @@ window.addEventListener("phx:focus-invalid", ({detail: {id}}) => {
   requestAnimationFrame(() => {
     document.getElementById(id)?.querySelector('[aria-invalid="true"]')?.focus()
   })
+})
+window.addEventListener("phx:assignment-test-removed", () => {
+  document.getElementById("add-assignment-test")?.focus()
 })
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())

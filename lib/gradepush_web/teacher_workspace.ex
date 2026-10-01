@@ -143,20 +143,30 @@ defmodule GradePushWeb.TeacherWorkspace do
     |> Map.new(fn {key, value} -> {Atom.to_string(key), to_string_if_number(value)} end)
   end
 
-  def details(assignment, classroom, members, subjects, activities, query, filter, locale) do
+  def details(assignment, classroom, teams, subjects, activities, query, filter, locale) do
     tests = assignment.test_specs
 
     rows =
       if assignment.group? do
-        subjects
-        |> Enum.with_index(1)
-        |> Enum.map(fn {subject, index} ->
-          team_row(subject, index, activities, assignment.deadline_at)
-        end)
+        accepted_team_ids = MapSet.new(subjects, & &1.team_id)
+
+        waiting_rows =
+          teams
+          |> Enum.reject(&MapSet.member?(accepted_team_ids, &1.id))
+          |> Enum.map(&waiting_team_row/1)
+
+        accepted_rows =
+          subjects
+          |> Enum.with_index(1)
+          |> Enum.map(fn {subject, index} ->
+            team_row(subject, index, activities, assignment.deadline_at)
+          end)
+
+        accepted_rows ++ waiting_rows
       else
         subject_by_user = Map.new(subjects, &{&1.user_id, &1})
 
-        Enum.map(members, fn member ->
+        Enum.map(classroom.members, fn member ->
           subject = Map.get(subject_by_user, member.id)
           student_row(member, subject, activities, assignment.deadline_at)
         end)
@@ -184,20 +194,7 @@ defmodule GradePushWeb.TeacherWorkspace do
   defp kind_label(_), do: %{en: "Individual", fr: "Individuel"}
 
   defp student_row(student, nil, _activities, _deadline) do
-    Map.merge(student, %{
-      key: student.handle,
-      subject_id: nil,
-      status: :not_accepted,
-      repository: nil,
-      repository_url: nil,
-      repository_state: nil,
-      repository_error: nil,
-      pushed: nil,
-      extension_until: nil,
-      extension_label: nil,
-      score: nil,
-      activity: List.duplicate(0, 14)
-    })
+    student |> Map.put(:key, student.handle) |> waiting_row()
   end
 
   defp student_row(student, subject, activities, deadline_at) do
@@ -209,6 +206,7 @@ defmodule GradePushWeb.TeacherWorkspace do
     Map.merge(student, %{
       key: student.handle,
       subject_id: subject.id,
+      access_sync_state: Map.get(repository || %{}, :access_sync_state),
       status: submission_status(push, deadline(subject, deadline_at)),
       repository: repository_name(repository),
       repository_url: repository_url(repository),
@@ -234,6 +232,7 @@ defmodule GradePushWeb.TeacherWorkspace do
     %{
       key: "team-#{team.id}",
       subject_id: subject.id,
+      deleted_team?: not is_nil(team.archived_at),
       name: team.name || gettext("Team %{number}", number: index),
       members: Enum.map_join(members, ", ", & &1.name),
       member_profiles: members,
@@ -242,6 +241,7 @@ defmodule GradePushWeb.TeacherWorkspace do
       repository: repository_name(repository),
       repository_url: repository_url(repository),
       repository_state: Map.get(repository || %{}, :state),
+      access_sync_state: Map.get(repository || %{}, :access_sync_state),
       repository_error: repository_error(repository),
       pushed: local_date(push_time(push)),
       extension_until: Time.format_local(Map.get(subject, :extension_until)),
@@ -250,6 +250,33 @@ defmodule GradePushWeb.TeacherWorkspace do
       grade_untrusted?: match?(%{status: "untrusted"}, Map.get(subject, :latest_grade)),
       activity: activity_counts(activity)
     }
+  end
+
+  defp waiting_team_row(team) do
+    %{
+      key: "team-#{team.id}",
+      name: team.name,
+      member_profiles: team.members,
+      search_terms: Enum.map_join(team.members, " ", &"#{&1.name} #{&1.identifier} #{&1.handle}")
+    }
+    |> waiting_row()
+    |> Map.put(:activity, [])
+  end
+
+  defp waiting_row(identity) do
+    Map.merge(identity, %{
+      subject_id: nil,
+      status: :not_accepted,
+      repository: nil,
+      repository_url: nil,
+      repository_state: nil,
+      repository_error: nil,
+      pushed: nil,
+      extension_until: nil,
+      extension_label: nil,
+      score: nil,
+      activity: List.duplicate(0, 14)
+    })
   end
 
   defp matches?(row, query, filter) do
