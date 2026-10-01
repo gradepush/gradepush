@@ -1,5 +1,5 @@
 defmodule GradePush.ClassroomQueryTest do
-  use GradePush.DataCase, async: true, group: :institution
+  use GradePush.DataCase, async: false
 
   import GradePush.AccountsFixtures
   import GradePush.TeachingFixtures
@@ -22,36 +22,29 @@ defmodule GradePush.ClassroomQueryTest do
       end)
 
     assert small_list_queries > 0
-    assert large_list_queries <= small_list_queries + 2
+    assert large_list_queries == small_list_queries
   end
 
   defp query_count(fun) do
     ref = make_ref()
-    caller = self()
+    collector = :ets.new(:classroom_query_counts, [:ordered_set, :public])
 
     :ok =
       :telemetry.attach(
         ref,
         GradePush.Repo.config()[:telemetry_prefix] ++ [:query],
         fn _event, _measurements, _metadata, _config ->
-          if self() == caller, do: send(caller, {ref, :query})
+          :ets.insert(collector, {System.unique_integer([:monotonic]), true})
         end,
         nil
       )
 
     try do
       fun.()
-      count_messages(ref, 0)
+      :ets.info(collector, :size)
     after
       :telemetry.detach(ref)
-    end
-  end
-
-  defp count_messages(ref, count) do
-    receive do
-      {^ref, :query} -> count_messages(ref, count + 1)
-    after
-      0 -> count
+      :ets.delete(collector)
     end
   end
 end

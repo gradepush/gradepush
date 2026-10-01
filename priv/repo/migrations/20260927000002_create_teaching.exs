@@ -312,6 +312,7 @@ defmodule GradePush.Repo.Migrations.CreateTeaching do
 
       add :commit_sha, :string, null: false
       add :run_id, :bigint, null: false
+      add :run_attempt, :integer, null: false, default: 1
       add :status, :string, null: false
       add :score, :decimal, precision: 8, scale: 2, null: false
       add :max_score, :decimal, precision: 8, scale: 2, null: false
@@ -320,8 +321,16 @@ defmodule GradePush.Repo.Migrations.CreateTeaching do
       timestamps(type: :utc_datetime_usec, updated_at: false)
     end
 
-    create unique_index(:autograding_results, [:repository_id, :run_id])
+    create unique_index(:autograding_results, [:repository_id, :run_id, :run_attempt])
     create index(:autograding_results, [:subject_id, :inserted_at])
+
+    create index(:autograding_results, [:subject_id, :commit_sha, :run_id, :run_attempt],
+             name: :autograding_results_latest_commit_index
+           )
+
+    create constraint(:autograding_results, :autograding_results_run_attempt_positive,
+             check: "run_attempt > 0"
+           )
 
     create constraint(:autograding_results, :autograding_results_sha_check,
              check: "length(commit_sha) BETWEEN 40 AND 64"
