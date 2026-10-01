@@ -1,5 +1,8 @@
 ARG ELIXIR_IMAGE=hexpm/elixir:1.20.4-erlang-29.1.1-alpine-3.24.2@sha256:ad851f40ce103dcb4ad56f23877d99473ef5c013e09b9e57921ffe877ac6d6a9
 ARG RUNTIME_IMAGE=alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+ARG NODE_IMAGE=node:26.8.1-alpine3.24@sha256:2d984a15c9b54fd0aeb608b8e0d0d83529eb34d2966db27a1fb4f1edc3d298a3
+
+FROM ${NODE_IMAGE} AS test-runtime
 
 FROM ${RUNTIME_IMAGE} AS local-https
 
@@ -12,9 +15,11 @@ FROM ${ELIXIR_IMAGE} AS development
 ENV HOME=/opt/gradepush
 WORKDIR /app
 
-RUN apk add --no-cache bash build-base ca-certificates coreutils curl diffutils git inotify-tools openssl su-exec \
+RUN apk add --no-cache bash build-base ca-certificates coreutils curl diffutils git inotify-tools openssl python3=3.14.7-r1 su-exec \
     && mkdir -p /opt/gradepush /app/deps /app/_build \
     && chown -R 1000:1000 /opt/gradepush /app
+
+COPY --from=test-runtime /usr/local/bin/node /usr/local/bin/node
 
 USER 1000:1000
 RUN mix local.hex --force && mix local.rebar --force

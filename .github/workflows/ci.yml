@@ -97,6 +97,9 @@ jobs:
           cat /tmp/gradepush-watch.log
           exit 1
 
+      - name: Run project checks in the development container
+        run: docker compose -p gradepush-development -f compose.development.yaml exec -T app mix precommit
+
       - name: Collect development logs after failure
         if: failure()
         run: docker compose -p gradepush-development -f compose.development.yaml logs --no-color --tail 100
@@ -143,6 +146,13 @@ jobs:
           elixir-version: 1.20.4
           otp-version: 29.1.1
           version-type: strict
+
+      - name: Set up test runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.8.1
+          cache: npm
+          cache-dependency-path: test/browser/package-lock.json
 
       - name: Fetch locked dependencies
         run: mix deps.get --check-locked
@@ -270,13 +280,6 @@ jobs:
           scripts/setup-https
           docker compose -f compose.yaml -f compose.trusted.yaml up -d --wait --wait-timeout 120
           curl --fail --silent https://localhost:4000/health/ready
-
-      - name: Set up browser test runtime
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 26.8.1
-          cache: npm
-          cache-dependency-path: test/browser/package-lock.json
 
       - name: Check browser security and GitHub setup form
         run: |
