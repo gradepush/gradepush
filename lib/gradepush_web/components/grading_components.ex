@@ -74,6 +74,14 @@ defmodule GradePushWeb.GradingComponents do
             "View GitHub Actions"
           )}
         </a>
+        <p
+          :if={@actions_url && Enum.any?(@tests, &(&1.type == "io"))}
+          class="basis-full text-[12px] leading-[1.6]"
+        >
+          {gettext(
+            "Input/output logs on GitHub Actions show expected and actual output. Exact and trailing-whitespace comparisons also show differences."
+          )}
+        </p>
       </div>
       <.test_list embedded>
         <li :for={test <- @tests} id={"#{@id}-test-#{test.id}"}>

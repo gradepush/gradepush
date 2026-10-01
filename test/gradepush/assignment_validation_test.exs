@@ -63,4 +63,53 @@ defmodule GradePush.AssignmentValidationTest do
                Assignments.update_assignment(teacher, assignment.id, attrs)
     end
   end
+
+  test "test options are persisted and cannot be changed after acceptance" do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher)
+
+    spec = %{
+      name: "Greeting",
+      type: "io",
+      command: "python main.py",
+      expected: "  Hello world\n",
+      points: 10,
+      timeout_seconds: 90,
+      output_comparison: "exact",
+      runtime: "python-3.14.7",
+      setup_command: "pip install -r requirements.txt"
+    }
+
+    assignment = assignment_fixture(teacher, classroom, autograding_enabled: true, tests: [spec])
+    assert {:ok, saved} = Assignments.get_assignment(teacher, classroom.id, assignment.slug)
+    [test] = saved.tests
+    assert test.setup_command == "pip install -r requirements.txt"
+
+    assert {test.timeout_seconds, test.output_comparison, test.runtime, test.expected} ==
+             {90, "exact", "python-3.14.7", "  Hello world\n"}
+
+    student = student_fixture()
+    {:ok, invitation} = Assignments.create_assignment_invitation(teacher, assignment.id)
+    {:ok, _} = Assignments.accept_assignment_invitation(student, invitation.token, %{})
+
+    for changed <- [
+          %{timeout_seconds: 120},
+          %{output_comparison: "trim_trailing"},
+          %{runtime: "node-24.21.0"},
+          %{setup_command: "echo changed"}
+        ] do
+      assert {:error, :assignment_locked} =
+               Assignments.update_assignment(teacher, assignment.id, %{
+                 tests: [Map.merge(spec, changed)]
+               })
+    end
+
+    assert {:ok, unchanged} =
+             Assignments.update_assignment(teacher, assignment.id, %{
+               title: "Greeting lab",
+               tests: [spec]
+             })
+
+    assert unchanged.title == "Greeting lab"
+  end
 end

@@ -327,7 +327,15 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
   test "accepted assignment edits preserve controls omitted by the browser", %{conn: conn} do
     %{user: teacher} = bootstrap_fixture()
     classroom = classroom_fixture(teacher)
-    assignment = assignment_fixture(teacher, classroom, %{kind: "team", team_size: 4})
+
+    assignment =
+      assignment_fixture(teacher, classroom, %{
+        kind: "team",
+        team_size: 4,
+        autograding_enabled: true,
+        tests: [%{name: "Build", type: "command", command: "true", points: 10}]
+      })
+
     student = user_fixture()
     {:ok, invitation} = Assignments.create_assignment_invitation(teacher, assignment.id)
 
@@ -344,6 +352,10 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
       |> live("/classrooms/#{classroom.slug}/assignments/#{assignment.slug}/edit")
 
     assert has_element?(view, "fieldset[disabled]")
+    assert has_element?(view, "[data-ui=automatic-test] [data-test-toggle]:not([disabled])")
+    assert has_element?(view, "[data-test-settings][disabled]")
+    assert has_element?(view, "button[phx-click=remove_assignment_test][disabled]")
+    refute has_element?(view, "input[name='assignment[tests][0][_persistent_id]']")
 
     render_submit(view, "save_assignment", %{
       "assignment" => %{
@@ -359,6 +371,8 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     assert updated.title == "Updated team lab"
     assert updated.kind == "team"
     assert updated.team_size == 4
+    assert updated.autograding_enabled
+    assert [%{name: "Build", command: "true", points: 10}] = updated.tests
     assert updated.instructions == "## Updated instructions"
     assert DateTime.compare(updated.deadline_at, ~U[2026-10-15 20:30:00Z]) == :eq
   end
@@ -379,5 +393,31 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     assert length(current.teachers) == 2
     assert {:ok, teachers} = GradePush.Accounts.institution_teachers(teacher)
     assert Enum.sort(Enum.map(teachers, & &1.id)) == Enum.sort([teacher.id, colleague.id])
+  end
+
+  test "colleague management explains admission and shows the add form for eligible colleagues",
+       %{conn: conn} do
+    %{user: teacher} = bootstrap_fixture()
+    classroom = classroom_fixture(teacher)
+    conn = log_in_user(conn, teacher)
+    {:ok, view, _} = live(conn, "/classrooms/#{classroom.slug}")
+    view |> element("[data-ui~='teachers-link']") |> render_click()
+    assert has_element?(view, "[data-ui=teacher-invitation-help]", "administrator must invite")
+    refute has_element?(view, "form[phx-submit=add_teacher]")
+
+    colleague = user_fixture(%{name: "Eligible colleague"})
+    teacher_membership_fixture(colleague)
+    {:ok, view, _} = live(conn, "/classrooms/#{classroom.slug}")
+    view |> element("[data-ui~='teachers-link']") |> render_click()
+    assert has_element?(view, "form[phx-submit=add_teacher]", "Eligible colleague")
+    refute has_element?(view, "[data-ui=teacher-invitation-help]")
+
+    view
+    |> form("form[phx-submit=add_teacher]", teacher: to_string(colleague.id))
+    |> render_submit()
+
+    view |> element("[data-ui~='teachers-link']") |> render_click()
+
+    assert has_element?(view, "[data-ui=teacher-list]", "Eligible colleague")
   end
 end

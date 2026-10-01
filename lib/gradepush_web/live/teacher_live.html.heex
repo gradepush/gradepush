@@ -604,6 +604,15 @@
             </.input>
           </.field><.button type="submit" variant="primary">{gettext("Add to classroom")}</.button>
         </form>
+        <p
+          :if={@pending_teacher == nil and @available_classroom_teachers == []}
+          data-ui="teacher-invitation-help"
+          class="text-[13px] leading-[1.6] text-muted"
+        >
+          {gettext(
+            "No other colleague is available. An institution administrator must invite teachers before you can add them to this classroom."
+          )}
+        </p>
         <p :if={@preview?} class="text-muted text-[12px] mt-[16px] mb-0 mx-0">
           {gettext("Teachers are added locally in this preview. No invitation is sent.")}
         </p>

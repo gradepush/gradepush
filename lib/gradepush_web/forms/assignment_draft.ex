@@ -3,6 +3,7 @@ defmodule GradePushWeb.Forms.AssignmentDraft do
   use Ecto.Schema
   use Gettext, backend: GradePushWeb.Gettext
   import Ecto.Changeset
+  alias GradePush.Assignments.AssignmentTest
 
   @primary_key false
   embedded_schema do
@@ -21,6 +22,10 @@ defmodule GradePushWeb.Forms.AssignmentDraft do
       field :description, :string, default: ""
       field :type, :string, default: "command"
       field :points, :integer, default: 10
+      field :timeout_seconds, :integer, default: 300
+      field :output_comparison, :string, default: "trim_trailing"
+      field :runtime, :string, default: "system"
+      field :setup_command, :string, default: ""
       field :command, :string, default: ""
       field :path, :string, default: ""
       field :input, :string, default: ""
@@ -55,12 +60,20 @@ defmodule GradePushWeb.Forms.AssignmentDraft do
   defp test_changeset(test, params) do
     changeset =
       test
-      |> cast(params, ~w(name description type points command path input expected)a)
-      |> validate_required([:name, :type, :points])
+      |> cast(
+        params,
+        ~w(name description type points timeout_seconds output_comparison runtime setup_command command path input expected)a
+      )
+      |> validate_required([:name, :type, :points, :timeout_seconds])
       |> validate_length(:name, max: 120)
       |> validate_length(:description, max: 2000)
       |> validate_inclusion(:type, ~w(file command io))
       |> validate_number(:points, greater_than: 0, less_than_or_equal_to: 1000)
+      |> validate_number(:timeout_seconds,
+        greater_than_or_equal_to: 30,
+        less_than_or_equal_to: 1200
+      )
+      |> AssignmentTest.validate_options()
 
     case get_field(changeset, :type) do
       "file" -> validate_required(changeset, [:path])

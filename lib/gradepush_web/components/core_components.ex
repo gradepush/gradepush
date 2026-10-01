@@ -229,7 +229,7 @@ defmodule GradePushWeb.CoreComponents do
       |> assign_new(:checked, fn -> Form.normalize_value("checkbox", Map.get(assigns, :value)) end)
 
     ~H"""
-    <div :if={@label || @errors != [] || @wrap} class="ui-field min-w-0">
+    <div :if={@label || @errors != [] || @wrap} id={@id && "#{@id}-field"} class="ui-field min-w-0">
       <label
         :if={@label && @type != "checkbox"}
         for={@id}

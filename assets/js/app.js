@@ -86,6 +86,47 @@ const HeaderDisclosure = {
     this.el.removeEventListener("click", this.closeOnNavigation)
   },
 }
+const TestCardDisclosure = {
+  mounted() {
+    this.expanded = true
+    this.render = () => {
+      const button = this.el.querySelector("[data-test-toggle]")
+      this.el.querySelector("[data-test-settings]").hidden = !this.expanded
+      this.el.dataset.expanded = String(this.expanded)
+      button.setAttribute("aria-expanded", String(this.expanded))
+      this.el.querySelector("[data-test-collapse]").hidden = !this.expanded
+      this.el.querySelector("[data-test-expand]").hidden = this.expanded
+    }
+    this.toggle = event => {
+      if (event.target.closest("[data-test-toggle]")) {
+        this.expanded = !this.expanded
+        this.render()
+      }
+    }
+    this.revealInvalid = () => {
+      this.expanded = true
+      this.render()
+    }
+    this.revealServerInvalid = ({detail: {id}}) => {
+      if (this.el.closest("form").id === id && this.el.querySelector('[aria-invalid="true"]')) {
+        this.revealInvalid()
+      }
+    }
+    this.el.addEventListener("click", this.toggle)
+    this.el.addEventListener("invalid", this.revealInvalid, true)
+    window.addEventListener("phx:focus-invalid", this.revealServerInvalid)
+    this.render()
+  },
+  updated() {
+    if (this.el.dataset.hasErrors === "true") this.expanded = true
+    this.render()
+  },
+  destroyed() {
+    this.el.removeEventListener("click", this.toggle)
+    this.el.removeEventListener("invalid", this.revealInvalid, true)
+    window.removeEventListener("phx:focus-invalid", this.revealServerInvalid)
+  },
+}
 let setupTokenFromLink = null
 if (window.location.pathname === "/setup" && window.location.hash) {
   setupTokenFromLink = new URLSearchParams(window.location.hash.slice(1)).get("setup_token")
@@ -116,7 +157,7 @@ const SetupToken = {
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, CopyToClipboard, HeaderDisclosure, SetupToken},
+  hooks: {...colocatedHooks, CopyToClipboard, HeaderDisclosure, TestCardDisclosure, SetupToken},
 })
 
 topbar.config({barColors: {0: "#2052F2"}, shadowColor: "transparent"})

@@ -6,8 +6,13 @@ defmodule GradePush.GitHub.Actions do
   workflow definition must be checked against its recorded blob SHA before accepting a score.
   """
 
+  alias GradePush.Assignments.AssignmentTest
+
   @workflow_path ".github/workflows/gradepush.yml"
   @checkout "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+  @setup_python "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97"
+  @setup_node "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020"
+  @setup_php "shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240"
 
   def workflow_path, do: @workflow_path
 
@@ -85,12 +90,19 @@ defmodule GradePush.GitHub.Actions do
 
   defp valid_test?(test) do
     positive_id?(field(test, :id)) and
-      valid_text?(field(test, :name), 100) and
+      valid_text?(field(test, :name), 120) and
       field(test, :type) in ["command", "file", "io"] and
       valid_timeout?(field(test, :timeout_seconds)) and
       valid_points?(field(test, :points)) and
+      valid_options?(test) and
       valid_test_fields?(test)
   end
+
+  defp valid_options?(test),
+    do:
+      comparison(test) in ~w(exact trim_trailing contains regex) and
+        AssignmentTest.valid_runtime?(runtime(test)) and
+        valid_text?(field(test, :setup_command) || "", 100_000)
 
   defp valid_timeout?(seconds), do: is_integer(seconds) and seconds in 30..1200
   defp valid_points?(points), do: is_integer(points) and points in 1..1000
@@ -106,7 +118,10 @@ defmodule GradePush.GitHub.Actions do
       "io" ->
         valid_text?(field(test, :command), 100_000) and
           valid_text?(field(test, :input) || "", 100_000) and
-          valid_text?(field(test, :expected), 100_000)
+          valid_text?(
+            field(test, :expected),
+            if(comparison(test) == "regex", do: 4_096, else: 100_000)
+          )
     end
   end
 
@@ -118,17 +133,20 @@ defmodule GradePush.GitHub.Actions do
 
     step_name = step_name(test) |> safe_display() |> yaml_string()
     steps = step_script(test)
-    timeout = div(field(test, :timeout_seconds) + 59, 60) + 5
+    commands = if preparation?(test), do: 2, else: 1
+    timeout = commands * div(field(test, :timeout_seconds) + 59, 60) + 5
 
     [
       "  test_#{id}:\n",
       "    name: #{name}\n",
-      "    runs-on: ubuntu-latest\n",
+      "    runs-on: ubuntu-24.04\n",
       "    timeout-minutes: #{timeout}\n",
       "    steps:\n",
       "      - uses: #{@checkout}\n",
       "        with:\n",
       "          persist-credentials: false\n",
+      runtime_steps(runtime(test)),
+      preparation_step(test),
       "      - name: #{step_name}\n",
       "        shell: bash\n",
       "        run: |\n",
@@ -136,6 +154,62 @@ defmodule GradePush.GitHub.Actions do
       "\n"
     ]
     |> IO.iodata_to_binary()
+  end
+
+  defp runtime(test), do: field(test, :runtime) || "system"
+  defp comparison(test), do: field(test, :output_comparison) || "trim_trailing"
+
+  defp runtime_steps("system"), do: ""
+
+  defp runtime_steps("java-25") do
+    """
+          - name: Select Java 25
+            shell: bash
+            run: |
+              test -x "$JAVA_HOME_25_X64/bin/javac"
+              printf 'JAVA_HOME=%s\\n' "$JAVA_HOME_25_X64" >> "$GITHUB_ENV"
+              printf '%s/bin\\n' "$JAVA_HOME_25_X64" >> "$GITHUB_PATH"
+    """
+  end
+
+  defp runtime_steps("c-cpp-14") do
+    """
+          - name: Select GCC 14
+            shell: bash
+            run: |
+              test -x /usr/bin/gcc-14 && test -x /usr/bin/g++-14
+              tools="$RUNNER_TEMP/gradepush-compiler"
+              mkdir -p "$tools"
+              ln -s /usr/bin/gcc-14 "$tools/gcc"
+              ln -s /usr/bin/g++-14 "$tools/g++"
+              printf '%s\\n' "$tools" >> "$GITHUB_PATH"
+              printf 'CC=gcc-14\\nCXX=g++-14\\n' >> "$GITHUB_ENV"
+    """
+  end
+
+  defp runtime_steps(runtime) do
+    [language, version] = String.split(runtime, "-", parts: 2)
+
+    {action, version_key, options} =
+      case language do
+        "python" -> {@setup_python, "python-version", ""}
+        "node" -> {@setup_node, "node-version", "          package-manager-cache: false\n"}
+        "php" -> {@setup_php, "php-version", "          coverage: none\n          tools: none\n"}
+      end
+
+    "      - uses: #{action}\n        with:\n          #{version_key}: #{yaml_string(version)}\n#{options}"
+  end
+
+  defp preparation?(test),
+    do: field(test, :type) != "file" and String.trim(field(test, :setup_command) || "") != ""
+
+  defp preparation_step(test) do
+    if preparation?(test) do
+      "      - name: Prepare project\n        shell: bash\n        run: |\n" <>
+        indent(command_script(field(test, :setup_command), test), 10) <> "\n"
+    else
+      ""
+    end
   end
 
   defp step_script(%{type: "command"} = test), do: command_script(field(test, :command), test)
@@ -225,26 +299,40 @@ defmodule GradePush.GitHub.Actions do
     show_preview "$expected_file"
     printf '\\nActual output:\\n'
     set +e
-    timeout --signal=TERM --kill-after=5s "${timeout_seconds}s" bash "$script_file" < "$input_file" > "$actual_file" 2> "$stderr_file"
+    (ulimit -f 8193; timeout --signal=TERM --kill-after=5s "${timeout_seconds}s" bash "$script_file" < "$input_file" > "$actual_file" 2> "$stderr_file")
     result=$?
     set -e
+    if [ "$(wc -c < "$actual_file")" -gt 8388608 ] || [ "$(wc -c < "$stderr_file")" -gt 8388608 ]; then result=153; fi
     show_preview "$actual_file"
     if [ -s "$stderr_file" ]; then
       printf '\\nProgram error output:\\n'
       show_preview "$stderr_file"
     fi
-    if cmp -s "$expected_file" "$actual_file"; then matches=true; else matches=false; fi
-    if [ "$matches" = false ]; then
+    matches=false
+    comparison_result=0
+    if [ "$result" -eq 0 ]; then
+    #{compare_output(test)}
+    fi
+    if [ "$result" -eq 0 ] && [ "$comparison_result" -eq 0 ] && [ "$matches" = false ] && [ '#{comparison(test)}' != regex ]; then
       diff -u --label 'Expected output' --label 'Actual output' "$expected_file" "$actual_file" > "$diff_file" || true
       printf '\\nOutput difference:\\n'
       show_preview "$diff_file"
     fi
     #{resume_workflow_commands()}
-    if [ "$result" -eq 124 ]; then
+    if [ "$result" -eq 124 ] || [ "$result" -eq 137 ]; then
       printf 'FAIL: test timed out after %s seconds.\\n' "$timeout_seconds"
+      exit 1
+    elif [ "$result" -eq 153 ]; then
+      printf 'FAIL: program output exceeded the 8 MiB file limit.\\n'
       exit 1
     elif [ "$result" -ne 0 ]; then
       printf 'FAIL: test command exited with code %s.\\n' "$result"
+      exit 1
+    elif [ "$comparison_result" -eq 124 ] || [ "$comparison_result" -eq 137 ]; then
+      printf 'FAIL: output comparison exceeded 10 seconds.\\n'
+      exit 1
+    elif [ "$comparison_result" -gt 1 ]; then
+      printf 'FAIL: output comparison could not be completed (code %s).\\n' "$comparison_result"
       exit 1
     elif [ "$matches" = false ]; then
       printf 'FAIL: actual output did not match expected output.\\n'
@@ -253,6 +341,63 @@ defmodule GradePush.GitHub.Actions do
       printf 'PASS: actual output matched expected output.\\n'
     fi
     """
+  end
+
+  defp compare_output(test) do
+    case comparison(test) do
+      "trim_trailing" ->
+        """
+        normalized_expected="$RUNNER_TEMP/gradepush-expected-normalized"
+        normalized_actual="$RUNNER_TEMP/gradepush-actual-normalized"
+        if timeout --signal=TERM --kill-after=5s 10s python3 -I - "$expected_file" "$actual_file" "$normalized_expected" "$normalized_actual" <<'GRADE_PUSH_NORMALIZE'
+        import sys
+
+        for source, destination in zip(sys.argv[1:3], sys.argv[3:5]):
+            with open(source, "rb") as incoming, open(destination, "wb") as outgoing:
+                end = 0
+                for line in incoming:
+                    content = line.rstrip(b" \\t\\r\\n")
+                    outgoing.write(content + b"\\n")
+                    if content:
+                        end = outgoing.tell() - 1
+                outgoing.truncate(end)
+        GRADE_PUSH_NORMALIZE
+        then
+          if cmp -s "$normalized_expected" "$normalized_actual"; then matches=true; fi
+        else
+          comparison_result=$?
+        fi
+        """
+
+      mode when mode in ["regex", "contains"] ->
+        """
+        if timeout --signal=TERM --kill-after=5s 10s node --input-type=commonjs - "$expected_file" "$actual_file" '#{mode}' <<'GRADE_PUSH_COMPARE'
+        const fs = require('node:fs');
+        const [expectedFile, actualFile, mode] = process.argv.slice(2);
+        try {
+          if (fs.statSync(actualFile).size > 8 * 1024 * 1024) {
+            console.log('FAIL: output comparison accepts at most 8 MiB of output.');
+            process.exit(3);
+          }
+          const expected = fs.readFileSync(expectedFile, 'utf8');
+          const actual = fs.readFileSync(actualFile, 'utf8');
+          const matches = mode === 'regex' ? new RegExp(expected).test(actual) : actual.includes(expected);
+          process.exit(matches ? 0 : 1);
+        } catch (error) {
+          console.log(error instanceof SyntaxError ? 'FAIL: invalid regular expression.' : 'FAIL: could not read output for comparison.');
+          process.exit(2);
+        }
+        GRADE_PUSH_COMPARE
+        then
+          matches=true
+        else
+          comparison_result=$?
+        fi
+        """
+
+      "exact" ->
+        ~s(if cmp -s "$expected_file" "$actual_file"; then matches=true; fi)
+    end
   end
 
   defp suspend_workflow_commands do
@@ -269,7 +414,7 @@ defmodule GradePush.GitHub.Actions do
     """
     if [ "$result" -eq 0 ]; then
       printf 'PASS: command completed with exit code 0.\\n'
-    elif [ "$result" -eq 124 ]; then
+    elif [ "$result" -eq 124 ] || [ "$result" -eq 137 ]; then
       printf 'FAIL: command timed out after %s seconds.\\n' "$timeout_seconds"
       exit 1
     else
@@ -299,7 +444,11 @@ defmodule GradePush.GitHub.Actions do
 
   defp indent(text, spaces) do
     prefix = String.duplicate(" ", spaces)
-    text |> String.trim_trailing() |> String.split("\n") |> Enum.map_join("\n", &(prefix <> &1))
+
+    text
+    |> String.trim_trailing()
+    |> String.split("\n")
+    |> Enum.map_join("\n", fn line -> if line == "", do: "", else: prefix <> line end)
   end
 
   defp yaml_string(value), do: Jason.encode!(value)

@@ -30,7 +30,7 @@ defmodule GradePush.Assignments do
                      ~w(
     title instructions kind team_mode team_size deadline_at deadline cutoff_enabled cutoff
     template_repository template repository_name_pattern repository_visibility autograding_enabled
-    autograding tests name description type points timeout_seconds command path input expected
+    autograding tests name description type points timeout_seconds output_comparison runtime setup_command command path input expected
     team_id team_name
   ),
                      fn key -> {key, String.to_existing_atom(key)} end
@@ -1002,6 +1002,9 @@ defmodule GradePush.Assignments do
       :type,
       :points,
       :timeout_seconds,
+      :output_comparison,
+      :runtime,
+      :setup_command,
       :command,
       :path,
       :input,
@@ -1518,11 +1521,14 @@ defmodule GradePush.Assignments do
         description: test.description,
         type: test.type,
         command: test.command,
+        setup_command: test.setup_command,
         path: test.path,
         input: test.input,
         expected: test.expected,
         points: test.points,
-        timeout_seconds: test.timeout_seconds
+        timeout_seconds: test.timeout_seconds,
+        output_comparison: test.output_comparison,
+        runtime: test.runtime
       }
     end)
   end

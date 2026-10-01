@@ -15,10 +15,10 @@ defmodule GradePushWeb.ClipboardComponents do
       data-copy={@value}
       data-success={gettext("Copied")}
       data-error={gettext("Copy failed. Select and copy the text manually.")}
-      class="relative"
+      class="relative min-w-0 max-w-full"
     >
       <div class={[
-        "flex items-center gap-[10px] rounded-[7px] border border-line bg-surface-heading px-[12px] py-[8px]",
+        "flex min-w-0 max-w-full items-center gap-[10px] rounded-[7px] border border-line bg-surface-heading px-[12px] py-[8px]",
         @disabled && "opacity-60"
       ]}>
         <pre
@@ -26,8 +26,8 @@ defmodule GradePushWeb.ClipboardComponents do
           tabindex="0"
           role="region"
           aria-label={@label}
-          class="min-w-0 flex-1 overflow-x-auto rounded-[3px] py-[4px] text-[12px] leading-[20px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-        ><code class="block w-max select-all whitespace-pre">{@value}</code></pre>
+          class="min-w-0 flex-1 whitespace-pre-wrap rounded-[3px] py-[4px] text-[12px] leading-[20px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        ><code class="block min-w-0 max-w-full select-all whitespace-pre-wrap [overflow-wrap:anywhere]">{@value}</code></pre>
         <span :if={@disabled} class="min-w-0 flex-1 text-[12px] text-muted">
           {gettext("Unavailable in demo mode")}
         </span>

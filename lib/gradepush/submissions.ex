@@ -602,11 +602,14 @@ defmodule GradePush.Submissions do
       description: test.description,
       type: test.type,
       command: test.command,
+      setup_command: test.setup_command,
       path: test.path,
       input: test.input,
       expected: test.expected,
       points: test.points,
-      timeout_seconds: test.timeout_seconds
+      timeout_seconds: test.timeout_seconds,
+      output_comparison: test.output_comparison,
+      runtime: test.runtime
     }
   end
 

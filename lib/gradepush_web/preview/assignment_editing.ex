@@ -127,6 +127,10 @@ defmodule GradePushWeb.Preview.AssignmentEditing do
       "description" => AssignmentContent.test_description(test.key),
       "type" => "command",
       "points" => to_string(test.points),
+      "timeout_seconds" => "300",
+      "output_comparison" => "trim_trailing",
+      "runtime" => "python-3.14.7",
+      "setup_command" => "",
       "command" => "python -m unittest tests.test_cli.TestCLI.test_#{test.key}"
     }
   end

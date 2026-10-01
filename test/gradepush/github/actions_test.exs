@@ -168,6 +168,191 @@ defmodule GradePush.GitHub.ActionsTest do
     end)
   end
 
+  test "trailing comparison preserves indentation, interior spaces and interior empty lines" do
+    with_runtime(fn runner_temp, repository, timeout_env ->
+      base = %{
+        id: 1,
+        name: "Whitespace",
+        type: "io",
+        points: 1,
+        timeout_seconds: 60,
+        input: "",
+        output_comparison: "trim_trailing",
+        expected: "  one two\n\nthree\n"
+      }
+
+      for {actual, expected_status} <- [
+            {"  one two \t\r\n \t\nthree\t\n\n", 0},
+            {"one two\n\nthree\n", 1},
+            {"  one  two\n\nthree\n", 1},
+            {"  one two\nthree\n", 1}
+          ] do
+        command = "printf '%s' '#{Base.encode64(actual)}' | base64 --decode"
+        {:ok, workflow} = Actions.generate_workflow([Map.put(base, :command, command)])
+
+        {output, status} =
+          workflow |> workflow_script!() |> run_script(runner_temp, repository, timeout_env)
+
+        assert status == expected_status
+        if status == 1, do: assert(output =~ "Output difference:")
+      end
+
+      exact =
+        Map.merge(base, %{output_comparison: "exact", command: "printf '  one two\\n\\nthree'"})
+
+      {:ok, workflow} = Actions.generate_workflow([exact])
+
+      {_, status} =
+        workflow |> workflow_script!() |> run_script(runner_temp, repository, timeout_env)
+
+      assert status == 1
+    end)
+  end
+
+  test "runtime setup uses pinned actions and exact versions on a stable Ubuntu image" do
+    for {runtime, action, input, version} <- [
+          {"python-3.14.7", "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+           "python-version", "3.14.7"},
+          {"node-24.21.0", "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+           "node-version", "24.21.0"},
+          {"php-8.5.11", "shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240",
+           "php-version", "8.5.11"}
+        ] do
+      {:ok, workflow} =
+        Actions.generate_workflow([Map.put(command_test("true"), :runtime, runtime)])
+
+      assert workflow =~ "runs-on: ubuntu-24.04"
+      assert workflow =~ action
+      assert workflow =~ "#{input}: \"#{version}\""
+      assert workflow =~ "contents: read"
+    end
+
+    {:ok, system} = Actions.generate_workflow([command_test("true")])
+    assert system =~ "runs-on: ubuntu-24.04"
+    refute system =~ "setup-python"
+
+    for {runtime, executable} <- [{"java-25", "javac"}, {"c-cpp-14", "gcc-14"}] do
+      {:ok, workflow} =
+        Actions.generate_workflow([Map.put(command_test("true"), :runtime, runtime)])
+
+      assert workflow =~ executable
+      refute workflow =~ "docker"
+      refute workflow =~ "apt-get"
+    end
+
+    for attrs <- [
+          %{runtime: "python-${{ secrets.TOKEN }}"},
+          %{runtime: "node-24.21.0\npermissions: write-all"},
+          %{runtime: "legacy"},
+          %{runtime: "python-99.0.0"},
+          %{output_comparison: "unknown"}
+        ] do
+      assert {:error, :invalid_autograding_tests} =
+               Actions.generate_workflow([Map.merge(command_test("true"), attrs)])
+    end
+  end
+
+  test "preparation compiles a program, fails before running invalid code and has its own timeout" do
+    with_runtime(fn runner_temp, repository, timeout_env ->
+      source = "#include <stdio.h>\nint main(void) { puts(\"compiled\"); return 0; }\n"
+      File.write!(Path.join(repository, "main.c"), source)
+      spec = Map.put(command_test("./main"), :setup_command, "cc -Wall -Werror main.c -o main")
+      {:ok, workflow} = Actions.generate_workflow([spec])
+      [prepare, run] = workflow_scripts!(workflow)
+      assert workflow =~ "name: Prepare project"
+      assert workflow =~ "timeout-minutes: 7"
+      {_, 0} = run_script(prepare, runner_temp, repository, timeout_env)
+      {output, 0} = run_script(run, runner_temp, repository, timeout_env)
+      assert output =~ "compiled"
+
+      File.write!(Path.join(repository, "main.c"), "int main( { invalid C")
+      {failed, 1} = run_script(prepare, runner_temp, repository, timeout_env)
+      assert failed =~ "error:"
+      assert failed =~ "FAIL: command exited with code"
+
+      assert :binary.match(workflow, "name: Prepare project") <
+               :binary.match(workflow, "Run command test:")
+    end)
+  end
+
+  test "regex and contains comparisons support multiline output and reject invalid patterns" do
+    with_runtime(fn runner_temp, repository, timeout_env ->
+      base =
+        Map.merge(command_test("printf 'first\\nvalue: 42\\nlast\\n'"), %{type: "io", input: ""})
+
+      for {mode, expected, expected_status} <- [
+            {"regex", "value: [0-9]+", 0},
+            {"regex", "^first\\nvalue: [0-9]+\\nlast\\n$", 0},
+            {"regex", "^value: [0-9]+$", 1},
+            {"regex", "[", 1},
+            {"contains", "value: 42\nlast", 0},
+            {"contains", "value: 43", 1}
+          ] do
+        {:ok, workflow} =
+          Actions.generate_workflow([
+            Map.merge(base, %{output_comparison: mode, expected: expected})
+          ])
+
+        {output, status} =
+          workflow |> workflow_script!() |> run_script(runner_temp, repository, timeout_env)
+
+        assert status == expected_status
+        if expected == "[", do: assert(output =~ "FAIL: invalid regular expression.")
+        if mode == "regex", do: refute(output =~ "Output difference:")
+        assert workflow =~ "10s node --input-type=commonjs"
+      end
+
+      assert {:error, :invalid_autograding_tests} =
+               Actions.generate_workflow([
+                 Map.merge(base, %{
+                   output_comparison: "regex",
+                   expected: String.duplicate("a", 4097)
+                 })
+               ])
+    end)
+  end
+
+  test "a failing IO program cannot pass with matching output and comparison errors restore commands" do
+    with_runtime(fn runner_temp, repository, timeout_env ->
+      spec =
+        Map.merge(command_test("printf hello; exit 7"), %{
+          type: "io",
+          expected: "hello",
+          output_comparison: "regex"
+        })
+
+      {:ok, workflow} = Actions.generate_workflow([spec])
+
+      {output, 1} =
+        workflow |> workflow_script!() |> run_script(runner_temp, repository, timeout_env)
+
+      assert output =~ "FAIL: test command exited with code 7."
+      refute output =~ "PASS:"
+      assert output =~ "::stop-commands::"
+      assert Regex.match?(~r/\n::[a-f0-9]{64}::\n/, output)
+    end)
+  end
+
+  test "a successful program cannot pass comparison after exceeding the capture limit" do
+    with_runtime(fn runner_temp, repository, timeout_env ->
+      spec =
+        Map.merge(command_test(~S|node -e 'process.stdout.write("x".repeat(8388609))'|), %{
+          type: "io",
+          expected: "x+",
+          output_comparison: "regex"
+        })
+
+      {:ok, workflow} = Actions.generate_workflow([spec])
+      # Exercise the size check independently of OS-specific SIGXFSZ behavior.
+      script =
+        workflow |> workflow_script!() |> String.replace("ulimit -f 8193", "ulimit -f unlimited")
+
+      {output, 1} = run_script(script, runner_temp, repository, timeout_env)
+      assert output =~ "FAIL: program output exceeded the 8 MiB file limit."
+      refute output =~ "PASS:"
+    end)
+  end
+
   test "file checks report a clear result" do
     with_runtime(fn runner_temp, repository, timeout_env ->
       File.mkdir_p!(Path.join(repository, "project files"))
@@ -303,11 +488,18 @@ defmodule GradePush.GitHub.ActionsTest do
   end
 
   defp workflow_script!(workflow) do
+    workflow |> workflow_scripts!() |> hd()
+  end
+
+  defp workflow_scripts!(workflow) do
     workflow
-    |> String.split("        run: |\n", parts: 2)
-    |> List.last()
-    |> String.split("\n")
-    |> Enum.take_while(&String.starts_with?(&1, "          "))
-    |> Enum.map_join("\n", &String.replace_prefix(&1, "          ", ""))
+    |> String.split("        run: |\n")
+    |> tl()
+    |> Enum.map(fn block ->
+      block
+      |> String.split("\n")
+      |> Enum.take_while(&(&1 == "" or String.starts_with?(&1, "          ")))
+      |> Enum.map_join("\n", &String.replace_prefix(&1, "          ", ""))
+    end)
   end
 end

@@ -146,6 +146,9 @@ defmodule GradePush.Repo.Migrations.CreateTeaching do
       add :type, :string, null: false
       add :points, :integer, null: false
       add :timeout_seconds, :integer, null: false, default: 300
+      add :output_comparison, :text, null: false, default: "trim_trailing"
+      add :runtime, :text, null: false, default: "system"
+      add :setup_command, :text, null: false, default: ""
       add :command, :text
       add :path, :string
       add :input, :text
@@ -165,6 +168,15 @@ defmodule GradePush.Repo.Migrations.CreateTeaching do
 
     create constraint(:assignment_tests, :assignment_tests_timeout_check,
              check: "timeout_seconds BETWEEN 30 AND 1200"
+           )
+
+    create constraint(:assignment_tests, :assignment_tests_comparison_check,
+             check: "output_comparison IN ('exact', 'trim_trailing', 'contains', 'regex')"
+           )
+
+    create constraint(:assignment_tests, :assignment_tests_runtime_check,
+             check:
+               "runtime IN ('system', 'python-3.14.7', 'node-24.21.0', 'php-8.5.11', 'java-25', 'c-cpp-14')"
            )
 
     create constraint(:assignment_tests, :assignment_tests_command_check,
