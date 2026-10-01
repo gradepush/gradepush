@@ -15,7 +15,7 @@ FROM ${ELIXIR_IMAGE} AS development
 ENV HOME=/opt/gradepush
 WORKDIR /app
 
-RUN apk add --no-cache bash build-base ca-certificates coreutils curl diffutils git inotify-tools openssl python3=3.14.7-r1 su-exec \
+RUN apk add --no-cache bash build-base ca-certificates coreutils curl diffutils git inotify-tools openssl python3=3.14.8-r0 su-exec \
     && mkdir -p /opt/gradepush /app/deps /app/_build \
     && chown -R 1000:1000 /opt/gradepush /app
 
