@@ -203,6 +203,7 @@ defmodule GradePush.MembershipTransactionTest do
       Repo.transaction(fn ->
         Repo.query!("SET LOCAL statement_timeout = '3s'")
         Repo.query!("SELECT id FROM classrooms WHERE id = $1 FOR UPDATE", [c.classroom.id])
+        Repo.query!("SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'")
 
         {waiter, marker} =
           marked_operation(fn ->
@@ -353,6 +354,10 @@ defmodule GradePush.MembershipTransactionTest do
 
   defp wait_for_lock(marker) do
     wait_until(fn ->
+      # PostgreSQL caches activity snapshots inside transactions. Refresh before
+      # polling so a task that starts after the first read can be observed.
+      Repo.query!("SELECT pg_stat_clear_snapshot()")
+
       [[waiting]] =
         Repo.query!(
           "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name = $1 AND wait_event_type = 'Lock')",
