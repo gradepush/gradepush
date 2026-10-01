@@ -1,9 +1,42 @@
 {
   "image": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650",
-  "reviewed": "2026-09-29",
+  "reviewed": "2026-10-01",
   "expires": "2026-10-29",
   "scope": "Only the bundled self-hosted topology, with no public DB port, SCRAM authentication, private volumes, and no student SQL or code execution. These are deployment-specific risk assessments, not vendor fixes.",
   "exceptions": [
+    {
+      "reason": "The affected API is DTLS handshake retransmission. PostgreSQL uses TCP, supports TLS rather than DTLS, and has no published port in this topology. No service in this container uses a DTLS peer or the openssl DTLS command. Debian bookworm has no fixed package listed for this advisory; retain the existing assessment expiry.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "libssl3": "3.0.20-1~deb12u2",
+        "openssl": "3.0.20-1~deb12u2"
+      },
+      "vulnerabilities": [
+        "CVE-2026-84782"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://openssl-library.org/news/secadv/20260929.txt",
+        "https://security-tracker.debian.org/tracker/CVE-2026-84782",
+        "https://www.postgresql.org/docs/18/ssl-tcp.html"
+      ]
+    },
+    {
+      "reason": "The affected API requires an attacker-controlled PCRE2 expression matched with a growable JIT stack. PostgreSQL's regular expression engine is separate and its pinned server binary does not link libpcre2. GradePush stores student content as parameterized SQL data; it exposes no database shell, student SQL, or PCRE2 JIT service. Debian bookworm has no fixed package listed for this advisory; retain the existing assessment expiry.",
+      "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
+      "packages": {
+        "libpcre2-8-0": "10.42-1+deb12u1"
+      },
+      "vulnerabilities": [
+        "CVE-2026-103111"
+      ],
+      "requires_gosu_symbol_check": false,
+      "sources": [
+        "https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-r9hj-j2rw-4q3m",
+        "https://security-tracker.debian.org/tracker/CVE-2026-103111",
+        "https://github.com/postgres/postgres/tree/REL_18_STABLE/src/backend/regex"
+      ]
+    },
     {
       "reason": "The database has no SYS_ADMIN capability, host mounts, host PID namespace, or exposed mount/nsenter operations.",
       "target": "postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650 (debian 12.15)",
