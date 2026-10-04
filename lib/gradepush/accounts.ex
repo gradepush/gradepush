@@ -462,7 +462,7 @@ defmodule GradePush.Accounts do
     end
   end
 
-  @doc "Lists completed student registrations with class counts, without classroom contents."
+  @doc "Lists enrolled GitHub accounts with class counts, without classroom contents."
   def list_institution_students(actor, opts \\ []) do
     if admin?(actor) do
       query =
@@ -474,10 +474,7 @@ defmodule GradePush.Accounts do
         from(m in InstitutionMembership,
           join: u in User,
           on: u.id == m.user_id,
-          where: m.institution_id == ^institution_id and m.role == :student,
-          where:
-            fragment("length(trim(?)) > 0", m.student_name) and
-              fragment("length(trim(?)) > 0", m.student_id)
+          where: m.institution_id == ^institution_id and m.role == :student
         )
         |> search_registered_students(query)
 
@@ -492,12 +489,15 @@ defmodule GradePush.Accounts do
 
       entries =
         from([m, u] in students,
-          order_by: [asc: fragment("lower(?)", m.student_name), asc: u.id],
+          order_by: [
+            asc: fragment("lower(coalesce(nullif(trim(?), ''), ?))", u.name, u.login),
+            asc: u.id
+          ],
           offset: ^((page - 1) * 25),
           limit: 25,
           select: %{
             id: u.id,
-            name: m.student_name,
+            name: fragment("coalesce(nullif(trim(?), ''), ?)", u.name, u.login),
             identifier: m.student_id,
             handle: u.login,
             avatar_url: u.avatar_url
@@ -541,9 +541,7 @@ defmodule GradePush.Accounts do
     pattern = "%" <> escaped <> "%"
 
     from([m, u] in students,
-      where:
-        ilike(m.student_name, ^pattern) or ilike(m.student_id, ^pattern) or
-          ilike(u.login, ^pattern)
+      where: ilike(u.name, ^pattern) or ilike(u.login, ^pattern)
     )
   end
 
@@ -924,44 +922,30 @@ defmodule GradePush.Accounts do
   def record_audit(_actor, _scope, _action, _target_type, _target_id, _target_label, _metadata),
     do: {:error, :invalid_audit_event}
 
-  def enroll_student(%User{id: user_id}, attrs) when is_integer(user_id) and is_map(attrs) do
+  @doc "Enrolls an authenticated GitHub account without collecting a student identity profile."
+  def enroll_github_student(%User{id: user_id}) when is_integer(user_id) do
     with %Institution{id: institution_id} <- institution(),
-         name when is_binary(name) <- value(attrs, :name, :name) |> trim_if_binary(),
-         student_id when is_binary(student_id) <-
-           value(attrs, :student_id, :student_id) |> trim_if_binary(),
-         true <- String.length(name) in 1..255,
-         true <- String.length(student_id) in 1..100 do
-      now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+         %User{} <- Repo.get(User, user_id) do
+      now = DateTime.utc_now()
 
       %InstitutionMembership{}
       |> InstitutionMembership.changeset(%{
         institution_id: institution_id,
         user_id: user_id,
         role: :student,
-        student_name: name,
-        student_id: student_id,
         joined_at: now
       })
       |> Repo.insert(
-        on_conflict: [set: [student_name: name, student_id: student_id, updated_at: now]],
+        on_conflict: {:replace, [:updated_at]},
         conflict_target: [:institution_id, :user_id, :role],
         returning: true
       )
     else
-      nil -> {:error, :institution_not_configured}
-      false -> {:error, :invalid_student_profile}
-      _other -> {:error, :invalid_student_profile}
+      nil -> {:error, :invalid_user}
     end
   end
 
-  def enroll_student(_actor, _attrs), do: {:error, :invalid_user}
-
-  def student_profile(actor) do
-    case student_membership(actor) do
-      nil -> nil
-      membership -> %{name: membership.student_name, student_id: membership.student_id}
-    end
-  end
+  def enroll_github_student(_actor), do: {:error, :invalid_user}
 
   def update_locale(%User{id: user_id}, locale) when locale in ["en", "fr"] do
     case Repo.get(User, user_id) do
@@ -1217,7 +1201,4 @@ defmodule GradePush.Accounts do
   defp value(map, key, string_key) do
     Map.get(map, key, Map.get(map, Atom.to_string(string_key)))
   end
-
-  defp trim_if_binary(value) when is_binary(value), do: String.trim(value)
-  defp trim_if_binary(value), do: value
 end

@@ -18,7 +18,7 @@ defmodule GradePushWeb.ExportControllerTest do
       )
 
     {:ok, invitation} = Assignments.create_assignment_invitation(teacher, assignment.id)
-    student = user_fixture()
+    student = user_fixture(%{name: "=Unsafe Formula"})
 
     {:ok, %{subject: subject}} =
       Assignments.accept_assignment_invitation(student, invitation.token, %{
@@ -59,7 +59,7 @@ defmodule GradePushWeb.ExportControllerTest do
     %{user: teacher} = bootstrap_fixture()
     classroom = classroom_fixture(teacher)
     assignment = assignment_fixture(teacher, classroom)
-    student = user_fixture()
+    student = user_fixture(%{name: "=Unsafe Formula"})
     {:ok, invitation} = Classrooms.create_class_invitation(teacher, classroom.id)
 
     {:ok, _} =
@@ -72,7 +72,7 @@ defmodule GradePushWeb.ExportControllerTest do
 
     exported = conn |> log_in_user(teacher) |> get(path)
     assert response(exported, 200) =~ "'=Unsafe Formula"
-    assert exported.resp_body =~ "2026001"
+    refute exported.resp_body =~ "2026001"
     assert exported.resp_body =~ student.login
     assert get_resp_header(exported, "cache-control") == ["private, no-store"]
     assert get_resp_header(exported, "content-disposition") |> hd() =~ "attachment"

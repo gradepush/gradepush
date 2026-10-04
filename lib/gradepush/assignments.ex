@@ -320,7 +320,7 @@ defmodule GradePush.Assignments do
   def revoke_assignment_invitation(_, _), do: {:error, :unauthorized}
 
   @doc "Looks up a valid assignment invitation and safe team choices without exposing student identities."
-  def assignment_invitation(token) do
+  def assignment_invitation(token, actor \\ nil) do
     with :ok <- GradePush.Demo.ensure_invitations_enabled(),
          %Invitation{} = invitation <- valid_invitation(token),
          %Assignment{} = assignment <- assignment_for_invitation(invitation),
@@ -339,7 +339,8 @@ defmodule GradePush.Assignments do
              :semester,
              :academic_year
            ]),
-         team_options: team_options(assignment)
+         current_team: invitation_team(assignment, actor),
+         team_options: if(actor, do: team_options(assignment), else: [])
        }}
     else
       false -> {:error, :invalid_invitation}
@@ -347,6 +348,15 @@ defmodule GradePush.Assignments do
       error -> error
     end
   end
+
+  defp invitation_team(%Assignment{kind: "team", id: assignment_id}, %User{id: user_id}) do
+    case current_team_membership(assignment_id, user_id) do
+      nil -> nil
+      member -> Repo.get!(Team, member.team_id) |> Map.take([:id, :name])
+    end
+  end
+
+  defp invitation_team(_assignment, _actor), do: nil
 
   defp assignment_for_invitation(invitation) do
     case Repo.get(Assignment, invitation.assignment_id) do
@@ -406,7 +416,7 @@ defmodule GradePush.Assignments do
     classroom = active_assignment_classroom!(assignment)
     unless eligible_invitation_student?(actor), do: Repo.rollback(:unauthorized)
 
-    ensure_student_profile!(actor, profile_attrs)
+    ensure_student_enrollment!(actor)
     enroll_in_classroom!(classroom.id, actor.id)
     subject = accept_subject!(actor, assignment, profile_attrs)
     repository = ensure_repository!(subject.id)
@@ -1414,16 +1424,10 @@ defmodule GradePush.Assignments do
 
   defp parse_positive_integer(_), do: nil
 
-  defp ensure_student_profile!(actor, attrs) do
-    case Accounts.student_profile(actor) do
-      %{name: name, student_id: student_id} when is_binary(name) and is_binary(student_id) ->
-        :ok
-
-      _ ->
-        case Accounts.enroll_student(actor, attrs) do
-          {:ok, _membership} -> :ok
-          {:error, reason} -> Repo.rollback(reason)
-        end
+  defp ensure_student_enrollment!(actor) do
+    case Accounts.enroll_github_student(actor) do
+      {:ok, _membership} -> :ok
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 
@@ -1555,7 +1559,7 @@ defmodule GradePush.Assignments do
           team.assignment_id == ^assignment.id and member.assignment_id == ^assignment.id and
             member.user_id == ^actor.id and is_nil(team.archived_at) and is_nil(member.left_at)
       )
-    ) || Repo.rollback(:invalid_team)
+    ) || Repo.rollback(:team_assignment_required)
   end
 
   defp ensure_assigned_team_member!(actor, assignment, team) do

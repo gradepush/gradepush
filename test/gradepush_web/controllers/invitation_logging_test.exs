@@ -9,7 +9,7 @@ defmodule GradePushWeb.InvitationLoggingTest do
     logs =
       capture_log([level: :debug], fn ->
         conn = conn |> init_test_session(%{ui_preview: false}) |> get("/join/classroom/#{token}")
-        assert redirected_to(conn) == "/auth/sign-in"
+        assert html_response(conn, 200) =~ "Invitation unavailable"
       end)
 
     refute logs =~ token

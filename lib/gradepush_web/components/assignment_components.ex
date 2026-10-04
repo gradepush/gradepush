@@ -227,9 +227,9 @@ defmodule GradePushWeb.AssignmentComponents do
       >
         <.search_input
           id="submission-query"
-          label={gettext("Search by name or student ID")}
+          label={gettext("Search by name or GitHub username")}
           name="query"
-          placeholder={gettext("Search by name or student ID")}
+          placeholder={gettext("Search by name or GitHub username")}
           value={@query}
           phx-debounce="150"
         />
@@ -289,13 +289,14 @@ defmodule GradePushWeb.AssignmentComponents do
                 <span :if={Map.get(row, :deleted_team?, false)}>{gettext(
                   "Deleted team · results kept"
                 )}</span>
-                <span :if={!@assignment.group?}>{row.identifier} ·
-                <a
-                  href={"https://github.com/#{row.handle}"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="underline-offset-[3px] hover:text-brand hover:underline"
-                >@{row.handle}</a></span>
+                <span :if={!@assignment.group?}>
+                  <a
+                    href={"https://github.com/#{row.handle}"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline-offset-[3px] hover:text-brand hover:underline"
+                  >@{row.handle}</a>
+                </span>
                 <span
                   :if={@assignment.group? and row.member_profiles != []}
                   class="flex! items-start gap-[6px]"

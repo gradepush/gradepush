@@ -44,8 +44,12 @@ defmodule GradePush.AccountsTest do
     student_two = user_fixture()
     teacher_membership_fixture(teacher)
 
-    assert {:ok, _} = Accounts.enroll_student(student_one, %{name: "Camille", student_id: "1001"})
-    assert {:ok, _} = Accounts.enroll_student(student_two, %{name: "Noémie", student_id: "1002"})
+    original = student_membership_fixture(student_one, %{name: "Camille", student_id: "1001"})
+    student_membership_fixture(student_two, %{name: "Noémie", student_id: "1002"})
+
+    assert {:ok, repeated} = Accounts.enroll_github_student(student_one)
+    assert repeated.id == original.id
+    assert repeated.joined_at == original.joined_at
 
     [one, two, teacher_with_profile] =
       Accounts.with_student_profiles([student_one, student_two, teacher])

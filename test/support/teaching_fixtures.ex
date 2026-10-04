@@ -18,14 +18,20 @@ defmodule GradePush.TeachingFixtures do
 
     {:ok, student} =
       Accounts.upsert_github_user(
-        Map.merge(%{github_id: github_id, login: "student-#{github_id}"}, attrs)
+        Map.merge(
+          %{
+            github_id: github_id,
+            login: "student-#{github_id}",
+            name: Map.get(attrs, :student_name, "Test Student")
+          },
+          attrs
+        )
       )
 
-    {:ok, _membership} =
-      Accounts.enroll_student(student, %{
-        name: Map.get(attrs, :student_name, "Test Student"),
-        student_id: Map.get(attrs, :student_id, "student-#{github_id}")
-      })
+    GradePush.AccountsFixtures.student_membership_fixture(student, %{
+      name: Map.get(attrs, :student_name, "Test Student"),
+      student_id: Map.get(attrs, :student_id, "student-#{github_id}")
+    })
 
     Accounts.get_user(student.id)
   end

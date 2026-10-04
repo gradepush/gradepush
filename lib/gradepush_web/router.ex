@@ -36,6 +36,10 @@ defmodule GradePushWeb.Router do
       live "/auth/sign-in", SignInLive, :index
     end
 
+    live_session :invitations, on_mount: [{GradePushWeb.Auth, :current_user}] do
+      live "/join/:kind/:token", InvitationLive, :show
+    end
+
     live_session :cli_access, on_mount: [{GradePushWeb.Auth, :require_authenticated_user}] do
       live "/cli/authorize", CLIAuthorizationLive, :authorize
     end
@@ -60,7 +64,6 @@ defmodule GradePushWeb.Router do
       live "/student/assignments", StudentLive, :schedule
       live "/student/classrooms/:slug", StudentLive, :show
       live "/student/classrooms/:slug/assignments/:assignment", StudentLive, :assignment
-      live "/join/:kind/:token", InvitationLive, :show
     end
   end
 

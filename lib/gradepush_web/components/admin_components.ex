@@ -67,7 +67,7 @@ defmodule GradePushWeb.AdminComponents do
           name="query"
           value={@directory.query}
           label={gettext("Search students")}
-          placeholder={gettext("Name, student ID or GitHub username")}
+          placeholder={gettext("Name or GitHub username")}
           maxlength="100"
           phx-debounce="250"
         />
@@ -78,7 +78,7 @@ defmodule GradePushWeb.AdminComponents do
         <caption class="sr-only">{gettext("Registered students")}</caption>
         <.list_header kind="table">
           <tr>
-            <th scope="col">{gettext("Student")}</th><th scope="col">{gettext("Student ID")}</th><th scope="col">
+            <th scope="col">{gettext("Student")}</th><th scope="col">
               {gettext("GitHub account")}
             </th><th scope="col">{gettext("Classrooms")}</th>
             <th scope="col"><span class="sr-only">{gettext("Actions")}</span></th>
@@ -94,7 +94,6 @@ defmodule GradePushWeb.AdminComponents do
                 <strong class="min-w-0 break-words">{student.name}</strong>
               </div>
             </th>
-            <td data-label={gettext("Student ID")}>{student.identifier}</td>
             <td data-label={gettext("GitHub account")}>
               <a
                 href={"https://github.com/#{student.handle}"}
@@ -128,8 +127,11 @@ defmodule GradePushWeb.AdminComponents do
       </h2>
       <p>
         {if @directory.query == "",
-          do: gettext("Students appear here once they have completed their name and student ID."),
-          else: gettext("Try another name, student ID or GitHub username.")}
+          do:
+            gettext(
+              "Students appear here after joining a classroom or accepting an assignment with GitHub."
+            ),
+          else: gettext("Try another name or GitHub username.")}
       </p>
     </.empty_state>
     <nav

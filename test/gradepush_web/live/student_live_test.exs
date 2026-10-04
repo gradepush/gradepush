@@ -184,7 +184,7 @@ defmodule GradePushWeb.StudentLiveTest do
     {:ok, view, _} = live(conn, "/join/assignment/#{invitation.token}")
 
     view
-    |> form("#accept-invitation-form", profile: %{name: "Camille Test", student_id: "2026001"})
+    |> form("#accept-invitation-form")
     |> render_submit()
 
     path = "/student/classrooms/#{classroom.slug}/assignments/#{assignment.slug}"
@@ -214,7 +214,7 @@ defmodule GradePushWeb.StudentLiveTest do
     assert classrooms_html =~ classroom.title
     {:ok, _, assignments_html} = live(conn, "/student/classrooms/#{classroom.slug}")
     assert assignments_html =~ assignment.title
-    assert Accounts.get_user(student.id).student_id == "2026001"
+    assert is_nil(Accounts.get_user(student.id).student_id)
 
     other = user_fixture()
 
@@ -254,7 +254,7 @@ defmodule GradePushWeb.StudentLiveTest do
     {:ok, view, _} = live(conn, "/join/classroom/#{invitation.token}")
 
     view
-    |> form("#accept-invitation-form", profile: %{name: "Noémie Test", student_id: "2026003"})
+    |> form("#accept-invitation-form")
     |> render_submit()
 
     assert_redirect(view, "/student/classrooms/#{classroom.slug}")

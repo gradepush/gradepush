@@ -14,7 +14,7 @@ if (origin.protocol !== 'https:' || (!local && !deployed)) {
 
 export default defineConfig({
   testDir: '.',
-  testMatch: mode === 'demo' ? 'demo.spec.js' : mode === 'preview' ? 'classroom-components.spec.js' : 'security.spec.js',
+  testMatch: mode === 'demo' ? 'demo.spec.js' : mode === 'preview' ? ['classroom-components.spec.js', 'invitation.spec.js'] : 'security.spec.js',
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,

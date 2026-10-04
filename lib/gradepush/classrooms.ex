@@ -438,7 +438,7 @@ defmodule GradePush.Classrooms do
     end
   end
 
-  @doc "Accepts a classroom link, records the student profile, and reactivates an existing enrollment if present."
+  @doc "Accepts a classroom link with GitHub identity and reactivates an existing enrollment if present."
   def accept_class_invitation(%User{id: user_id} = actor, token, profile_attrs)
       when is_integer(user_id) and is_map(profile_attrs) do
     with :ok <- GradePush.Demo.ensure_invitations_enabled(),
@@ -457,7 +457,7 @@ defmodule GradePush.Classrooms do
 
   def accept_class_invitation(_, _, _), do: {:error, :unauthorized}
 
-  defp accept_class_invitation_locked!(actor, invitation, profile_attrs) do
+  defp accept_class_invitation_locked!(actor, invitation, _profile_attrs) do
     Accounts.lock_memberships!()
     Repo.one!(from(u in User, where: u.id == ^actor.id, lock: "FOR NO KEY UPDATE"))
     classroom_id = invitation.classroom_id
@@ -468,7 +468,7 @@ defmodule GradePush.Classrooms do
 
     if classroom.archived_at, do: Repo.rollback(:classroom_archived)
 
-    ensure_student_profile_for_transaction!(actor, profile_attrs)
+    ensure_student_enrollment!(actor)
     enrollment = enroll_in_classroom!(classroom.id, actor.id)
 
     %{classroom: classroom, enrollment: enrollment}
@@ -485,13 +485,6 @@ defmodule GradePush.Classrooms do
         lock: "FOR SHARE"
       )
     ) || Repo.rollback(:invalid_invitation)
-  end
-
-  defp ensure_student_profile_for_transaction!(actor, profile_attrs) do
-    case ensure_student_profile!(actor, profile_attrs) do
-      :ok -> :ok
-      {:error, reason} -> Repo.rollback(reason)
-    end
   end
 
   defp enroll_in_classroom!(classroom_id, user_id) do
@@ -1274,16 +1267,10 @@ defmodule GradePush.Classrooms do
   defp invitation_active?(%Invitation{expires_at: expires_at}),
     do: DateTime.compare(expires_at, DateTime.utc_now()) == :gt
 
-  defp ensure_student_profile!(actor, attrs) do
-    case Accounts.student_profile(actor) do
-      %{name: name, student_id: student_id} when is_binary(name) and is_binary(student_id) ->
-        :ok
-
-      _ ->
-        case Accounts.enroll_student(actor, attrs) do
-          {:ok, _membership} -> :ok
-          {:error, reason} -> Repo.rollback(reason)
-        end
+  defp ensure_student_enrollment!(actor) do
+    case Accounts.enroll_github_student(actor) do
+      {:ok, _membership} -> :ok
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 

@@ -295,13 +295,13 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
     refute denied =~ "Algorithms"
   end
 
-  test "a teacher sees declared student identity and removal preserves accepted work", %{
+  test "a teacher sees GitHub student identity and removal preserves accepted work", %{
     conn: conn
   } do
     %{user: teacher} = bootstrap_fixture()
     classroom = classroom_fixture(teacher)
     assignment = assignment_fixture(teacher, classroom)
-    student = user_fixture()
+    student = user_fixture(%{name: "Camille Student"})
     {:ok, invite} = Assignments.create_assignment_invitation(teacher, assignment.id)
 
     {:ok, %{subject: subject}} =
@@ -314,7 +314,8 @@ defmodule GradePushWeb.PersistentTeacherLiveTest do
       conn |> log_in_user(teacher) |> live("/classrooms/#{classroom.slug}?tab=students")
 
     assert has_element?(view, "#student-#{student.login}", "Camille Student")
-    assert has_element?(view, "#student-#{student.login}", "2026001")
+    refute has_element?(view, "#student-#{student.login}", "2026001")
+    assert has_element?(view, "#student-#{student.login}", student.login)
     view |> element("#student-#{student.login} button") |> render_click()
     assert has_element?(view, "[role='dialog']")
     assert {:ok, [_]} = Classrooms.list_students(teacher, classroom.id)

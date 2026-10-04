@@ -7,7 +7,7 @@
       action={@live_action}
       context={:learning}
       contexts={@contexts}
-      preview={false}
+      preview={@preview?}
       locale={@locale}
       language_urls={Map.new(~w(en fr), &{&1, language_url(@path, @route_params, &1)})}
     />
@@ -16,6 +16,9 @@
       student
       tabindex="-1"
     >
+      <p :if={@preview?} class="mb-[24px] text-[12px] text-muted">
+        {gettext("Design preview · Sample GitHub account")}
+      </p>
       <%= cond do %>
         <% @live_action == :index -> %>
           <.page_heading>

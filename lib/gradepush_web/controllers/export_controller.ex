@@ -55,7 +55,7 @@ defmodule GradePushWeb.ExportController do
 
   defp row(user, nil),
     do: [
-      user.student_name || user.name,
+      user.name || user.login,
       user.student_id,
       user.login,
       nil,
@@ -72,7 +72,7 @@ defmodule GradePushWeb.ExportController do
     grade = exportable_grade(subject.latest_grade)
 
     [
-      user.student_name || user.name,
+      user.name || user.login,
       user.student_id,
       user.login,
       if(subject.kind == "team", do: subject.team.name),

@@ -1,116 +1,210 @@
 <.page public>
-  <div class="min-h-screen flex flex-col">
-    <WorkspaceLayout.public_header locale={@locale} path={@path} />
-    <.page_content id="invitation-content">
+  <main
+    id="invitation-content"
+    tabindex="-1"
+    class="flex min-h-svh items-center justify-center px-[20px] py-[48px] focus:outline-none max-[480px]:px-[16px] max-[480px]:py-[24px]"
+  >
+    <section
+      id="invitation-card"
+      class="w-full max-w-[480px] rounded-[18px] border border-panel bg-white p-[36px] shadow-classroom max-[480px]:p-[24px]"
+      aria-labelledby="invitation-title"
+    >
+      <div class="mb-[36px] flex items-center justify-between gap-[16px]">
+        <img
+          src="/images/logo.svg"
+          width="140"
+          height="28"
+          alt="GradePush"
+          class="h-auto w-[140px]"
+        />
+        <.link
+          href={@path <> "?" <> URI.encode_query(%{locale: if(@locale == "fr", do: "en", else: "fr")})}
+          lang={if @locale == "fr", do: "en", else: "fr"}
+          aria-label={if @locale == "fr", do: "Switch to English", else: "Passer en français"}
+          class="inline-flex min-h-[44px] items-center justify-center gap-[7px] rounded-[6px] px-[8px] text-[11px] font-semibold text-muted hover:bg-canvas hover:text-body"
+        >
+          <.icon name="hero-globe-alt" class="size-4" />
+          {if @locale == "fr", do: "EN", else: "FR"}
+        </.link>
+      </div>
       <%= if @invitation do %>
-        <.page_heading>
-          <div>
-            <.eyebrow>
-              {gettext("Invitation")}
-            </.eyebrow><h1>{title(@invitation)}</h1>
+        <div>
+          <p class="mb-[18px] flex items-center gap-[10px] text-[12px] font-medium text-secondary">
+            <span class="inline-flex size-[36px] shrink-0 items-center justify-center rounded-[10px] border border-brand/10 bg-brand-soft text-brand">
+              <.icon
+                name={
+                  if @kind == "assignment", do: "hero-code-bracket", else: "hero-academic-cap"
+                }
+                class="size-[18px]"
+              />
+            </span>
+            {if @kind == "assignment",
+              do: gettext("Assignment invitation"),
+              else: gettext("Invitation")}
+          </p>
+          <h1
+            id="invitation-title"
+            class="text-[27px] font-[650] leading-[1.25] tracking-[-.65px] wrap-anywhere max-[480px]:text-[24px]"
+          >
+            {title(@invitation)}
+          </h1>
+          <div
+            :if={@kind == "assignment"}
+            id="invitation-classroom"
+            class="mt-[24px] flex items-center gap-[12px] rounded-[10px] bg-canvas p-[14px]"
+          >
+            <.icon name="hero-academic-cap" class="size-[22px] shrink-0 text-secondary" />
+            <div class="min-w-0">
+              <p class="text-[13px] font-medium leading-[1.6] text-body wrap-anywhere">
+                {@invitation.classroom.title}
+              </p>
+              <p class="mt-[4px] flex flex-wrap items-center gap-x-[6px] gap-y-[3px] text-[11px] leading-[1.6] text-muted wrap-anywhere">
+                <span>{@invitation.classroom.code}</span>
+                <%= if Presentation.classroom_term(@invitation.classroom) != "" do %>
+                  <span aria-hidden="true">·</span>
+                  <span>{Presentation.classroom_term(@invitation.classroom)}</span>
+                <% end %>
+              </p>
+            </div>
           </div>
-        </.page_heading>
-        <.panel>
-          <.panel_heading>
-            <h2>
-              {if @kind == "assignment", do: gettext("Accept assignment"), else: gettext("Join")}
-            </h2>
-          </.panel_heading>
-          <div class="max-w-[660px] p-[24px] max-[760px]:p-[18px]">
-            <p :if={@kind == "assignment"}>
-              {gettext(
-                "Accepting this assignment joins the classroom and creates your GitHub repository."
-              )}
+          <p :if={@kind == "teacher"} class="mt-[12px] text-[14px] leading-[1.65] text-muted">
+            {gettext("Join this institution as a teacher using your GitHub account.")}
+          </p>
+          <div
+            :if={@kind == "assignment"}
+            class="mt-[20px] grid gap-[12px] text-[12px] leading-[1.6] text-secondary"
+          >
+            <p class="flex items-center gap-[8px]">
+              <.icon
+                name={
+                  if @invitation.assignment.kind == "team",
+                    do: "hero-user-group",
+                    else: "hero-user"
+                }
+                class="size-4 shrink-0"
+              />
+              {if @invitation.assignment.kind == "team",
+                do: gettext("Teams of up to %{count}", count: @invitation.assignment.team_size),
+                else: gettext("Individual assignment")}
             </p>
-            <p :if={@kind == "teacher"}>
-              {gettext("Join this institution as a teacher using your GitHub account.")}
+            <p :if={@invitation.assignment.deadline_at} class="flex items-center gap-[8px]">
+              <.icon name="hero-calendar-days" class="size-4 shrink-0" />
+              <time datetime={DateTime.to_iso8601(@invitation.assignment.deadline_at)}>
+                {gettext("Due %{date}",
+                  date: Presentation.datetime(@invitation.assignment.deadline_at, @locale)
+                )}
+              </time>
             </p>
+          </div>
+        </div>
+        <div class="mt-[28px] grid gap-[24px] border-t border-line pt-[24px]">
+          <%= if @participant do %>
+            <div id="invitation-account" class="flex items-center gap-[12px]">
+              <.user_avatar src={@participant.avatar_url}>
+                {Presentation.user(@participant).initials}
+              </.user_avatar>
+              <div class="min-w-0 flex-1">
+                <p class="text-[13px] font-semibold wrap-anywhere">
+                  {Presentation.user(@participant).name}
+                </p>
+                <p class="mt-[3px] text-[12px] text-muted wrap-anywhere">@{@participant.login}</p>
+              </div>
+              <.icon name="github" class="size-[18px] shrink-0 text-icon" />
+            </div>
             <.notice
               :if={@error}
+              id="invitation-error"
               kind="error"
               role="alert"
+              class="!m-0 leading-[1.7]"
+              icon="hero-exclamation-circle"
             >
               {@error}
             </.notice>
             <.form
               for={@profile}
               id="accept-invitation-form"
+              phx-change="change-team"
               phx-submit="accept"
-              class="grid gap-[18px]"
+              class="grid gap-[22px]"
             >
-              <%= if @kind != "teacher" do %>
+              <%= if student_teams?(@invitation) do %>
                 <.field>
-                  {gettext("Name")}<.input
-                    name="profile[name]"
-                    value={@profile[:name].value}
+                  {gettext("Your team")}
+                  <.input type="select" name="profile[team_id]" value={@profile[:team_id].value}>
+                    <option value="">{gettext("Create a new team")}</option>
+                    <option
+                      :for={team <- @invitation.team_options}
+                      value={team.id}
+                      selected={to_string(@profile[:team_id].value) == to_string(team.id)}
+                    >
+                      {team.name} · {team.member_count}/{team.team_size}
+                    </option>
+                  </.input>
+                </.field>
+                <.field :if={@profile[:team_id].value in [nil, ""]}>
+                  {gettext("New team name")}
+                  <.input
+                    name="profile[team_name]"
+                    value={@profile[:team_name].value}
                     required
-                    maxlength="160"
-                    autocomplete="name"
+                    maxlength="120"
+                    placeholder={gettext("Choose a name together")}
                   />
                 </.field>
-                <.field>
-                  {gettext("Student ID")}<.input
-                    name="profile[student_id]"
-                    value={@profile[:student_id].value}
-                    required
-                    maxlength="80"
-                    autocomplete="off"
-                  />
-                </.field>
-                <%= if team_assignment?(@invitation) do %>
-                  <.field>
-                    {gettext("Join a team")}
-                    <.input type="select" name="profile[team_id]">
-                      <option value="">
-                        {gettext("Create a new team")}
-                      </option><option
-                        :for={team <- Map.get(@invitation, :team_options, [])}
-                        value={team.id}
-                      >
-                        {team.name}
-                      </option>
-                    </.input>
-                  </.field>
-                  <.field>
-                    {gettext("New team name")}<.input
-                      name="profile[team_name]"
-                      maxlength="120"
-                    />
-                  </.field>
-                <% end %>
               <% end %>
-              <.modal_actions>
-                <.button type="submit" variant="primary" phx-disable-with={gettext("Joining…")}>{if @kind ==
-                                                                                                      "assignment",
-                                                                                                    do:
-                                                                                                      gettext(
-                                                                                                        "Accept assignment"
-                                                                                                      ),
-                                                                                                    else:
-                                                                                                      gettext(
-                                                                                                        "Join"
-                                                                                                      )}</.button>
-              </.modal_actions>
+              <div
+                :if={Map.get(@invitation, :current_team)}
+                class="rounded-[9px] border border-line bg-surface-heading p-[14px]"
+              >
+                <p class="text-[11px] text-muted">{gettext("Your team")}</p>
+                <p class="mt-[5px] font-semibold wrap-anywhere">
+                  {@invitation.current_team.name}
+                </p>
+              </div>
+              <p
+                :if={waiting_for_team?(@invitation)}
+                role="status"
+                class="text-[13px] leading-[1.7] text-muted"
+              >
+                {gettext("Your teacher needs to assign you to a team before you can accept.")}
+              </p>
+              <.button
+                type="submit"
+                variant="primary"
+                class="w-full !min-h-[46px]"
+                disabled={waiting_for_team?(@invitation)}
+                phx-disable-with={gettext("Joining…")}
+              >
+                {if @kind == "assignment", do: gettext("Accept assignment"), else: gettext("Join")}
+                <.icon name="hero-arrow-right" class="size-4" />
+              </.button>
             </.form>
-          </div>
-        </.panel>
-        <.panel :if={@kind == "assignment"}>
-          <.panel_heading>
-            <h2>{gettext("Assignment instructions")}</h2>
-          </.panel_heading><div class="max-w-[660px] markdown p-[24px] max-[760px]:p-[18px]">
-            {Markdown.render(@invitation.assignment.instructions, 2)}
-          </div>
-        </.panel>
+          <% else %>
+            <.button href="/auth/github" variant="primary" class="w-full !min-h-[46px]">
+              <.icon name="github" class="size-[18px]" />{gettext("Continue on GitHub")}
+            </.button>
+          <% end %>
+        </div>
       <% else %>
-        <.empty_state>
-          <h1>{gettext("Invitation unavailable")}</h1><p>
+        <div class="grid gap-[24px]">
+          <h1
+            id="invitation-title"
+            class="text-[25px] font-[650] leading-[1.25] tracking-[-.5px] wrap-anywhere"
+          >
+            {gettext("Invitation unavailable")}
+          </h1>
+          <p class="text-[14px] leading-[1.7] text-muted">
             {gettext(
               "This invitation has expired or is no longer available. Ask your teacher for a new link."
             )}
-          </p><.button navigate="/">{gettext("My classrooms")}</.button>
-        </.empty_state>
+          </p>
+          <.button navigate="/" class="w-full">{gettext("My classrooms")}</.button>
+        </div>
       <% end %>
-    </.page_content>
-    <WorkspaceLayout.footer context={:public} links={@footer_links} />
-  </div>
+      <p :if={@design_preview} class="mt-[20px] text-center text-[11px] text-muted">
+        {gettext("Design preview · Sample GitHub account")}
+      </p>
+    </section>
+  </main>
 </.page>

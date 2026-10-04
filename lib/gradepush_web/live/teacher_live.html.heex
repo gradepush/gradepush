@@ -256,7 +256,7 @@
             </.list_toolbar>
             <.data_list :if={visible_students(@classroom, @query) != []}>
               <.list_header kind="students">
-                <span>{gettext("Student")}</span><span>{gettext("Student ID")}</span><span>GitHub</span><span></span>
+                <span>{gettext("Student")}</span><span>GitHub</span><span></span>
               </.list_header>
               <.list_row
                 :for={student <- visible_students(@classroom, @query)}
@@ -267,9 +267,9 @@
                   <.user_avatar src={Map.get(student, :avatar_url)} size="small">
                     {student.initials}
                   </.user_avatar><strong>{student.name}</strong>
-                </div><span class="tabular-nums text-muted max-[760px]:row-start-2 max-[760px]:col-start-1 max-[760px]:pl-[41px] max-[760px]:text-[12px]">{student.identifier}</span><a
+                </div><a
                   class={[
-                    "text-muted wrap-anywhere underline-offset-[3px] max-[760px]:row-start-3 max-[760px]:col-start-1",
+                    "text-muted wrap-anywhere underline-offset-[3px] max-[760px]:row-start-2 max-[760px]:col-start-1",
                     "max-[760px]:pl-[41px] max-[760px]:text-[12px] hover:text-brand hover:underline"
                   ]}
                   href={"https://github.com/#{student.handle}"}
@@ -293,7 +293,7 @@
               </h2><p>
                 {if @query == "",
                   do: gettext("Share the classroom link to let your students join."),
-                  else: gettext("Try another name, student ID, or GitHub username.")}
+                  else: gettext("Try another name or GitHub username.")}
               </p>
             </.empty_state>
           <% end %>
@@ -361,7 +361,7 @@
           <p class="font-semibold mb-[16px]">
             {if subject.team,
               do: subject.team.name,
-              else: subject.user.student_name || subject.user.name || subject.user.login}
+              else: subject.user.name || subject.user.login}
           </p>
           <GradingComponents.results
             id="submission-test-results"
@@ -538,7 +538,7 @@
       <% modal?(@modal, "invite") -> %>
         <p>
           {gettext(
-            "Students sign in with GitHub and enter their name and student ID to join your classroom."
+            "Students sign in with GitHub and join your classroom. No student ID is required."
           )}
         </p>
         <ClassroomComponents.invitation_link
@@ -942,7 +942,7 @@
             <p data-ui="extension-owner">
               {if subject.team,
                 do: subject.team.name,
-                else: subject.user.student_name || subject.user.name || subject.user.login}
+                else: subject.user.name || subject.user.login}
             </p>
             <p>
               {gettext("Assignment deadline: %{date}", date: local(@assignment.due, @locale))}

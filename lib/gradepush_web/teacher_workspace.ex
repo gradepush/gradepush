@@ -28,7 +28,7 @@ defmodule GradePushWeb.TeacherWorkspace do
 
   def student(enrollment) do
     user = enrollment.user
-    name = user.student_name || display_name(user)
+    name = display_name(user)
 
     %{
       id: user.id,

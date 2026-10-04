@@ -6,7 +6,7 @@ defmodule GradePushWeb.Presentation do
   alias GradePush.Classrooms.Classroom
 
   def user(user) do
-    name = Map.get(user, :student_name) || user.name
+    name = user.name
     name = if name in [nil, ""], do: user.login, else: name
 
     %{

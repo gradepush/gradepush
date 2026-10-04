@@ -84,13 +84,14 @@ defmodule GradePush.AccountsFixtures do
   def student_membership_fixture(%User{} = user, attrs \\ %{}) do
     attrs = Map.new(attrs)
 
-    {:ok, membership} =
-      Accounts.enroll_student(user, %{
-        name: Map.get(attrs, :name, "Test Student"),
-        student_id: Map.get(attrs, :student_id, "student-#{user.github_id}")
-      })
+    {:ok, membership} = Accounts.enroll_github_student(user)
 
     membership
+    |> InstitutionMembership.changeset(%{
+      student_name: Map.get(attrs, :name, "Test Student"),
+      student_id: Map.get(attrs, :student_id, "student-#{user.github_id}")
+    })
+    |> Repo.update!()
   end
 
   defp create_institution! do

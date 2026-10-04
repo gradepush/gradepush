@@ -87,7 +87,7 @@ defmodule GradePushWeb.ListComponents do
     do: "grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-[24px]"
 
   defp columns("students"),
-    do: "grid grid-cols-[minmax(0,1fr)_145px_minmax(160px,.8fr)_32px] items-center gap-[16px]"
+    do: "grid grid-cols-[minmax(0,1fr)_minmax(160px,.8fr)_32px] items-center gap-[16px]"
 
   attr :kind, :string, default: "admin", values: ~w(admin submissions)
   attr :rest, :global

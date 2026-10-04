@@ -231,7 +231,8 @@ defmodule GradePushWeb.TeacherLiveTest do
   } do
     {:ok, view, _} = live(conn, "/classrooms/programming?tab=students&locale=fr")
     assert has_element?(view, "[data-ui~='tabs'] a[aria-current='page']", "Étudiants")
-    assert has_element?(view, "[data-ui~='student-labels']", "Matricule")
+    refute has_element?(view, "[data-ui~='student-labels']", "Matricule")
+    assert has_element?(view, "[data-ui~='student-labels']", "GitHub")
     {:ok, view, _} = live(conn, "/classrooms/unknown")
     assert has_element?(view, "h1", "Classroom not found")
     refute has_element?(view, ".sidebar")

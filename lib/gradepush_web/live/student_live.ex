@@ -13,37 +13,77 @@ defmodule GradePushWeb.StudentLive do
     WorkspaceLayout
   }
 
+  alias GradePushWeb.Preview.Invitations
+
   @impl true
+  def mount(
+        %{"slug" => "preview-programming", "assignment" => _assignment},
+        session,
+        %{assigns: %{preview?: true}} = socket
+      ) do
+    {:ok,
+     mount_workspace(socket, session, Invitations.participant(), "Cégep Exemple", [:learning])}
+  end
+
   def mount(_params, _session, %{assigns: %{current_user: nil}} = socket),
     do: {:ok, redirect(socket, to: "/auth/sign-in")}
 
   def mount(_params, session, socket) do
-    locale = if session["locale"] in ~w(en fr), do: session["locale"], else: "en"
-    Gettext.put_locale(GradePushWeb.Gettext, locale)
-
     {:ok,
-     assign(socket,
-       page_title: gettext("My classrooms"),
-       locale: locale,
-       user: Presentation.user(socket.assigns.current_user),
-       institution: Accounts.institution().name,
-       contexts: Presentation.contexts(socket.assigns.current_user),
-       classes: [],
-       classroom: nil,
-       assignments: [],
-       schedule: nil,
-       assignment: nil,
-       subject: nil,
-       repository: nil,
-       latest_push: nil,
-       subscribed_topics: [],
-       route_params: %{},
-       path: "/student/classrooms",
-       error: nil
+     mount_workspace(
+       socket,
+       session,
+       socket.assigns.current_user,
+       Accounts.institution().name,
+       Presentation.contexts(socket.assigns.current_user)
      )}
   end
 
+  defp mount_workspace(socket, session, user, institution, contexts) do
+    locale = if session["locale"] in ~w(en fr), do: session["locale"], else: "en"
+    Gettext.put_locale(GradePushWeb.Gettext, locale)
+
+    assign(socket,
+      page_title: gettext("My classrooms"),
+      locale: locale,
+      user: Presentation.user(user),
+      institution: institution,
+      contexts: contexts,
+      classes: [],
+      classroom: nil,
+      assignments: [],
+      schedule: nil,
+      assignment: nil,
+      subject: nil,
+      repository: nil,
+      latest_push: nil,
+      subscribed_topics: [],
+      route_params: %{},
+      path: "/student/classrooms",
+      error: nil
+    )
+  end
+
   @impl true
+  def handle_params(params, uri, %{assigns: %{preview?: true, live_action: :assignment}} = socket) do
+    details = Invitations.student_assignment(params) || %{classroom: nil, assignment: nil}
+
+    {:noreply,
+     socket
+     |> assign(path: URI.parse(uri).path, route_params: params)
+     |> assign(details)
+     |> assign(
+       page_title:
+         if(details.assignment,
+           do: details.assignment.title,
+           else: gettext("This page is not available.")
+         )
+     )}
+  end
+
+  def handle_params(_params, _uri, %{assigns: %{preview?: true}} = socket),
+    do: {:noreply, redirect(socket, to: "/auth/sign-in")}
+
   def handle_params(params, uri, socket) do
     actor = socket.assigns.current_user
     socket = assign(socket, path: URI.parse(uri).path, route_params: params, error: nil)
@@ -70,6 +110,8 @@ defmodule GradePushWeb.StudentLive do
   end
 
   @impl true
+  def handle_info(_message, %{assigns: %{preview?: true}} = socket), do: {:noreply, socket}
+
   def handle_info({event, _id}, %{assigns: %{live_action: :schedule}} = socket)
       when event in [:repository_changed, :push_recorded, :grade_recorded, :grade_untrusted],
       do: {:noreply, socket}

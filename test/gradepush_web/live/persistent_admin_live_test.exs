@@ -78,7 +78,7 @@ defmodule GradePushWeb.PersistentAdminLiveTest do
     view |> element("button", "Next") |> render_click()
     assert has_element?(view, "a[href='https://github.com/student-26']")
     assert has_element?(view, "button[disabled]", "Next")
-    view |> form("#student-directory-search", query: "ID-01") |> render_change()
+    view |> form("#student-directory-search", query: "Student 01") |> render_change()
     assert has_element?(view, "a[href='https://github.com/student-01']")
     refute has_element?(view, "nav[aria-label='Student pages']")
     view |> form("#student-directory-search", query: "missing") |> render_change()

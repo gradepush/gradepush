@@ -61,7 +61,6 @@ defmodule GradePushWeb.AdminWorkspace do
       )
 
   def error(:cannot_remove_self), do: gettext("You cannot remove your own account.")
-  def error(:invalid_student_profile), do: gettext("Enter your name and student ID.")
 
   def error(:self_assignment),
     do: gettext("You cannot assign yourself. A classroom teacher can invite you.")

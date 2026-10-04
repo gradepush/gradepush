@@ -73,7 +73,7 @@ defmodule GradePush.StudentDirectoryTest do
     assert Accounts.operator?(student)
   end
 
-  test "only institution admins see completed profiles and active enrollment counts" do
+  test "only institution admins see enrolled GitHub profiles and active enrollment counts" do
     %{user: admin} = bootstrap_fixture()
     student = student_fixture(%{student_name: "Alice Martin", student_id: "ST-101"})
     incomplete = student_fixture()
@@ -100,7 +100,9 @@ defmodule GradePush.StudentDirectoryTest do
       })
     end
 
-    assert {:ok, %{entries: [entry], total: 1}} = Accounts.list_institution_students(admin)
+    assert {:ok, %{entries: entries, total: 2}} = Accounts.list_institution_students(admin)
+    entry = Enum.find(entries, &(&1.id == student.id))
+    assert Enum.any?(entries, &(&1.id == incomplete.id))
     assert entry.name == "Alice Martin"
     assert entry.identifier == "ST-101"
     assert entry.classrooms == 2
@@ -144,7 +146,7 @@ defmodule GradePush.StudentDirectoryTest do
     assert Enum.map(first ++ last, & &1.id) == Enum.map(students, & &1.id)
     assert {:ok, %{page: 1}} = Accounts.list_institution_students(admin, page: "bad")
 
-    for query <- ["student 27", "ID_27", "LEARNER-27"] do
+    for query <- ["student 27", "LEARNER-27"] do
       assert {:ok, %{entries: [entry], total: 1, page: 1}} =
                Accounts.list_institution_students(admin, query: query, page: 2)
 
