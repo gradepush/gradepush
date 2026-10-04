@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 for (const locale of ['en', 'fr']) {
-  for (const width of [320, 1440]) {
-    test(`team tabs scroll, support the keyboard and keep the active team (${locale}, ${width}px)`, async ({ page }) => {
+  for (const [width, mode] of [[320, 'teacher'], [1440, 'teacher'], [320, 'students'], [1440, 'students']]) {
+    test(`team tabs and member transfers (${mode}, ${locale}, ${width}px)`, async ({ page }) => {
       await page.setViewportSize({width, height:1000});
       await page.goto(`/demo?locale=${locale}`);
       await expect(page.locator('.phx-connected')).toBeAttached();
@@ -54,12 +54,12 @@ for (const locale of ['en', 'fr']) {
 
       // Mutating coverage uses only a disposable local demo; deployed smoke tests remain read-only here.
       if (new URL(page.url()).hostname === 'localhost') {
-        const name = `Browser team ${locale} ${width} ${Date.now()}`;
+        const name = `Browser team ${mode} ${locale} ${width} ${Date.now()}`;
         await page.goto(`/classrooms/programming/assignments/new?locale=${locale}`);
         await expect(page.locator('.phx-connected')).toBeAttached();
         await page.locator('#assignment_title').fill(name);
         await page.locator('#assignment_kind').selectOption('team');
-        await page.locator('#assignment_team_mode').selectOption('teacher');
+        await page.locator('#assignment_team_mode').selectOption(mode);
         await page.locator('#assignment-form button[type=submit]').click();
         await expect(page.locator('#assignment-form')).toBeHidden();
         await manage.click();
@@ -77,6 +77,7 @@ for (const locale of ['en', 'fr']) {
           const box = el.getBoundingClientRect(), viewport = el.parentElement.getBoundingClientRect();
           return box.left >= viewport.left && box.right <= viewport.right;
         })).toBe(true);
+        const studentId = await panel.locator('select[name="student_id"]').inputValue();
         await panel.getByRole('button', {name:locale === 'fr' ? 'Ajouter à l’équipe' : 'Add to team',exact:true}).click();
         await expect(created).toContainText('1/2');
         await expect(created).toHaveAttribute('aria-selected', 'true');
@@ -99,6 +100,17 @@ for (const locale of ['en', 'fr']) {
         await confirmation.locator('[phx-click*="confirm_team_action"]').click();
         await expect(panel.locator('li')).toHaveCount(0);
         await expect(panel.locator('select[name="student_id"]')).toBeVisible();
+        await dialog.getByRole('tab', {name: /First team/}).click();
+        await expect(panel.getByRole('heading', {name:'First team',exact:true})).toBeVisible();
+        await panel.locator('select[name="student_id"]').selectOption(studentId);
+        await panel.getByRole('button', {name:locale === 'fr' ? 'Ajouter à l’équipe' : 'Add to team',exact:true}).click();
+        await expect(panel.locator('li')).toHaveCount(1);
+        await panel.locator('button[phx-value-action="remove"]').click();
+        await confirmation.locator('[phx-click*="confirm_team_action"]').click();
+        await expect(panel.locator('li')).toHaveCount(0);
+        await dialog.getByRole('tab', {name:new RegExp(renamed)}).click();
+        await expect(panel.getByRole('heading', {name:renamed,exact:true})).toBeVisible();
+        await panel.locator('select[name="student_id"]').selectOption(studentId);
         await panel.getByRole('button', {name:locale === 'fr' ? 'Ajouter à l’équipe' : 'Add to team',exact:true}).click();
         await expect(panel.locator('li')).toHaveCount(1);
         await panel.locator('button[phx-value-action="delete"]').click();

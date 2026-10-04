@@ -676,9 +676,9 @@ defmodule GradePush.Assignments do
 
   def join_team(_, _, _), do: {:error, :unauthorized}
 
-  @doc "Assigns a rostered student to a teacher-managed team."
+  @doc "Lets a classroom teacher assign a rostered student to a team in either formation mode."
   def add_team_member(%User{} = actor, assignment_id, team_id, student_user_id) do
-    with %Assignment{kind: "team", team_mode: "teacher"} = assignment <-
+    with %Assignment{kind: "team"} = assignment <-
            Repo.get(Assignment, assignment_id),
          {:ok, _classroom} <- Classrooms.classroom_for_teacher(actor, assignment.classroom_id),
          true <- active_student?(assignment.classroom_id, student_user_id),
@@ -690,7 +690,8 @@ defmodule GradePush.Assignments do
     else
       nil -> {:error, :not_found}
       false -> {:error, :student_not_enrolled}
-      error -> error
+      {:error, _} = error -> error
+      _ -> {:error, :invalid_team}
     end
   end
 
@@ -803,8 +804,6 @@ defmodule GradePush.Assignments do
       {:ok, _} -> :ok
       {:error, reason} -> Repo.rollback(reason)
     end
-
-    unless assignment.team_mode == "teacher", do: Repo.rollback(:invalid_team)
   end
 
   defp lock_team_creation!(actor, assignment_id) do

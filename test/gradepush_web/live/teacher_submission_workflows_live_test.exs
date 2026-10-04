@@ -8,6 +8,55 @@ defmodule GradePushWeb.TeacherSubmissionWorkflowsLiveTest do
   alias GradePush.{Assignments, Classrooms, Repo, Submissions}
   alias GradePush.Assignments.{Repository, Subject}
 
+  for mode <- ["students", "teacher"] do
+    test "teacher moves a member between #{mode} teams after acceptance", %{conn: conn} do
+      %{user: teacher} = bootstrap_fixture()
+      classroom = classroom_fixture(teacher)
+      student = student_fixture()
+      enroll_student(classroom, teacher, student)
+
+      assignment =
+        assignment_fixture(teacher, classroom, %{kind: "team", team_mode: unquote(mode)})
+
+      creator = if unquote(mode) == "students", do: student, else: teacher
+      {:ok, source} = Assignments.create_team(creator, assignment.id, %{name: "Orion"})
+      {:ok, _} = Assignments.add_team_member(teacher, assignment.id, source.id, student.id)
+      subject = accept_assignment(assignment, teacher, student)
+      {:ok, target} = Assignments.create_team(teacher, assignment.id, %{name: "Lyra"})
+
+      {:ok, view, _} =
+        conn |> log_in_user(teacher) |> live(assignment_path(classroom, assignment))
+
+      assert has_element?(view, "#submission-team-#{target.id}", "Waiting for acceptance")
+      assert has_element?(view, "#submission-search option[value=not_accepted]")
+      view |> element("button", "Manage teams") |> render_click()
+
+      view
+      |> element("#managed-team-#{source.id} button[phx-value-action=remove]")
+      |> render_click()
+
+      view |> element("[data-ui=team-confirmation] button", "Remove from team") |> render_click()
+      refute has_element?(view, "#managed-team-#{source.id} li")
+      view |> element("#team-tab-#{target.id}") |> render_click()
+      assert has_element?(view, "#managed-team-#{target.id} option[value='#{student.id}']")
+
+      view
+      |> form("#managed-team-#{target.id} form[phx-submit=add_team_member]", %{
+        "team_id" => target.id,
+        "student_id" => student.id
+      })
+      |> render_submit()
+
+      assert has_element?(view, "#managed-team-#{target.id} li", student.name)
+      assert Repo.get_by!(Repository, subject_id: subject.id).access_sync_state == "pending"
+      assert {:ok, teams} = Assignments.list_teams(teacher, assignment.id)
+      assert Enum.find(teams, &(&1.id == source.id)).members == []
+      assert [%{user_id: student_id}] = Enum.find(teams, &(&1.id == target.id)).members
+      assert student_id == student.id
+      assert accept_assignment(assignment, teacher, student).team_id == target.id
+    end
+  end
+
   test "team actions confirm removal, retain archived results and expose access retries", %{
     conn: conn
   } do

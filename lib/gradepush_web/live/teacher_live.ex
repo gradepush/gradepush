@@ -393,7 +393,7 @@ defmodule GradePushWeb.TeacherLive do
     }
   end
 
-  defp teacher_teams(actor, %{id: id, kind: "team", team_mode: "teacher", team_size: size}) do
+  defp teacher_teams(actor, %{id: id, kind: "team", team_size: size}) do
     actor
     |> then(&AssignmentsContext.list_teams(&1, id))
     |> unwrap([])
@@ -1564,7 +1564,7 @@ defmodule GradePushWeb.TeacherLive do
 
   defp teacher_team_assignment?(%{
          preview?: false,
-         assignment_record: %{kind: "team", team_mode: "teacher"}
+         assignment_record: %{kind: "team"}
        }),
        do: true
 

@@ -245,10 +245,6 @@ defmodule GradePushWeb.AssignmentComponents do
               {gettext("All progress")}
             </option><option
               :for={status <- [:pushed, :late, :no_push, :not_accepted]}
-              :if={
-                !@assignment.group? or Map.get(@assignment, :team_mode) == "teacher" or
-                  status != :not_accepted
-              }
               value={status}
               selected={@filter == to_string(status)}
             >
@@ -646,7 +642,7 @@ defmodule GradePushWeb.AssignmentComponents do
 
   defp empty_message(_, _teams), do: gettext("Try another search or progress filter.")
 
-  defp teacher_managed_teams?(%{group?: true, team_mode: "teacher"}, false), do: true
+  defp teacher_managed_teams?(%{group?: true}, false), do: true
   defp teacher_managed_teams?(_, _), do: false
 
   defp max_activity_count(rows) do

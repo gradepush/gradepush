@@ -13,7 +13,7 @@ msgstr ""
 
 #: lib/gradepush_web/components/admin_components.ex:84
 #: lib/gradepush_web/components/admin_components.ex:184
-#: lib/gradepush_web/components/assignment_components.ex:274
+#: lib/gradepush_web/components/assignment_components.ex:270
 #: lib/gradepush_web/live/admin_live.html.heex:149
 #: lib/gradepush_web/live/admin_live.html.heex:214
 #, elixir-autogen, elixir-format
@@ -162,8 +162,8 @@ msgstr "GitHub organizations"
 msgid "Individual"
 msgstr "Individual"
 
-#: lib/gradepush_web/components/assignment_components.ex:341
-#: lib/gradepush_web/components/assignment_components.ex:633
+#: lib/gradepush_web/components/assignment_components.ex:337
+#: lib/gradepush_web/components/assignment_components.ex:629
 #, elixir-autogen, elixir-format
 msgid "Late"
 msgstr "Late"
@@ -202,8 +202,8 @@ msgstr "New assignment"
 msgid "No assignments yet"
 msgstr "No assignments yet"
 
-#: lib/gradepush_web/components/assignment_components.ex:405
-#: lib/gradepush_web/components/assignment_components.ex:414
+#: lib/gradepush_web/components/assignment_components.ex:401
+#: lib/gradepush_web/components/assignment_components.ex:410
 #: lib/gradepush_web/components/assignment_editor.ex:135
 #: lib/gradepush_web/controllers/export_controller.ex:22
 #, elixir-autogen, elixir-format
@@ -234,7 +234,7 @@ msgid "Skip to content"
 msgstr "Skip to content"
 
 #: lib/gradepush_web/components/admin_components.ex:81
-#: lib/gradepush_web/components/assignment_components.ex:268
+#: lib/gradepush_web/components/assignment_components.ex:264
 #: lib/gradepush_web/live/demo_live.ex:65
 #: lib/gradepush_web/live/teacher_live.html.heex:259
 #, elixir-autogen, elixir-format
@@ -275,8 +275,8 @@ msgstr "Build a command-line parser that accepts a file path and a help flag. Sh
 msgid "Due %{date}"
 msgstr "Due %{date}"
 
-#: lib/gradepush_web/components/assignment_components.ex:412
-#: lib/gradepush_web/components/assignment_components.ex:502
+#: lib/gradepush_web/components/assignment_components.ex:408
+#: lib/gradepush_web/components/assignment_components.ex:498
 #, elixir-autogen, elixir-format
 msgid "Repository links are unavailable in this preview."
 msgstr "Repository links are unavailable in this preview."
@@ -397,7 +397,7 @@ msgstr "No deadline"
 msgid "No matching students"
 msgstr "No matching students"
 
-#: lib/gradepush_web/components/assignment_components.ex:486
+#: lib/gradepush_web/components/assignment_components.ex:482
 #: lib/gradepush_web/live/teacher_live.html.heex:291
 #, elixir-autogen, elixir-format
 msgid "No students yet"
@@ -442,7 +442,7 @@ msgstr "Save changes"
 msgid "Search students"
 msgstr "Search students"
 
-#: lib/gradepush_web/components/assignment_components.ex:493
+#: lib/gradepush_web/components/assignment_components.ex:489
 #: lib/gradepush_web/live/teacher_live.html.heex:295
 #, elixir-autogen, elixir-format
 msgid "Share the classroom link to let your students join."
@@ -569,44 +569,44 @@ msgstr "In pairs, implement a linked list with insertion, deletion, and search. 
 msgid "In pairs, split the provided program into small functions and write tests for each function."
 msgstr "In pairs, split the provided program into small functions and write tests for each function."
 
-#: lib/gradepush_web/components/assignment_components.ex:270
-#: lib/gradepush_web/components/assignment_components.ex:326
+#: lib/gradepush_web/components/assignment_components.ex:266
+#: lib/gradepush_web/components/assignment_components.ex:322
 #, elixir-autogen, elixir-format
 msgid "Last push"
 msgstr "Last push"
 
-#: lib/gradepush_web/components/assignment_components.ex:485
-#: lib/gradepush_web/components/assignment_components.ex:488
+#: lib/gradepush_web/components/assignment_components.ex:481
+#: lib/gradepush_web/components/assignment_components.ex:484
 #, elixir-autogen, elixir-format
 msgid "No matching results"
 msgstr "No matching results"
 
-#: lib/gradepush_web/components/assignment_components.ex:330
-#: lib/gradepush_web/components/assignment_components.ex:601
-#: lib/gradepush_web/components/assignment_components.ex:634
+#: lib/gradepush_web/components/assignment_components.ex:326
+#: lib/gradepush_web/components/assignment_components.ex:597
+#: lib/gradepush_web/components/assignment_components.ex:630
 #, elixir-autogen, elixir-format
 msgid "No pushes"
 msgstr "No pushes"
 
-#: lib/gradepush_web/components/assignment_components.ex:487
+#: lib/gradepush_web/components/assignment_components.ex:483
 #, elixir-autogen, elixir-format
 msgid "No teams yet"
 msgstr "No teams yet"
 
-#: lib/gradepush_web/components/assignment_components.ex:635
+#: lib/gradepush_web/components/assignment_components.ex:631
 #: lib/gradepush_web/live/student_live.html.heex:111
 #, elixir-autogen, elixir-format
 msgid "Not accepted"
 msgstr "Not accepted"
 
-#: lib/gradepush_web/components/assignment_components.ex:378
+#: lib/gradepush_web/components/assignment_components.ex:374
 #: lib/gradepush_web/components/grading_components.ex:124
 #, elixir-autogen, elixir-format
 msgid "Not run"
 msgstr "Not run"
 
-#: lib/gradepush_web/components/assignment_components.ex:404
-#: lib/gradepush_web/components/assignment_components.ex:413
+#: lib/gradepush_web/components/assignment_components.ex:400
+#: lib/gradepush_web/components/assignment_components.ex:409
 #, elixir-autogen, elixir-format
 msgid "Open repository %{repository}"
 msgstr "Open repository %{repository}"
@@ -616,7 +616,7 @@ msgstr "Open repository %{repository}"
 msgid "Read a list of temperatures, calculate the average, and display the minimum and maximum. Handle an empty list."
 msgstr "Read a list of temperatures, calculate the average, and display the minimum and maximum. Handle an empty list."
 
-#: lib/gradepush_web/components/assignment_components.ex:263
+#: lib/gradepush_web/components/assignment_components.ex:259
 #, elixir-autogen, elixir-format
 msgid "Repositories and progress for this assignment"
 msgstr "Repositories and progress for this assignment"
@@ -626,12 +626,12 @@ msgstr "Repositories and progress for this assignment"
 msgid "Share this link with your students. Accepting the assignment joins the classroom and creates their repository."
 msgstr "Share this link with your students. Accepting the assignment joins the classroom and creates their repository."
 
-#: lib/gradepush_web/components/assignment_components.ex:645
+#: lib/gradepush_web/components/assignment_components.ex:641
 #, elixir-autogen, elixir-format
 msgid "Students will create or join a team when they accept the assignment."
 msgstr "Students will create or join a team when they accept the assignment."
 
-#: lib/gradepush_web/components/assignment_components.ex:268
+#: lib/gradepush_web/components/assignment_components.ex:264
 #: lib/gradepush_web/components/assignment_editor.ex:86
 #: lib/gradepush_web/controllers/export_controller.ex:21
 #, elixir-autogen, elixir-format
@@ -654,25 +654,25 @@ msgstr "Tests"
 msgid "Tests run on each push. Open GitHub Actions in your repository to see the results."
 msgstr "Tests run on each push. Open GitHub Actions in your repository to see the results."
 
-#: lib/gradepush_web/components/assignment_components.ex:492
-#: lib/gradepush_web/components/assignment_components.ex:647
+#: lib/gradepush_web/components/assignment_components.ex:488
+#: lib/gradepush_web/components/assignment_components.ex:643
 #, elixir-autogen, elixir-format
 msgid "Try another search or progress filter."
 msgstr "Try another search or progress filter."
 
-#: lib/gradepush_web/components/assignment_components.ex:632
+#: lib/gradepush_web/components/assignment_components.ex:628
 #, elixir-autogen, elixir-format
 msgid "Work pushed"
 msgstr "Work pushed"
 
-#: lib/gradepush_web/components/assignment_components.ex:563
+#: lib/gradepush_web/components/assignment_components.ex:559
 #: lib/gradepush_web/components/assignment_editor.ex:238
 #: lib/gradepush_web/components/grading_components.ex:111
 #, elixir-autogen, elixir-format
 msgid "%{points} points"
 msgstr "%{points} points"
 
-#: lib/gradepush_web/components/assignment_components.ex:519
+#: lib/gradepush_web/components/assignment_components.ex:515
 #: lib/gradepush_web/components/assignment_editor.ex:452
 #, elixir-autogen, elixir-format
 msgid "%{points} points total"
@@ -683,8 +683,8 @@ msgstr "%{points} points total"
 msgid "A file path containing spaces is preserved as a single argument."
 msgstr "A file path containing spaces is preserved as a single argument."
 
-#: lib/gradepush_web/components/assignment_components.ex:271
-#: lib/gradepush_web/components/assignment_components.ex:348
+#: lib/gradepush_web/components/assignment_components.ex:267
+#: lib/gradepush_web/components/assignment_components.ex:344
 #, elixir-autogen, elixir-format
 msgid "Activity"
 msgstr "Activity"
@@ -694,7 +694,7 @@ msgstr "Activity"
 msgid "An unsupported option is rejected with an error message."
 msgstr "An unsupported option is rejected with an error message."
 
-#: lib/gradepush_web/components/assignment_components.ex:517
+#: lib/gradepush_web/components/assignment_components.ex:513
 #: lib/gradepush_web/components/assignment_editor.ex:180
 #: lib/gradepush_web/live/student_live.html.heex:207
 #, elixir-autogen, elixir-format
@@ -706,7 +706,7 @@ msgstr "Automatic tests"
 msgid "Copy invitation link"
 msgstr "Copy invitation link"
 
-#: lib/gradepush_web/components/assignment_components.ex:659
+#: lib/gradepush_web/components/assignment_components.ex:655
 #, elixir-autogen, elixir-format
 msgid "Daily commits: %{counts}"
 msgstr "Daily commits: %{counts}"
@@ -721,12 +721,12 @@ msgstr "Help flag"
 msgid "Missing argument"
 msgstr "Missing argument"
 
-#: lib/gradepush_web/components/assignment_components.ex:567
+#: lib/gradepush_web/components/assignment_components.ex:563
 #, elixir-autogen, elixir-format
 msgid "No automatic tests"
 msgstr "No automatic tests"
 
-#: lib/gradepush_web/components/assignment_components.ex:601
+#: lib/gradepush_web/components/assignment_components.ex:597
 #, elixir-autogen, elixir-format
 msgid "No commits"
 msgstr "No commits"
@@ -741,8 +741,8 @@ msgstr "Quoted file path"
 msgid "Running without a file path displays an error and returns exit code 2."
 msgstr "Running without a file path displays an error and returns exit code 2."
 
-#: lib/gradepush_web/components/assignment_components.ex:272
-#: lib/gradepush_web/components/assignment_components.ex:364
+#: lib/gradepush_web/components/assignment_components.ex:268
+#: lib/gradepush_web/components/assignment_components.ex:360
 #: lib/gradepush_web/components/grading_components.ex:48
 #, elixir-autogen, elixir-format
 msgid "Test score"
@@ -753,12 +753,12 @@ msgstr "Test score"
 msgid "The --help flag displays usage instructions and exits successfully."
 msgstr "The --help flag displays usage instructions and exits successfully."
 
-#: lib/gradepush_web/components/assignment_components.ex:523
+#: lib/gradepush_web/components/assignment_components.ex:519
 #, elixir-autogen, elixir-format
 msgid "These tests run in GitHub Actions on each push. The score is the sum of the points earned."
 msgstr "These tests run in GitHub Actions on each push. The score is the sum of the points earned."
 
-#: lib/gradepush_web/components/assignment_components.ex:568
+#: lib/gradepush_web/components/assignment_components.ex:564
 #, elixir-autogen, elixir-format
 msgid "This assignment has no automatic test score."
 msgstr "This assignment has no automatic test score."
@@ -813,7 +813,7 @@ msgstr "Edit assignment"
 msgid "Enable automatic tests"
 msgstr "Enable automatic tests"
 
-#: lib/gradepush_web/components/assignment_components.ex:560
+#: lib/gradepush_web/components/assignment_components.ex:556
 #: lib/gradepush_web/components/assignment_editor.ex:381
 #, elixir-autogen, elixir-format
 msgid "Expected output"
@@ -887,7 +887,7 @@ msgstr "Saving…"
 msgid "Search templates in this organization"
 msgstr "Search templates in this organization"
 
-#: lib/gradepush_web/components/assignment_components.ex:559
+#: lib/gradepush_web/components/assignment_components.ex:555
 #: lib/gradepush_web/components/assignment_editor.ex:370
 #, elixir-autogen, elixir-format
 msgid "Standard input (optional)"
@@ -953,12 +953,12 @@ msgstr "Write"
 msgid "Write instructions to see the preview."
 msgstr "Write instructions to see the preview."
 
-#: lib/gradepush_web/components/assignment_components.ex:642
+#: lib/gradepush_web/components/assignment_components.ex:638
 #, elixir-autogen, elixir-format
 msgid "No teams have been assigned yet."
 msgstr "No teams have been assigned yet."
 
-#: lib/gradepush_web/components/assignment_components.ex:499
+#: lib/gradepush_web/components/assignment_components.ex:495
 #, elixir-autogen, elixir-format
 msgid "One shared repository per team."
 msgstr "One shared repository per team."
@@ -1813,7 +1813,7 @@ msgstr "Teacher joined the institution"
 msgid "Teacher removed from this classroom."
 msgstr "Teacher removed from this classroom."
 
-#: lib/gradepush_web/components/assignment_components.ex:374
+#: lib/gradepush_web/components/assignment_components.ex:370
 #: lib/gradepush_web/components/grading_components.ex:51
 #, elixir-autogen, elixir-format
 msgid "The grading workflow changed. This result cannot be verified."
@@ -1867,7 +1867,7 @@ msgstr "Use an invitation link from your teacher to join a classroom or accept a
 msgid "Use your teacher’s assignment invitation to accept this assignment and create your repository."
 msgstr "Use your teacher’s assignment invitation to accept this assignment and create your repository."
 
-#: lib/gradepush_web/components/assignment_components.ex:375
+#: lib/gradepush_web/components/assignment_components.ex:371
 #, elixir-autogen, elixir-format
 msgid "Workflow changed"
 msgstr "Workflow changed"
@@ -1928,17 +1928,12 @@ msgstr "Add a student"
 msgid "Add to team"
 msgstr "Add to team"
 
-#: lib/gradepush_web/live/teacher_live.html.heex:709
-#, elixir-autogen, elixir-format
-msgid "Assign students to teams. Students receive their team when they accept the assignment."
-msgstr "Assign students to teams. Students receive their team when they accept the assignment."
-
 #: lib/gradepush_web/live/teacher_live.html.heex:948
 #, elixir-autogen, elixir-format
 msgid "Assignment deadline: %{date}"
 msgstr "Assignment deadline: %{date}"
 
-#: lib/gradepush_web/components/assignment_components.ex:431
+#: lib/gradepush_web/components/assignment_components.ex:427
 #, elixir-autogen, elixir-format
 msgid "Change deadline"
 msgstr "Change deadline"
@@ -2005,7 +2000,7 @@ msgstr "Done"
 msgid "Enter a team name."
 msgstr "Enter a team name."
 
-#: lib/gradepush_web/components/assignment_components.ex:432
+#: lib/gradepush_web/components/assignment_components.ex:428
 #, elixir-autogen, elixir-format
 msgid "Extend deadline"
 msgstr "Extend deadline"
@@ -2026,7 +2021,7 @@ msgstr "Manage teams"
 msgid "No teams yet. Create a team to start assigning students."
 msgstr "No teams yet. Create a team to start assigning students."
 
-#: lib/gradepush_web/components/assignment_components.ex:438
+#: lib/gradepush_web/components/assignment_components.ex:434
 #, elixir-autogen, elixir-format
 msgid "Repository is being created."
 msgstr "Repository is being created."
@@ -2036,17 +2031,17 @@ msgstr "Repository is being created."
 msgid "Repository setup has been queued again."
 msgstr "Repository setup has been queued again."
 
-#: lib/gradepush_web/components/assignment_components.ex:463
+#: lib/gradepush_web/components/assignment_components.ex:459
 #, elixir-autogen, elixir-format
 msgid "Retry repository setup for %{name}"
 msgstr "Retry repository setup for %{name}"
 
-#: lib/gradepush_web/components/assignment_components.ex:464
+#: lib/gradepush_web/components/assignment_components.ex:460
 #, elixir-autogen, elixir-format
 msgid "Retry setup"
 msgstr "Retry setup"
 
-#: lib/gradepush_web/components/assignment_components.ex:434
+#: lib/gradepush_web/components/assignment_components.ex:430
 #, elixir-autogen, elixir-format
 msgid "Revise deadline for %{name}"
 msgstr "Revise deadline for %{name}"
@@ -2076,7 +2071,7 @@ msgstr "Student access could not be added to GitHub. Retry repository setup."
 msgid "Student added to the team."
 msgstr "Student added to the team."
 
-#: lib/gradepush_web/components/assignment_components.ex:639
+#: lib/gradepush_web/components/assignment_components.ex:635
 #, elixir-autogen, elixir-format
 msgid "Students will see their assigned team when they accept the assignment."
 msgstr "Students will see their assigned team when they accept the assignment."
@@ -2175,7 +2170,7 @@ msgstr "Continue as a student"
 msgid "Continue as a teacher"
 msgstr "Continue as a teacher"
 
-#: lib/gradepush_web/components/assignment_components.ex:660
+#: lib/gradepush_web/components/assignment_components.ex:656
 #, elixir-autogen, elixir-format
 msgid "Daily pushes: %{counts}"
 msgstr "Daily pushes: %{counts}"
@@ -2284,12 +2279,12 @@ msgstr "Skipped"
 msgid "View GitHub Actions"
 msgstr "View GitHub Actions"
 
-#: lib/gradepush_web/components/assignment_components.ex:390
+#: lib/gradepush_web/components/assignment_components.ex:386
 #, elixir-autogen, elixir-format
 msgid "View results"
 msgstr "View results"
 
-#: lib/gradepush_web/components/assignment_components.ex:389
+#: lib/gradepush_web/components/assignment_components.ex:385
 #, elixir-autogen, elixir-format
 msgid "View test results for %{name}"
 msgstr "View test results for %{name}"
@@ -3082,7 +3077,7 @@ msgstr "Use its GitHub name, not its URL. You need permission to create an App i
 msgid "Choose an App owner and enter a valid GitHub organization name if needed."
 msgstr "Choose an App owner and enter a valid GitHub organization name if needed."
 
-#: lib/gradepush_web/components/assignment_components.ex:473
+#: lib/gradepush_web/components/assignment_components.ex:469
 #, elixir-autogen, elixir-format
 msgid "Extended deadline"
 msgstr "Extended deadline"
@@ -3380,7 +3375,7 @@ msgstr ""
 msgid "All classroom students are already assigned to a team."
 msgstr ""
 
-#: lib/gradepush_web/components/assignment_components.ex:316
+#: lib/gradepush_web/components/assignment_components.ex:312
 #: lib/gradepush_web/live/teacher_live.html.heex:816
 #, elixir-autogen, elixir-format
 msgid "No students assigned yet."
@@ -3391,7 +3386,7 @@ msgstr "No students assigned yet."
 msgid "Students will appear here once they join the classroom."
 msgstr ""
 
-#: lib/gradepush_web/components/assignment_components.ex:336
+#: lib/gradepush_web/components/assignment_components.ex:332
 #, elixir-autogen, elixir-format
 msgid "Waiting for acceptance"
 msgstr ""
@@ -3417,12 +3412,12 @@ msgstr "Delete %{name}?"
 msgid "Delete team"
 msgstr "Delete team"
 
-#: lib/gradepush_web/components/assignment_components.ex:289
+#: lib/gradepush_web/components/assignment_components.ex:285
 #, elixir-autogen, elixir-format
 msgid "Deleted team · results kept"
 msgstr "Deleted team · results kept"
 
-#: lib/gradepush_web/components/assignment_components.ex:445
+#: lib/gradepush_web/components/assignment_components.ex:441
 #, elixir-autogen, elixir-format
 msgid "GitHub access could not be updated. Previous access may remain."
 msgstr "GitHub access could not be updated. Previous access may remain."
@@ -3453,12 +3448,12 @@ msgstr "Remove from team"
 msgid "Rename team"
 msgstr "Rename team"
 
-#: lib/gradepush_web/components/assignment_components.ex:450
+#: lib/gradepush_web/components/assignment_components.ex:446
 #, elixir-autogen, elixir-format
 msgid "Retry GitHub access update for %{name}"
 msgstr "Retry GitHub access update for %{name}"
 
-#: lib/gradepush_web/components/assignment_components.ex:452
+#: lib/gradepush_web/components/assignment_components.ex:448
 #, elixir-autogen, elixir-format
 msgid "Retry access update"
 msgstr "Retry access update"
@@ -3493,7 +3488,7 @@ msgstr "Team renamed."
 msgid "The GitHub repository keeps its current name."
 msgstr "The GitHub repository keeps its current name."
 
-#: lib/gradepush_web/components/assignment_components.ex:441
+#: lib/gradepush_web/components/assignment_components.ex:437
 #, elixir-autogen, elixir-format
 msgid "Updating GitHub access…"
 msgstr "Updating GitHub access…"
@@ -3580,3 +3575,8 @@ msgstr "Students appear here after joining a classroom or accepting an assignmen
 #, elixir-autogen, elixir-format
 msgid "Students sign in with GitHub and join your classroom. No student ID is required."
 msgstr "Students sign in with GitHub and join your classroom. No student ID is required."
+
+#: lib/gradepush_web/live/teacher_live.html.heex:709
+#, elixir-autogen, elixir-format
+msgid "Manage team members. Remove a student from their current team before adding them to another."
+msgstr "Manage team members. Remove a student from their current team before adding them to another."

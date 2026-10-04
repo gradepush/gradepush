@@ -1,5 +1,6 @@
 defmodule GradePush.TeamManagementTest do
   use GradePush.DataCase, async: false
+  use Oban.Testing, repo: GradePush.Repo
 
   import GradePush.AccountsFixtures
   import GradePush.TeachingFixtures
@@ -10,22 +11,27 @@ defmodule GradePush.TeamManagementTest do
   alias GradePush.GitHub.Fake.Store
   alias GradePush.Workers.{ProvisionAssignmentRepository, SyncAssignmentRepositoryAccess}
 
-  setup do
+  setup context do
     Fake.reset!()
     on_exit(&Fake.reset!/0)
     %{user: teacher} = bootstrap_fixture()
     classroom = classroom_fixture(teacher)
-    assignment = assignment_fixture(teacher, classroom, %{kind: "team", team_mode: "teacher"})
+    mode = Map.get(context, :team_mode, "teacher")
+    assignment = assignment_fixture(teacher, classroom, %{kind: "team", team_mode: mode})
     students = for _ <- 1..2, do: student_fixture()
     {:ok, invitation} = Classrooms.create_class_invitation(teacher, classroom.id)
 
     for student <- students,
         do: Classrooms.accept_class_invitation(student, invitation.token, %{})
 
-    {:ok, team} = Assignments.create_team(teacher, assignment.id, %{name: "Orion"})
+    creator = if mode == "students", do: hd(students), else: teacher
+    {:ok, team} = Assignments.create_team(creator, assignment.id, %{name: "Orion"})
 
-    for student <- students,
-        do: Assignments.add_team_member(teacher, assignment.id, team.id, student.id)
+    for student <- students do
+      if mode == "students",
+        do: Assignments.join_team(student, assignment.id, team.id),
+        else: Assignments.add_team_member(teacher, assignment.id, team.id, student.id)
+    end
 
     {:ok, invitation} = Assignments.create_assignment_invitation(teacher, assignment.id)
 
@@ -41,6 +47,120 @@ defmodule GradePush.TeamManagementTest do
       subject: subject,
       invitation: invitation
     }
+  end
+
+  for mode <- ["students", "teacher"] do
+    @tag team_mode: mode
+    test "teachers rebalance #{mode} teams and reconcile both repositories", c do
+      [moved, remaining] = c.students
+      assert :ok = provision(c.subject.id)
+      old_repository = Repo.get_by!(Repository, subject_id: c.subject.id)
+      newcomer = student_fixture()
+      {:ok, class_invite} = Classrooms.create_class_invitation(c.teacher, c.classroom.id)
+      {:ok, _} = Classrooms.accept_class_invitation(newcomer, class_invite.token, %{})
+      {:ok, destination} = Assignments.create_team(c.teacher, c.assignment.id, %{name: "Lyra"})
+
+      assert {:ok, _} =
+               Assignments.add_team_member(
+                 c.teacher,
+                 c.assignment.id,
+                 destination.id,
+                 newcomer.id
+               )
+
+      {:ok, %{subject: target}} =
+        Assignments.accept_assignment_invitation(newcomer, c.invitation.token, %{})
+
+      assert :ok = provision(target.id)
+      target_repository = Repo.get_by!(Repository, subject_id: target.id)
+
+      assert {:error, :already_in_team} =
+               Assignments.add_team_member(c.teacher, c.assignment.id, destination.id, moved.id)
+
+      assert {:ok, _} =
+               Assignments.remove_team_member(c.teacher, c.assignment.id, c.team.id, moved.id)
+
+      assert {:ok, _} =
+               Assignments.add_team_member(c.teacher, c.assignment.id, destination.id, moved.id)
+
+      for subject <- [c.subject, target] do
+        assert Repo.get_by!(Repository, subject_id: subject.id).access_sync_state == "pending"
+
+        assert_enqueued(
+          worker: SyncAssignmentRepositoryAccess,
+          args: %{subject_id: subject.id}
+        )
+      end
+
+      assert {:ok, view} =
+               Assignments.get_student_assignment(moved, c.classroom.id, c.assignment.slug)
+
+      assert view.subject.id == target.id
+      assert {:ok, _} = Classrooms.get_student_classroom(moved, c.classroom.slug)
+      assert :ok = sync(c.subject.id)
+      assert :ok = sync(target.id)
+
+      assert Fake.collaborators(old_repository.owner_login, old_repository.name) == [
+               remaining.login
+             ]
+
+      assert Enum.sort(Fake.collaborators(target_repository.owner_login, target_repository.name)) ==
+               Enum.sort([moved.login, newcomer.login])
+
+      assert Repo.get!(Subject, c.subject.id)
+
+      assert {:ok, %{subject: accepted}} =
+               Assignments.accept_assignment_invitation(moved, c.invitation.token, %{})
+
+      assert accepted.id == target.id
+      assert :ok = sync(c.subject.id)
+      refute moved.login in Fake.collaborators(old_repository.owner_login, old_repository.name)
+    end
+  end
+
+  @tag team_mode: "students"
+  test "student-formed teams keep teacher scope, capacity and enrollment checks", c do
+    outsider = user_fixture()
+    teacher_membership_fixture(outsider)
+    unrostered = student_fixture()
+    {:ok, destination} = Assignments.create_team(c.teacher, c.assignment.id, %{name: "Lyra"})
+
+    for actor <- [hd(c.students), outsider] do
+      assert {:error, _} =
+               Assignments.add_team_member(actor, c.assignment.id, destination.id, unrostered.id)
+
+      assert {:error, _} =
+               Assignments.remove_team_member(
+                 actor,
+                 c.assignment.id,
+                 c.team.id,
+                 hd(c.students).id
+               )
+    end
+
+    assert {:error, :student_not_enrolled} =
+             Assignments.add_team_member(
+               c.teacher,
+               c.assignment.id,
+               destination.id,
+               unrostered.id
+             )
+
+    {:ok, class_invite} = Classrooms.create_class_invitation(c.teacher, c.classroom.id)
+    {:ok, _} = Classrooms.accept_class_invitation(unrostered, class_invite.token, %{})
+
+    assert {:error, :team_full} =
+             Assignments.add_team_member(c.teacher, c.assignment.id, c.team.id, unrostered.id)
+
+    other_assignment = assignment_fixture(c.teacher, c.classroom, %{kind: "team"})
+
+    assert {:error, :not_found} =
+             Assignments.add_team_member(
+               c.teacher,
+               other_assignment.id,
+               destination.id,
+               unrostered.id
+             )
   end
 
   test "renaming validates names, keeps repository identity and cannot cross classroom scopes",
